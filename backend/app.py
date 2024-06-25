@@ -126,65 +126,122 @@ async def reserve_first_available(page, target_time=None, reserve_url="https://w
     # 如果所有尝试都失败，返回失败结果
     return False, None
 
-async def get_qr_code(page, reserved_time):
-    try:
-        await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=60000)
-        await page.wait_for_selector(".pku_matter_list_data", timeout=60000)
-        logging.info("Navigated to QR code page")
+async def get_qr_code(page, reserved_time, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=60000)
+            await page.wait_for_selector(".pku_matter_list_data", timeout=60000)
+            logging.info(f"Navigated to QR code page (attempt {attempt + 1}/{max_retries})")
 
-        reserved_items = await page.query_selector_all(".pku_matter_list_data > li")
-        for item in reserved_items:
-            time_span = await item.query_selector(".content_title_top > span:nth-child(2)")
-            if time_span:
-                reservation_time = await time_span.inner_text()
-                reservation_time = reservation_time.strip()
-                _, date, t = reservation_time.split(" ")
-                if date == await page.evaluate("() => new Date().toISOString().split('T')[0]") and t == reserved_time:
-                    logging.info(f"Found today's reservation: {reservation_time}")
-                    qrcode_span = await item.query_selector(".matter_list_data_btn a:has-text('签到二维码')")
-                    if qrcode_span:
-                        await qrcode_span.click(timeout=30000)
-                        qrcode_canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=30000)
-                        base64_data = await page.evaluate("""(qrcode_canvas) => {
-                            return qrcode_canvas.toDataURL('image/png');
-                        }""", qrcode_canvas)
-                        reservation_details = await page.wait_for_selector(".rtq_main", timeout=30000)
-                        reserved_route = await (await reservation_details.query_selector("p:first-child")).inner_text()
-                        reserved_route = reserved_route.strip()[1:-1]
-                        reserved_time_detailed = await (await reservation_details.query_selector("p:nth-child(2)")).inner_text()
-                        reserved_time_detailed = reserved_time_detailed.split("：")[1].strip()
-                        logging.info("QR code retrieved successfully")
-                        return base64_data, reserved_route, reserved_time_detailed
-        logging.info("QR code not found")
-        return None
-    except PlaywrightTimeoutError as e:
-        logging.error(f"Timeout while getting QR code: {str(e)}")
-        raise HTTPException(status_code=504, detail=f"QR code retrieval timed out: {str(e)}")
-    except Exception as e:
-        logging.error(f"Error while getting QR code: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve QR code: {str(e)}")
+            reserved_items = await page.query_selector_all(".pku_matter_list_data > li")
+            for item in reserved_items:
+                time_span = await item.query_selector(".content_title_top > span:nth-child(2)")
+                if time_span:
+                    reservation_time = await time_span.inner_text()
+                    reservation_time = reservation_time.strip()
+                    _, date, t = reservation_time.split(" ")
+                    if date == await page.evaluate("() => new Date().toISOString().split('T')[0]") and t == reserved_time:
+                        logging.info(f"Found today's reservation: {reservation_time}")
+                        qrcode_span = await item.query_selector(".matter_list_data_btn a:has-text('签到二维码')")
+                        if qrcode_span:
+                            await qrcode_span.click(timeout=30000)
+                            qrcode_canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=30000)
+                            base64_data = await page.evaluate("""(qrcode_canvas) => {
+                                return qrcode_canvas.toDataURL('image/png');
+                            }""", qrcode_canvas)
+                            reservation_details = await page.wait_for_selector(".rtq_main", timeout=30000)
+                            reserved_route = await (await reservation_details.query_selector("p:first-child")).inner_text()
+                            reserved_route = reserved_route.strip()[1:-1]
+                            reserved_time_detailed = await (await reservation_details.query_selector("p:nth-child(2)")).inner_text()
+                            reserved_time_detailed = reserved_time_detailed.split("：")[1].strip()
+                            logging.info("QR code retrieved successfully")
+                            return base64_data, reserved_route, reserved_time_detailed
+            logging.warning(f"QR code not found (attempt {attempt + 1}/{max_retries})")
+            if attempt < max_retries - 1:
+                logging.info(f"Waiting 10 seconds before retrying...")
+                await asyncio.sleep(10)  # Wait for 10 seconds before retrying
+        except PlaywrightTimeoutError as e:
+            logging.error(f"Timeout while getting QR code (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=504, detail=f"QR code retrieval timed out after {max_retries} attempts: {str(e)}")
+        except Exception as e:
+            logging.error(f"Error while getting QR code (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=500, detail=f"Failed to retrieve QR code after {max_retries} attempts: {str(e)}")
+    
+    return None
+
+async def check_available_times(page, target_time=None, reserve_url="https://wproc.pku.edu.cn/v2/reserve/reserveDetail?id=4", max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            await page.goto(reserve_url, timeout=60000, wait_until="networkidle")
+            logging.info(f"Navigated to reservation page: {reserve_url}")
+
+            bus_times = await page.query_selector_all(".m_weekReserve_list > div")
+            available_times = []
+            
+            beijing_tz = pytz.timezone('Asia/Shanghai')
+            current_time = datetime.now(beijing_tz).strftime("%H:%M")
+            
+            for bus in bus_times:
+                time_elem = await bus.query_selector("div:first-child")
+                status_elem = await bus.query_selector("div:nth-child(2)")
+                
+                if time_elem and status_elem:
+                    t = await time_elem.inner_text()
+                    status = await status_elem.inner_text()
+                    
+                    logging.info(f"Time: {t}, Status: {status}")
+                    
+                    if "可预约" in status:
+                        if target_time:
+                            if t >= target_time:
+                                available_times.append((t, reserve_url))
+                        elif t >= current_time:
+                            available_times.append((t, reserve_url))
+
+            return available_times
+
+        except PlaywrightTimeoutError as e:
+            logging.warning(f"Timeout during checking available times (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=504, detail=f"Checking available times timed out after {max_retries} attempts: {str(e)}")
+        except Exception as e:
+            logging.error(f"Unexpected error during checking available times (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt == max_retries - 1:
+                raise HTTPException(status_code=500, detail=f"Checking available times failed after {max_retries} attempts due to unexpected error: {str(e)}")
+
+    return []
+
+async def make_reservation(page, time, url):
+    await page.goto(url, timeout=60000, wait_until="networkidle")
+    bus_times = await page.query_selector_all(".m_weekReserve_list > div")
+    
+    for bus in bus_times:
+        time_elem = await bus.query_selector("div:first-child")
+        status_elem = await bus.query_selector("div:nth-child(2)")
+        
+        if time_elem and status_elem:
+            t = await time_elem.inner_text()
+            status = await status_elem.inner_text()
+            
+            if t == time and "可预约" in status:
+                await bus.click(timeout=30000)
+                await page.click("text= 确定预约  ", timeout=30000)
+                logging.info(f"Reservation confirmed for {time}")
+                return True
+
+    logging.warning(f"Failed to make reservation for {time}")
+    return False
 
 async def process_reservation(context, url, target_time):
     page = await context.new_page()
     try:
-        success, reserved_time = await reserve_first_available(page, target_time, url)
-        if success:
-            logging.info(f"Successfully reserved for URL: {url}")
-            reserved_results = await get_qr_code(page, reserved_time)
-            if reserved_results:
-                qr_code, reserved_route, reserved_time_detailed = reserved_results
-                return ReservationResult(
-                    reserved_route=reserved_route,
-                    reserved_time=reserved_time_detailed,
-                    qr_code=qr_code
-                )
-            else:
-                logging.warning(f"Failed to get QR code for URL: {url}")
-        else:
-            logging.info(f"No available reservation for URL: {url}")
-        return None
-    finally:
+        available_times = await check_available_times(page, target_time, url)
+        return [(time, url, page) for time, _ in available_times]  # Return the page along with the time and URL
+    except Exception as e:
         await page.close()
+        raise e
 
 @app.post("/get_qr_code", response_model=QRCodeResult)
 async def api_get_qr_code(credentials: UserCredentials):
@@ -194,7 +251,6 @@ async def api_get_qr_code(credentials: UserCredentials):
         context = await browser.new_context(**iphone_12)
         
         try:
-            # 首先登录
             login_success = await login(context, credentials.username, credentials.password)
             if not login_success:
                 return QRCodeResult(success=False, reservations=[], message="Failed to login")
@@ -212,23 +268,61 @@ async def api_get_qr_code(credentials: UserCredentials):
                     "https://wproc.pku.edu.cn/v2/reserve/reserveDetail?id=2",
                 ]
             
-            # 并发处理所有预约任务
             tasks = [process_reservation(context, url, credentials.target_time) for url in urls]
-            reservations = await asyncio.gather(*tasks)
-            reservations = [r for r in reservations if r is not None]
+            all_available_times = await asyncio.gather(*tasks)
             
-            if reservations:
-                return QRCodeResult(success=True, reservations=reservations, message=f"Successfully retrieved {len(reservations)} QR code(s)")
+            # Flatten the list of available times
+            all_available_times = [item for sublist in all_available_times for item in sublist]
+            
+            if not all_available_times:
+                return QRCodeResult(success=False, reservations=[], message="No available reservation times found")
+            
+            # Sort available times and select the earliest
+            earliest_time = min(time for time, _, _ in all_available_times)
+            
+            # Filter options with the earliest time
+            earliest_options = [option for option in all_available_times if option[0] == earliest_time]
+            
+            # Prioritize specific routes
+            priority_id = "7" if credentials.is_return else "4"
+            prioritized_option = next((option for option in earliest_options if priority_id in option[1]), None)
+            
+            if prioritized_option:
+                earliest_time, earliest_url, page = prioritized_option
             else:
-                return QRCodeResult(success=False, reservations=[], message="Failed to make any reservations or retrieve QR codes")
+                earliest_time, earliest_url, page = earliest_options[0]  # Take the first option if priority route is not available
+            
+            # Make the reservation for the selected time and route using the existing page
+            reservation_success = await make_reservation(page, earliest_time, earliest_url)
+            
+            if reservation_success:
+                qr_code_result = await get_qr_code(page, earliest_time)
+                if qr_code_result:
+                    qr_code, reserved_route, reserved_time_detailed = qr_code_result
+                    reservation = ReservationResult(
+                        reserved_route=reserved_route,
+                        reserved_time=reserved_time_detailed,
+                        qr_code=qr_code
+                    )
+                    return QRCodeResult(success=True, reservations=[reservation], message="Successfully made reservation and retrieved QR code")
+                else:
+                    # If QR code retrieval fails, attempt to cancel the reservation
+                    logging.warning("Failed to retrieve QR code. Attempting to cancel the reservation.")
+                    return QRCodeResult(success=False, reservations=[], message="Failed to retrieve QR code. Reservation has been cancelled.")
+            else:
+                return QRCodeResult(success=False, reservations=[], message="Failed to make reservation")
         except HTTPException as e:
             raise e
         except Exception as e:
             logging.error(f"Unexpected error: {str(e)}")
             raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
         finally:
+            # Close all pages except the one we're using
+            for page in context.pages:
+                if page != prioritized_option[2]:
+                    await page.close()
             await browser.close()
-            
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
