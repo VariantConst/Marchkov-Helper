@@ -10,7 +10,7 @@ async function reserveBus(type) {
     body: JSON.stringify({
       type: type,
       time: null, // 您可以根据需要修改这个时间
-      headless: true,
+      headless: false,
     }),
   });
 
