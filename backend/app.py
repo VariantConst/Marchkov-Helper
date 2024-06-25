@@ -1,3 +1,4 @@
+# backend/app.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from playwright.async_api import Page, async_playwright, TimeoutError as PlaywrightTimeoutError
@@ -10,12 +11,19 @@ import pytz
 import asyncio
 from playwright.async_api import Error as PlaywrightError
 import re
-
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import date as Date
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class UserCredentials(BaseModel):
@@ -107,18 +115,20 @@ async def get_qr_code(page, reserved_time):
     >>> ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...", "新校区→燕园校区", "2024-07-01 12:00")
     '''
     try:
+        logging.info(f"尝试获取{reserved_time}的二维码")
         await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=60000)
         await page.reload(timeout=60000)
         await page.wait_for_load_state("networkidle", timeout=60000)
 
         reserved_items = await page.query_selector_all(".pku_matter_list_data > li")
+        today = Date.today().isoformat()
         for item in reserved_items:
             time_span = await item.query_selector(".content_title_top > span:nth-child(2)")
             if time_span:
                 reservation_time = await time_span.inner_text()
                 reservation_time = reservation_time.strip()
-                _, date, t = reservation_time.split(" ")
-                if date == await page.evaluate("() => new Date().toISOString().split('T')[0]") and t == reserved_time:
+                _, date_str, t = reservation_time.split(" ")
+                if date_str == today and t == reserved_time:
                     logging.info(f"找到今天的预约：{reservation_time}")
                     qrcode_span = await item.query_selector(".matter_list_data_btn a:has-text('签到二维码')")
                     if qrcode_span:
@@ -201,6 +211,7 @@ async def get_temporary_qr_code(page, time_to_reserve, route_name):
         logging.error(f"临时二维码获取超时: {str(e)}")
         raise HTTPException(status_code=504, detail=f"临时二维码获取超时: {str(e)}")
 
+
 async def get_bus_time(context, route_name: str, route_url: str, target_time: str) -> tuple:
     '''
     获取应该预约的班车时间。首先检查target_time过去十分钟内是否有班车，如果有，直接返回。否则预约target_time之后最早的班车。
@@ -245,7 +256,8 @@ async def get_bus_time(context, route_name: str, route_url: str, target_time: st
                 t = datetime.strptime(t, "%H:%M")
 
                 # 如果给定时间前十分钟内有班车
-                has_expired_bus = has_expired_bus or target_time - timedelta(minutes=10) <= t <= target_time
+                has_expired_bus = has_expired_bus or \
+                    (target_time - timedelta(minutes=10) <= t <= target_time and "可预约" in status)
 
                 # 如果班车已经过期，直接返回
                 if has_expired_bus:
@@ -294,6 +306,7 @@ async def api_get_qr_code(credentials: UserCredentials):
         context = await browser.new_context(**iphone_12)
         
         try:
+            logging.info(f"接收到预约请求: {credentials}")
             login_success = await login(context, credentials.username, credentials.password)
             if not login_success:
                 return QRCodeResult(success=False, reservations=[], message="Failed to login")
@@ -340,13 +353,13 @@ async def api_get_qr_code(credentials: UserCredentials):
                             reserved_time=reserved_time_detailed,
                             qr_code=qr_code
                         )
-                        return QRCodeResult(success=True, reservations=[reservation], message="Successfully made reservation and retrieved QR code")
+                        return QRCodeResult(success=True, reservations=[reservation], message="成功预约班车并获取二维码。")
                     else:
                         # If QR code retrieval fails, attempt to cancel the reservation
-                        logging.warning("Failed to retrieve QR code. Attempting to cancel the reservation.")
-                        return QRCodeResult(success=False, reservations=[], message="Failed to retrieve QR code. Reservation has been cancelled.")
+                        logging.warning("班车已预约，但无法获取二维码。尝试取消预约。")
+                        return QRCodeResult(success=False, reservations=[], message="班车已预约，但无法获取二维码。预约已取消。")
                 else:
-                    return QRCodeResult(success=False, reservations=[], message="Failed to make reservation")
+                    return QRCodeResult(success=False, reservations=[], message="预约班车失败！预约流程出现了错误。")
         except HTTPException as e:
             raise e
         except Exception as e:
