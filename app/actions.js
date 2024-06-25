@@ -46,9 +46,9 @@ function shouldReturnTrip(currentTime, criticalTime, direction) {
   const critical = new Date(today.toDateString() + " " + criticalTime);
 
   if (direction === "toChangping") {
-    return current >= critical;
+    return current <= critical;
   } else {
-    return current < critical;
+    return current > critical;
   }
 }
 

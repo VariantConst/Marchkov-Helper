@@ -302,7 +302,7 @@ async def make_reservation(page, time, url):
 async def api_get_qr_code(credentials: UserCredentials):
     async with async_playwright() as p:
         iphone_12 = p.devices['iPhone 12']
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(**iphone_12)
         
         try:
