@@ -1,38 +1,38 @@
 # backend/app.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from routes import router as api_router
+import time
 import logging
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-
-# 创建一个日志记录器
-logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 在生产环境中，应该指定具体的源
+    allow_origins=["*"],  # In production, specify the exact origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(api_router)
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    logging.info(f"Request to {request.url.path} took {process_time:.2f} seconds")
+    return response
 
-# 添加一个启动事件处理器
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Application is starting up")
+app.include_router(api_router)
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting the application")
     uvicorn.run(app, host="0.0.0.0", port=8000)

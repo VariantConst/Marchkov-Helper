@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+@layer components {
+  .range-blue::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-blue-500 cursor-pointer;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+  }
+
+  .range-blue::-moz-range-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-blue-500 cursor-pointer border-none;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+  }
+
+  .range-green::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-green-500 cursor-pointer;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3);
+  }
+
+  .range-green::-moz-range-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-green-500 cursor-pointer border-none;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3);
+  }
+}

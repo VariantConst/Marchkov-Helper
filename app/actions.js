@@ -29,7 +29,9 @@ async function getReservations(
       throw new Error("请求失败");
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log("Reservation data:", data);
+    return data;
   } catch (error) {
     console.error("获取预约信息时出错:", error);
     return {
@@ -80,6 +82,11 @@ export async function loginAction(formData) {
     direction
   );
 
+  console.log("Login action result:", {
+    user: { username, currentTime, criticalTime, direction },
+    reservationData,
+  });
+
   return {
     user: { username, currentTime, criticalTime, direction },
     reservationData,
@@ -103,22 +110,15 @@ export async function checkLoginStatus() {
   const direction = cookieStore.get("direction")?.value;
 
   if (username && password && currentTime && criticalTime && direction) {
-    const reservationData = await getReservations(
-      username,
-      password,
-      currentTime,
-      criticalTime,
-      direction
-    );
     return {
       user: { username, currentTime, criticalTime, direction },
-      reservationData,
+      reservationData: null,
     };
   }
 
   return {
     user: null,
-    reservationData: { success: false, message: "", reservations: [] },
+    reservationData: null,
   };
 }
 
@@ -131,6 +131,7 @@ export async function refreshReservationData() {
   const direction = cookieStore.get("direction")?.value;
 
   if (username && password && currentTime && criticalTime && direction) {
+    console.log("Refreshing reservation data for:", username);
     const reservationData = await getReservations(
       username,
       password,
@@ -138,9 +139,11 @@ export async function refreshReservationData() {
       criticalTime,
       direction
     );
+    console.log("Refreshed reservation data:", reservationData);
     return reservationData;
   }
-  return { success: false, message: "", reservations: [] };
+  console.log("Unable to refresh: missing user information");
+  return { success: false, message: "未找到用户信息", reservations: [] };
 }
 
 function getCurrentBeijingTime() {

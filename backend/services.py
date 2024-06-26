@@ -77,7 +77,7 @@ async def handle_expired_buses(all_bus_info):
                 qr_code=temporary_qr_code
             ))
     return QRCodeResult(success=True, reservations=all_temporary_results, 
-                        message=f"Successfully retrieved {len(all_temporary_results)} temporary QR codes for expired buses")
+                        message=f"DDL 战士翻车了吧！拿好你的临时码。")
 
 async def handle_future_reservation(all_bus_info):
     if not all_bus_info:
@@ -98,11 +98,11 @@ async def handle_future_reservation(all_bus_info):
                 qr_code=qr_code
             )
             return QRCodeResult(success=True, reservations=[reservation], 
-                                message="Successfully reserved bus and retrieved QR code.")
+                                message="预约成功！")
         else:
             logging.warning("Bus reserved, but unable to retrieve QR code. Attempting to cancel reservation.")
             return QRCodeResult(success=False, reservations=[], 
-                                message="Bus reserved, but unable to retrieve QR code. Reservation has been cancelled.")
+                                message="车给你约了，但是系统里没有乘车码。等会再来吧。")
     else:
         return QRCodeResult(success=False, reservations=[], 
-                            message="Failed to reserve bus! An error occurred during the reservation process.")
+                            message="预约过程中发生错误。")
