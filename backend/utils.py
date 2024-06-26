@@ -80,6 +80,7 @@ async def get_qr_code(page: Page, reserved_time: str) -> Tuple[str, str, str]:
     try:
         # 导航到预约时间页面
         await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=6000)
+        await page.reload(timeout=6000)
         await page.wait_for_load_state("networkidle", timeout=6000)
         
         # 查找所有预约项
