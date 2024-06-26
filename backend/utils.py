@@ -1,11 +1,13 @@
 # backend/utils.py
 
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import Error as PlaywrightError
 from fastapi import HTTPException
 import logging
 from datetime import datetime, timedelta
 import asyncio
 from typing import Tuple, Optional, List
+import random
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,51 +23,53 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
     :param max_retries: 最大重试次数，默认为5
     :return: 登录成功返回True，否则抛出异常
     """
-    try:
-        for i in range(max_retries):
-            try:
-                # 导航到登录页面
-                await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=120000)
-                logging.info("已导航至登录页面")
-                
-                # 填写用户名和密码
-                await page.fill("#user_name", username, timeout=5000)
-                logging.info("已填写用户名")
+    for i in range(max_retries):
+        try:
+            # 导航到登录页面
+            await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=120000)
+            logging.info("已导航至登录页面")
+            
+            # 填写用户名和密码
+            await page.fill("#user_name", username, timeout=5000)
+            logging.info("已填写用户名")
 
-                await page.fill("#password", password, timeout=5000)
-                logging.info("已填写密码")
+            await page.fill("#password", password, timeout=5000)
+            logging.info("已填写密码")
 
-                # 点击登录按钮
-                await page.click("#logon_button", timeout=5000)
-                logging.info("已点击登录按钮")
+            # 点击登录按钮
+            await page.click("#logon_button", timeout=5000)
+            logging.info("已点击登录按钮")
 
-                # 等待登录成功的标志
-                try:
-                    # 等待登录按钮消失
-                    await page.wait_for_selector("#logon_button", state="detached", timeout=10000)
-                    
-                    # 等待重定向完成
-                    await page.wait_for_url("https://wproc.pku.edu.cn/v2/site/index", timeout=10000)
-                    
-                    logging.info("登录成功")
-                    return True
-                except PlaywrightTimeoutError:
-                    logging.warning(f"登录可能未成功，第 {i + 1} 次尝试")
-                    continue
+            # 等待登录成功的标志
+            await page.wait_for_selector("#logon_button", state="detached", timeout=10000)
+            
+            # 等待重定向完成
+            await page.wait_for_url("https://wproc.pku.edu.cn/v2/site/index", timeout=10000)
+            
+            logging.info("登录成功")
+            return True
 
-            except PlaywrightTimeoutError as e:
-                logging.error(f"登录操作超时：{str(e)}，第 {i + 1} 次尝试")
-                continue
-        
-        else:
-            raise HTTPException(status_code=504, detail="登录失败：重试次数过多")
+        except PlaywrightTimeoutError as e:
+            logging.warning(f"登录操作超时：{str(e)}，第 {i + 1} 次尝试")
+        except PlaywrightError as e:
+            if "net::" in str(e):
+                logging.warning(f"网络错误：{str(e)}，第 {i + 1} 次尝试")
+            else:
+                logging.warning(f"Playwright错误：{str(e)}，第 {i + 1} 次尝试")
+        except Exception as e:
+            logging.warning(f"登录过程出错：{str(e)}，第 {i + 1} 次尝试")
 
-    except PlaywrightTimeoutError as e:
-        logging.error(f"登录过程超时：{str(e)}")
-        raise HTTPException(status_code=504, detail=f"登录过程超时：{str(e)}")
-    except Exception as e:
-        logging.error(f"登录过程出错：{str(e)}")
-        raise HTTPException(status_code=500, detail=f"登录失败：{str(e)}")
+        # 实现指数退避
+        wait_time = (2 ** i) + random.random()
+        logging.info(f"等待 {wait_time:.2f} 秒后重试")
+        await asyncio.sleep(wait_time)
+
+        # 刷新页面或创建新的浏览器上下文
+        await page.close()
+        page = await page.context.new_page()
+
+    # 如果所有重试都失败，抛出异常
+    raise HTTPException(status_code=504, detail="登录失败：重试次数过多")
 
 
 async def get_qr_code(page: Page, reserved_time: str) -> Tuple[str, str, str]:

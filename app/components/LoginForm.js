@@ -155,7 +155,7 @@ export default function LoginForm({ onSubmit }) {
                       : "text-green-500"
                   }
                 >
-                  {selectedDirection === "toYanyuan" ? "去燕园" : "去昌平"}
+                  去{selectedDirection === "toYanyuan" ? "燕园" : "昌平"}
                 </span>
                 <span
                   className={
@@ -164,7 +164,7 @@ export default function LoginForm({ onSubmit }) {
                       : "text-blue-500"
                   }
                 >
-                  {selectedDirection === "toYanyuan" ? "去昌平" : "去燕园"}
+                  回{selectedDirection === "toYanyuan" ? "昌平" : "燕园"}
                 </span>
               </div>
               <div className="relative w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-visible">

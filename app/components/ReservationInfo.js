@@ -1,20 +1,11 @@
+// app/components/ReservationInfo.js
 "use client";
 import { useState, useEffect } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, MapPin, Clock, Settings } from "lucide-react";
 
-export default function ReservationInfo({ user, reservationData, onRefresh }) {
-  const [isMobile, setIsMobile] = useState(false);
+export default function ReservationInfo({ user, reservationData }) {
   const [showModal, setShowModal] = useState(false);
   const [currentQRCode, setCurrentQRCode] = useState(null);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const openModal = (qrCode) => {
     setCurrentQRCode(qrCode);
@@ -29,21 +20,29 @@ export default function ReservationInfo({ user, reservationData, onRefresh }) {
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 flex justify-center items-center w-full">
       <div className="flex flex-col gap-4">
-        <div className="w-full flex flex-col justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-              欢迎, {user.username}
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300">
-              临界时刻:{" "}
-              <span className="font-semibold">{user.criticalTime}</span>
-            </p>
-            <p className="text-gray-600 dark:text-gray-300">
-              方向:{" "}
-              <span className="font-semibold">
-                {user.direction === "toChangping" ? "去昌平" : "去燕园"}
+        <div className="w-full">
+          <div className="flex flex-col space-y-1">
+            <h2 className="text-3xl font-light text-gray-800 dark:text-gray-200 border-b border-gray-200 pb-2 mb-6">
+              欢迎,{" "}
+              <span className="font-normal text-gray-600 dark:text-gray-300">
+                {user.username}
               </span>
-            </p>
+            </h2>
+            <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+              <MapPin className="w-4 h-4" />
+              <p>
+                早上去
+                {user.direction === "toChangping" ? "昌平💤" : "燕园💻"} 晚上回
+                {user.direction === "toChangping" ? "燕园💻" : "昌平💤"}
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
+              <Clock className="w-4 h-4" />
+              <p>
+                临界时刻:{" "}
+                <span className="font-semibold">{user.criticalTime}</span>
+              </p>
+            </div>
           </div>
         </div>
 
@@ -58,13 +57,6 @@ export default function ReservationInfo({ user, reservationData, onRefresh }) {
                   <div className="text-center bg-green-100 text-green-800 dark:bg-green-800 p-2 dark:text-green-100 rounded-lg flex-grow">
                     {reservationData.message}
                   </div>
-                  <button
-                    onClick={onRefresh}
-                    className="self-start p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
-                    title="刷新预约信息"
-                  >
-                    <RefreshCw size={24} />
-                  </button>
                 </div>
 
                 <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
@@ -107,7 +99,7 @@ export default function ReservationInfo({ user, reservationData, onRefresh }) {
 
       {showModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-filter backdrop-blur-sm"
           onClick={closeModal}
         >
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg">
