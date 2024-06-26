@@ -228,6 +228,7 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
         target_time = datetime.strptime(target_time, "%H:%M").time()
 
         for attempt in range(max_retries):
+            await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
             bus_times = await page.query_selector_all(".m_weekReserve_list > div")
             logging.info(f"找到 {len(bus_times)} 个巴士时间：{bus_times}")
             has_expired_bus = False
