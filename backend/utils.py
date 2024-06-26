@@ -329,6 +329,7 @@ async def make_reservation(page: Page, time: str, url: str) -> bool:
             
             if t == time and "可预约" in status:
                 await bus.click(timeout=3000)
+                await page.wait_for_selector(".all:has-text('(1)')", timeout=3000)
                 await page.click("text= 确定预约 ", timeout=3000)
                 
                 try:
