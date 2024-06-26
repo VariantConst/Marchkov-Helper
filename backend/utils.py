@@ -28,6 +28,7 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
             # 导航到登录页面
             await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=12000)
             logging.info("已导航至登录页面")
+            await page.wait_for_load_state("networkidle", timeout=10000)
             
             # 填写用户名和密码
             await page.fill("#user_name", username, timeout=5000)
@@ -63,7 +64,6 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
 
         # 刷新页面或创建新的浏览器上下文
         await page.close()
-        page = await page.context.new_page()
 
     # 如果所有重试都失败，抛出异常
     raise HTTPException(status_code=504, detail="登录失败：重试次数过多")
