@@ -139,7 +139,6 @@ export async function refreshReservationData() {
       criticalTime,
       direction
     );
-    console.log("Refreshed reservation data:", reservationData);
     return reservationData;
   }
   console.log("Unable to refresh: missing user information");

@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 async def get_qr_code_service(credentials: UserCredentials) -> QRCodeResult:
     async with async_playwright() as p:
         browser_context = await setup_browser_context(p)
+        page = await browser_context.new_page()
         
         try:
-            login_success = await login(browser_context, credentials.username, credentials.password)
+            login_success = await login(page, credentials.username, credentials.password)
             if not login_success:
                 return QRCodeResult(success=False, reservations=[], message="Failed to login")
 
