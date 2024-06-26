@@ -48,7 +48,7 @@ async def setup_browser_context(p):
         "geolocation": {"latitude": 39.9042, "longitude": 116.4074},
         "permissions": ["geolocation"]
     }
-    browser = await p.webkit.launch(headless=False)
+    browser = await p.webkit.launch(headless=True)
     context = await browser.new_context(**browser_options)
     await context.add_init_script("""
         Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
@@ -86,6 +86,7 @@ async def handle_future_reservation(all_bus_info):
     all_bus_info.sort(key=lambda x: x[1])  # Sort by time
     _, earliest_time, route_name, route_url, page = all_bus_info[0]
 
+    logging.info(f"Attempting to reserve bus at {earliest_time} for route {route_name}")
     reservation_success = await make_reservation(page, earliest_time, route_url)
     
     if reservation_success:

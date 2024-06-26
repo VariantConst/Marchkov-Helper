@@ -50,20 +50,24 @@ async def get_qr_code(page, reserved_time):
 
         reserved_items = await page.query_selector_all(".pku_matter_list_data > li")
         today = datetime.today().date().isoformat()
+        logging.info(f"Ready to retrieve QR code for {today} {reserved_time}")
         for item in reserved_items:
             time_span = await item.query_selector(".content_title_top > span:nth-child(2)")
             if time_span:
                 reservation_time = await time_span.inner_text()
                 reservation_time = reservation_time.strip()
                 _, date_str, t = reservation_time.split()
+                logging.info(f"Found reservation: {date_str} {t}")
                 if date_str == today and t == reserved_time:
                     qrcode_span = await item.query_selector(".matter_list_data_btn a:has-text('签到二维码')")
+                    logging.info("Found QR code button! Ready to click and get the QR code...")
                     if qrcode_span:
                         await qrcode_span.click(timeout=30000)
                         qrcode_canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=30000)
                         base64_data = await page.evaluate("""(qrcode_canvas) => {
                             return qrcode_canvas.toDataURL('image/png');
                         }""", qrcode_canvas)
+                        logging.info("QR code retrieved successfully")
                         reservation_details = await page.wait_for_selector(".rtq_main", timeout=30000)
                         reserved_route = await (await reservation_details.query_selector("p:first-child")).inner_text()
                         reserved_route = reserved_route.strip()[1:-1]
@@ -174,8 +178,9 @@ async def make_reservation(page, time, url):
             if t == time and "可预约" in status:
                 await bus.click(timeout=30000)
                 await page.click("text= 确定预约  ", timeout=30000)
+                page.wait_for_load_state("networkidle")
                 logging.info(f"Reservation confirmed for {time}")
                 return True
 
     logging.warning(f"Failed to make reservation for {time}")
-    return False
+    return False, None
