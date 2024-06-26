@@ -177,10 +177,18 @@ async def make_reservation(page, time, url):
             
             if t == time and "可预约" in status:
                 await bus.click(timeout=30000)
-                await page.click("text= 确定预约  ", timeout=30000)
-                page.wait_for_load_state("networkidle")
-                logging.info(f"Reservation confirmed for {time}")
-                return True
+                await page.click("text= 确定预约 ", timeout=30000)
+                
+                try:
+                    result = await page.wait_for_selector("p:has-text('我的预约'), p:has-text('同一时间段不可重复预约')", timeout=30000)
+                    result_text = await result.inner_text()
+                    
+                    if "我的预约" in result_text or "同一时间段不可重复预约" in result_text:
+                        logging.info(f"Reservation confirmed for {time}")
+                        return True
+                except Exception as e:
+                    logging.error(f"Error while waiting for reservation result: {str(e)}")
+                    return False
 
     logging.warning(f"Failed to make reservation for {time}")
-    return False, None
+    return False
