@@ -10,6 +10,7 @@ from typing import Tuple, Optional, List
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 async def login(page: Page, username: str, password: str, max_retries: int = 5) -> bool:
     """
     执行登录过程。
@@ -27,28 +28,33 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
                 await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=120000)
                 logging.info("已导航至登录页面")
                 
-                logging.info("登录页面加载成功")
-                
                 # 填写用户名和密码
-                await page.fill("#user_name", username, timeout=100)
+                await page.fill("#user_name", username, timeout=5000)
                 logging.info("已填写用户名")
 
-                await page.fill("#password", password, timeout=100)
+                await page.fill("#password", password, timeout=5000)
                 logging.info("已填写密码")
 
                 # 点击登录按钮
-                await page.click("#logon_button", timeout=100)
+                await page.click("#logon_button", timeout=5000)
                 logging.info("已点击登录按钮")
 
-                # 等待页面加载完成
-                await page.wait_for_load_state("networkidle", timeout=10000)
-
-                # 关闭页面
-                await page.close()
-                return True
+                # 等待登录成功的标志
+                try:
+                    # 等待登录按钮消失
+                    await page.wait_for_selector("#logon_button", state="detached", timeout=10000)
+                    
+                    # 等待重定向完成
+                    await page.wait_for_url("https://wproc.pku.edu.cn/v2/site/index", timeout=10000)
+                    
+                    logging.info("登录成功")
+                    return True
+                except PlaywrightTimeoutError:
+                    logging.warning(f"登录可能未成功，第 {i + 1} 次尝试")
+                    continue
 
             except PlaywrightTimeoutError as e:
-                logging.error(f"登录超时：{str(e)}，第 {i + 1} 次尝试")
+                logging.error(f"登录操作超时：{str(e)}，第 {i + 1} 次尝试")
                 continue
         
         else:
@@ -60,6 +66,7 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
     except Exception as e:
         logging.error(f"登录过程出错：{str(e)}")
         raise HTTPException(status_code=500, detail=f"登录失败：{str(e)}")
+
 
 async def get_qr_code(page: Page, reserved_time: str) -> Tuple[str, str, str]:
     """
@@ -122,37 +129,60 @@ async def get_temporary_qr_code(page: Page, time_to_reserve: str, route_name: st
         # 导航到预约页面
         await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=60000)
         await page.click("li:has-text('临时登记码')", timeout=30000)
-        
-        # 选择路线和时间
-        input_elements = await page.query_selector_all('input[placeholder="请选择"].el-input__inner')
-        if len(input_elements) < 2:
-            await page.reload(timeout=60000)
-            await page.wait_for_load_state("networkidle", timeout=60000)
-            input_elements = await page.query_selector_all('input[placeholder="请选择"].el-input__inner')
 
-        await input_elements[0].click(timeout=30000)
-        await page.click(f".el-select-dropdown__item > span:has-text('{route_name}')", timeout=30000)
+        RETRY_DELAY = 0
+        MAX_RETRIES = 5
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                # 等待输入元素数量稳定
+                # await wait_for_stable_element_count(page, 'input[placeholder="请选择"].el-input__inner', timeout=30000, check_interval=10, stability_duration=30)
+                
+                # 选择路线和时间
+                logging.info("选择路线和时间")
+                input_elements = await page.query_selector_all('input[placeholder="请选择"].el-input__inner')
+                if len(input_elements) < 2:
+                    raise ValueError("未找到足够的输入元素")
 
-        await input_elements[1].click(timeout=30000)
-        
-        max_retries = 3
-        for _ in range(max_retries):
-            await page.wait_for_load_state("networkidle", timeout=60000)
-            time_options = await page.query_selector_all(".el-select-dropdown__item span")
-            time_texts = [await option.inner_text() for option in time_options]
+                logging.info(f"选择路线：{route_name}")
+                await input_elements[0].click(timeout=30000)
+                await page.click(f".el-select-dropdown__item > span:has-text('{route_name}')", timeout=30000)
 
-            logging.info(f"可选时间为 {time_texts}，预约时间为 {time_to_reserve}")
+                logging.info(f"选择时间：{time_to_reserve}")
+                await input_elements[1].click(timeout=30000)
+                
+                # 获取时间选项
+                valid_times = []
 
-            valid_times = [
-                datetime.strptime(t, "%H:%M")
-                for t in time_texts
-                if t.replace(":", "").isdigit()
-            ]
+                # 使用 evaluate 方法一次性获取所有时间选项的文本
+                time_texts = await page.evaluate("""
+                    () => Array.from(document.querySelectorAll('.el-select-dropdown__item span'))
+                                .map(el => el.textContent.trim())
+                """)
 
-            if not valid_times:
-                continue
-            break
-        else:
+                logging.info(f"尝试 {attempt}: 获取到的时间选项为 {time_texts}")
+
+                valid_times = [
+                    datetime.strptime(t, "%H:%M")
+                    for t in time_texts
+                    if t.replace(":", "").isdigit()
+                ]
+
+                if valid_times:
+                    logging.info(f"成功获取有效时间选项，共 {len(valid_times)} 个")
+                    break
+
+                logging.warning(f"尝试 {attempt}: 没有找到有效的时间选项")
+            except Exception as e:
+                logging.error(f"尝试 {attempt}: 获取时间选项时发生错误: {str(e)}")
+
+            if attempt < MAX_RETRIES:
+                logging.info(f"等待 {RETRY_DELAY} 秒后进行第 {attempt + 1} 次尝试")
+                await asyncio.sleep(RETRY_DELAY)
+            else:
+                logging.error("达到最大重试次数，仍未找到有效的时间选项")
+                raise ValueError("没有找到有效的时间选项")
+
+        if not valid_times:
             raise ValueError("没有找到有效的时间选项")
 
         time_to_reserve = datetime.strptime(time_to_reserve, "%H:%M")
@@ -173,6 +203,7 @@ async def get_temporary_qr_code(page: Page, time_to_reserve: str, route_name: st
         logging.error(f"临时二维码获取超时：{str(e)}")
         raise HTTPException(status_code=504, detail=f"临时二维码获取超时：{str(e)}")
 
+
 async def get_bus_time(context: Page, route_name: str, route_url: str, target_time: str) -> Optional[Tuple[bool, str, str, str, Page]]:
     """
     获取指定路线的巴士时间。
@@ -187,7 +218,10 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
         page = await context.new_page()
         await page.goto(route_url, timeout=60000)
         logging.info(f"已导航至 {route_name} 预约页面：{route_url}")
-        await page.wait_for_load_state("networkidle", timeout=60000)
+
+        # 等待元素数量稳定
+        await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=60000, check_interval=10, stability_duration=250)
+
         bus_times = await page.query_selector_all(".m_weekReserve_list > div")
         logging.info(f"找到 {len(bus_times)} 个巴士时间：{bus_times}")
         has_expired_bus = False
@@ -212,7 +246,7 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
                 if has_expired_bus:
                     time_to_reserve = t
                     break
-                elif t > target_time and "可预约" in status:
+                elif target_time < t < target_time + timedelta(minutes=60) and "可预约" in status:
                     time_to_reserve = min(time_to_reserve, t)
         
         if time_to_reserve == datetime.strptime("23:59", "%H:%M"):
@@ -223,6 +257,37 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
     except PlaywrightTimeoutError as e:
         logging.error(f"超时：{str(e)}")
         raise HTTPException(status_code=504, detail=f"超时：{str(e)}")
+
+async def wait_for_stable_element_count(page: Page, selector: str, timeout: int = 30000, check_interval: int = 10, stability_duration: int = 300):
+    """
+    等待指定选择器的元素数量稳定。
+
+    :param page: Playwright页面对象
+    :param selector: CSS选择器
+    :param timeout: 总超时时间（毫秒）
+    :param check_interval: 检查间隔（毫秒）
+    :param stability_duration: 稳定持续时间（毫秒）
+    """
+    start_time = datetime.now()
+    last_count = -1
+    last_stable_time = None
+
+    while (datetime.now() - start_time).total_seconds() * 1000 < timeout:
+        current_count = await page.locator(selector).count()
+        
+        if current_count == last_count:
+            if last_stable_time is None:
+                last_stable_time = datetime.now()
+            elif (datetime.now() - last_stable_time).total_seconds() * 1000 >= stability_duration:
+                logging.info(f"元素数量已稳定在 {current_count}")
+                return
+        else:
+            last_count = current_count
+            last_stable_time = None
+        
+        await asyncio.sleep(check_interval / 1000)
+
+    raise PlaywrightTimeoutError(f"等待元素数量稳定超时：{selector}")
 
 async def make_reservation(page: Page, time: str, url: str) -> bool:
     """

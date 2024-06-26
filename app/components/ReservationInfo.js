@@ -99,7 +99,9 @@ export default function ReservationInfo({ user, reservationData, onRefresh }) {
             </div>
           ))
         ) : (
-          <p className="text-gray-600 dark:text-gray-300">没有可用的预约信息</p>
+          <p className="text-gray-600 dark:text-gray-300">
+            这会没有班车可坐。急了？😅
+          </p>
         )}
       </div>
 

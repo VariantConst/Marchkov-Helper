@@ -10,8 +10,8 @@ import {
 export default function LoginForm({ onSubmit }) {
   const [currentTime, setCurrentTime] = useState("");
   const [currentSliderValue, setCurrentSliderValue] = useState(0);
-  const [criticalTime, setCriticalTime] = useState("14:00");
-  const [criticalSliderValue, setCriticalSliderValue] = useState(840);
+  const [criticalTime, setCriticalTime] = useState("14:15");
+  const [criticalSliderValue, setCriticalSliderValue] = useState(465); // 14:15 in minutes since 6:30
   const [selectedDirection, setSelectedDirection] = useState("toYanyuan");
 
   useEffect(() => {
@@ -42,8 +42,9 @@ export default function LoginForm({ onSubmit }) {
   const handleCriticalSliderChange = (e) => {
     const value = parseInt(e.target.value);
     setCriticalSliderValue(value);
-    const hours = Math.floor(value / 60);
-    const minutes = value % 60;
+    const totalMinutes = value + 6 * 60 + 30; // Add 6:30 to the slider value
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
     setCriticalTime(
       `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
     );
@@ -173,7 +174,7 @@ export default function LoginForm({ onSubmit }) {
                       ? "bg-blue-500"
                       : "bg-green-500"
                   } dark:bg-opacity-80`}
-                  style={{ width: `${(criticalSliderValue / 1439) * 100}%` }}
+                  style={{ width: `${(criticalSliderValue / 930) * 100}%` }}
                 ></div>
                 <div
                   className={`absolute top-0 right-0 h-full rounded-r-lg ${
@@ -182,13 +183,13 @@ export default function LoginForm({ onSubmit }) {
                       : "bg-blue-500"
                   } dark:bg-opacity-80`}
                   style={{
-                    width: `${100 - (criticalSliderValue / 1439) * 100}%`,
+                    width: `${100 - (criticalSliderValue / 930) * 100}%`,
                   }}
                 ></div>
                 <input
                   type="range"
                   min="0"
-                  max="1439"
+                  max="930"
                   value={criticalSliderValue}
                   onChange={handleCriticalSliderChange}
                   className={`absolute top-[-4px] left-0 w-full h-4 cursor-pointer appearance-none bg-transparent
@@ -205,9 +206,9 @@ export default function LoginForm({ onSubmit }) {
               </div>
             </div>
             <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <span>00:00</span>
-              <span>12:00</span>
-              <span>23:59</span>
+              <span>06:30</span>
+              <span>14:15</span>
+              <span>22:00</span>
             </div>
           </div>
         </div>
