@@ -41,7 +41,7 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
             logging.info("已点击登录按钮")
 
             # 等待重定向完成
-            await page.wait_for_url("https://wproc.pku.edu.cn/v2/site/index", timeout=1000)
+            await page.wait_for_load_state("networkidle", timeout=10000)
             
             logging.info("登录成功")
             return True
