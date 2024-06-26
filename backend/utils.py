@@ -224,53 +224,43 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
         # 等待元素数量稳定
         await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
         
-        max_retries = 5
         target_time = datetime.strptime(target_time, "%H:%M").time()
 
-        for attempt in range(max_retries):
-            await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
-            bus_times = await page.query_selector_all(".m_weekReserve_list > div")
-            logging.info(f"找到 {len(bus_times)} 个巴士时间：{bus_times}")
-            has_expired_bus = False
-            time_to_reserve = datetime.strptime("23:59", "%H:%M").time()
-            
-            for bus in bus_times:
-                time_elem = await bus.query_selector("div:first-child")
-                status_elem = await bus.query_selector("div:nth-child(2)")
-                
-                if time_elem and status_elem:
-                    t = await time_elem.inner_text()
-                    status = await status_elem.inner_text()
-                    
-                    logging.info(f"时间: {t}, 状态: {status}")
-
-                    t = datetime.strptime(t, "%H:%M").time()
-
-                    target_time_minus_10 = (datetime.combine(datetime.today(), target_time) - timedelta(minutes=10)).time()
-                    target_time_plus_60 = (datetime.combine(datetime.today(), target_time) + timedelta(minutes=60)).time()
-
-                    has_expired_bus = has_expired_bus or \
-                        (target_time_minus_10 <= t <= target_time and "禁用" not in status)
-
-                    if has_expired_bus:
-                        time_to_reserve = t
-                        break
-                    elif target_time < t < target_time_plus_60 and "可预约" in status:
-                        time_to_reserve = min(time_to_reserve, t)
-            
-            if time_to_reserve == datetime.strptime("23:59", "%H:%M").time():
-                if attempt < max_retries - 1:
-                    logging.info(f"第 {attempt + 1} 次尝试未找到合适的巴士时间，重试")
-                    continue
-                else:
-                    logging.warning("未找到合适的巴士时间")
-                    return None
-                
-            return has_expired_bus, time_to_reserve.strftime("%H:%M"), route_name, route_url, page
+        await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
+        bus_times = await page.query_selector_all(".m_weekReserve_list > div")
+        logging.info(f"找到 {len(bus_times)} 个巴士时间：{bus_times}")
+        has_expired_bus = False
+        time_to_reserve = datetime.strptime("23:59", "%H:%M").time()
         
-        else:
+        for bus in bus_times:
+            time_elem = await bus.query_selector("div:first-child")
+            status_elem = await bus.query_selector("div:nth-child(2)")
+            
+            if time_elem and status_elem:
+                t = await time_elem.inner_text()
+                status = await status_elem.inner_text()
+                
+                logging.info(f"时间: {t}, 状态: {status}")
+
+                t = datetime.strptime(t, "%H:%M").time()
+
+                target_time_minus_10 = (datetime.combine(datetime.today(), target_time) - timedelta(minutes=10)).time()
+                target_time_plus_30 = (datetime.combine(datetime.today(), target_time) + timedelta(minutes=30)).time()
+
+                has_expired_bus = has_expired_bus or \
+                    (target_time_minus_10 <= t <= target_time and "禁用" not in status)
+
+                if has_expired_bus:
+                    time_to_reserve = t
+                    break
+                elif target_time < t < target_time_plus_30 and "可预约" in status:
+                    time_to_reserve = min(time_to_reserve, t)
+        
+        if time_to_reserve == datetime.strptime("23:59", "%H:%M").time():
             logging.warning("未找到合适的巴士时间")
             return None
+            
+        return has_expired_bus, time_to_reserve.strftime("%H:%M"), route_name, route_url, page
 
     except PlaywrightTimeoutError as e:
         logging.error(f"超时：{str(e)}")
@@ -329,8 +319,10 @@ async def make_reservation(page: Page, time: str, url: str) -> bool:
             status = await status_elem.inner_text()
             
             if t == time and "可预约" in status:
-                await bus.click(timeout=3000)
-                await page.wait_for_selector(".all:has-text('(1)')", timeout=3000)
+                await time_elem.click(timeout=3000)
+                logging.info(f"已点击 {time} 的预约按钮")
+                await page.wait_for_load_state("networkidle", timeout=6000)
+                # await page.wait_for_selector(".all:has-text('(1)')", timeout=3000)
                 await page.click("text= 确定预约 ", timeout=3000)
                 
                 try:
