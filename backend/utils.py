@@ -26,7 +26,7 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
     for i in range(max_retries):
         try:
             # 导航到登录页面
-            await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=120000)
+            await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=12000)
             logging.info("已导航至登录页面")
             
             # 填写用户名和密码
@@ -40,11 +40,8 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
             await page.click("#logon_button", timeout=5000)
             logging.info("已点击登录按钮")
 
-            # 等待登录成功的标志
-            await page.wait_for_selector("#logon_button", state="detached", timeout=10000)
-            
             # 等待重定向完成
-            await page.wait_for_url("https://wproc.pku.edu.cn/v2/site/index", timeout=10000)
+            await page.wait_for_url("https://wproc.pku.edu.cn/v2/site/index", timeout=1000)
             
             logging.info("登录成功")
             return True
@@ -60,7 +57,7 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
             logging.warning(f"登录过程出错：{str(e)}，第 {i + 1} 次尝试")
 
         # 实现指数退避
-        wait_time = (2 ** i) + random.random()
+        wait_time = ((2 ** i) + random.random()) / 10
         logging.info(f"等待 {wait_time:.2f} 秒后重试")
         await asyncio.sleep(wait_time)
 
@@ -82,8 +79,8 @@ async def get_qr_code(page: Page, reserved_time: str) -> Tuple[str, str, str]:
     """
     try:
         # 导航到预约时间页面
-        # await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=60000)
-        await page.wait_for_load_state("networkidle", timeout=60000)
+        # await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=6000)
+        await page.wait_for_load_state("networkidle", timeout=6000)
         
         # 查找所有预约项
         reserved_items = await page.query_selector_all(".pku_matter_list_data > li")
@@ -101,15 +98,15 @@ async def get_qr_code(page: Page, reserved_time: str) -> Tuple[str, str, str]:
                     qrcode_span = await item.query_selector(".matter_list_data_btn a:has-text('签到二维码')")
                     logging.info("找到二维码按钮！准备点击并获取二维码...")
                     if qrcode_span:
-                        await qrcode_span.click(timeout=30000)
-                        qrcode_canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=30000)
+                        await qrcode_span.click(timeout=3000)
+                        qrcode_canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=3000)
                         base64_data = await page.evaluate("""(qrcode_canvas) => {
                             return qrcode_canvas.toDataURL('image/png');
                         }""", qrcode_canvas)
                         logging.info("二维码获取成功")
                         
                         # 获取预约详情
-                        reservation_details = await page.wait_for_selector(".rtq_main", timeout=30000)
+                        reservation_details = await page.wait_for_selector(".rtq_main", timeout=3000)
                         reserved_route = await (await reservation_details.query_selector("p:first-child")).inner_text()
                         reserved_route = reserved_route.strip()[1:-1]
                         reserved_time_detailed = await (await reservation_details.query_selector("p:nth-child(2)")).inner_text()
@@ -131,15 +128,15 @@ async def get_temporary_qr_code(page: Page, time_to_reserve: str, route_name: st
     """
     try:
         # 导航到预约页面
-        await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=60000)
-        await page.click("li:has-text('临时登记码')", timeout=30000)
+        await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=6000)
+        await page.click("li:has-text('临时登记码')", timeout=3000)
 
         RETRY_DELAY = 0
         MAX_RETRIES = 5
         for attempt in range(1, MAX_RETRIES + 1):
             try:
                 # 等待输入元素数量稳定
-                # await wait_for_stable_element_count(page, 'input[placeholder="请选择"].el-input__inner', timeout=30000, check_interval=10, stability_duration=30)
+                # await wait_for_stable_element_count(page, 'input[placeholder="请选择"].el-input__inner', timeout=3000, check_interval=10, stability_duration=30)
                 
                 # 选择路线和时间
                 logging.info("选择路线和时间")
@@ -148,11 +145,11 @@ async def get_temporary_qr_code(page: Page, time_to_reserve: str, route_name: st
                     raise ValueError("未找到足够的输入元素")
 
                 logging.info(f"选择路线：{route_name}")
-                await input_elements[0].click(timeout=30000)
-                await page.click(f".el-select-dropdown__item > span:has-text('{route_name}')", timeout=30000)
+                await input_elements[0].click(timeout=3000)
+                await page.click(f".el-select-dropdown__item > span:has-text('{route_name}')", timeout=3000)
 
                 logging.info(f"选择时间：{time_to_reserve}")
-                await input_elements[1].click(timeout=30000)
+                await input_elements[1].click(timeout=3000)
                 
                 # 获取时间选项
                 valid_times = []
@@ -194,10 +191,10 @@ async def get_temporary_qr_code(page: Page, time_to_reserve: str, route_name: st
         nearest_time_str = nearest_time.strftime("%H:%M")
         logging.info(f"选择最接近的时间: {nearest_time_str}")
 
-        await page.click(f".el-select-dropdown__item > span:has-text('{nearest_time_str}')", timeout=30000)
+        await page.click(f".el-select-dropdown__item > span:has-text('{nearest_time_str}')", timeout=3000)
 
         # 获取二维码
-        canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=30000)
+        canvas = await page.wait_for_selector("#rtq_main_canvas", timeout=3000)
         base64_data = await page.evaluate("""(canvas) => {
             return canvas.toDataURL('image/png');
         }""", canvas)
@@ -220,11 +217,11 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
     """
     try:
         page = await context.new_page()
-        await page.goto(route_url, timeout=60000)
+        await page.goto(route_url, timeout=6000)
         logging.info(f"已导航至 {route_name} 预约页面：{route_url}")
 
         # 等待元素数量稳定
-        await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=60000, check_interval=10, stability_duration=250)
+        await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
 
         bus_times = await page.query_selector_all(".m_weekReserve_list > div")
         logging.info(f"找到 {len(bus_times)} 个巴士时间：{bus_times}")
@@ -262,7 +259,7 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
         logging.error(f"超时：{str(e)}")
         raise HTTPException(status_code=504, detail=f"超时：{str(e)}")
 
-async def wait_for_stable_element_count(page: Page, selector: str, timeout: int = 30000, check_interval: int = 10, stability_duration: int = 300):
+async def wait_for_stable_element_count(page: Page, selector: str, timeout: int = 3000, check_interval: int = 10, stability_duration: int = 300):
     """
     等待指定选择器的元素数量稳定。
 
@@ -302,7 +299,7 @@ async def make_reservation(page: Page, time: str, url: str) -> bool:
     :param url: 预约页面URL
     :return: 预约成功返回True，否则返回False
     """
-    await page.goto(url, timeout=60000, wait_until="networkidle")
+    await page.goto(url, timeout=6000, wait_until="networkidle")
     bus_times = await page.query_selector_all(".m_weekReserve_list > div")
     
     for bus in bus_times:
@@ -314,16 +311,16 @@ async def make_reservation(page: Page, time: str, url: str) -> bool:
             status = await status_elem.inner_text()
             
             if t == time and "可预约" in status:
-                await bus.click(timeout=30000)
-                await page.click("text= 确定预约 ", timeout=30000)
+                await bus.click(timeout=3000)
+                await page.click("text= 确定预约 ", timeout=3000)
                 
                 try:
-                    result = await page.wait_for_selector("p:has-text('我的预约'), p:has-text('同一时间段不可重复预约')", timeout=30000)
+                    result = await page.wait_for_selector("p:has-text('我的预约'), p:has-text('同一时间段不可重复预约')", timeout=3000)
                     result_text = await result.inner_text()
                     
                     if "我的预约" in result_text or "同一时间段不可重复预约" in result_text:
                         logging.info(f"{time} 的预约已确认")
-                        await page.wait_for_load_state("networkidle", timeout=60000)
+                        await page.wait_for_load_state("networkidle", timeout=6000)
                         return True
                 except Exception as e:
                     logging.error(f"等待预约结果时出错：{str(e)}")
