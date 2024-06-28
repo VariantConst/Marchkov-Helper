@@ -7,7 +7,11 @@ import logging
 from typing import Dict, Any
 
 router = APIRouter()
-
+# class UserCredentials(BaseModel):
+#     username: str
+#     password: str
+#     target_time: Optional[str] = None
+#     is_return: bool = False
 @router.post("/get_qr_code", response_model=QRCodeResult)
 async def api_get_qr_code(credentials: UserCredentials) -> Dict[str, Any]:
     """
@@ -18,7 +22,7 @@ async def api_get_qr_code(credentials: UserCredentials) -> Dict[str, Any]:
     :raises HTTPException: 当发生意外错误时
     """
     try:
-        logging.info(f"收到预约请求：{credentials}")
+        logging.info(f"收到来自用户{credentials.username} {credentials.target_time} {'去昌平' if credentials.is_return else '去燕园'}的预约请求。")
         result = await get_qr_code_service(credentials)
         return result
     except HTTPException as e:

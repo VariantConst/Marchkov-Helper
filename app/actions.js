@@ -126,7 +126,8 @@ export async function refreshReservationData() {
   const cookieStore = cookies();
   const username = cookieStore.get("username")?.value;
   const password = cookieStore.get("password")?.value;
-  const currentTime = cookieStore.get("currentTime")?.value;
+  // const currentTime = cookieStore.get("currentTime")?.value;
+  const currentTime = getCurrentBeijingTime();
   const criticalTime = cookieStore.get("criticalTime")?.value;
   const direction = cookieStore.get("direction")?.value;
 
