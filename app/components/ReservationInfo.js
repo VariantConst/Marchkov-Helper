@@ -22,12 +22,12 @@ export default function ReservationInfo({ user, reservationData }) {
       <div className="flex flex-col gap-4">
         <div className="w-full">
           <div className="flex flex-col space-y-1">
-            <h2 className="text-3xl font-light text-gray-800 dark:text-gray-200 border-b border-gray-200 pb-2 mb-6">
+            {/* <h2 className="text-3xl font-light text-gray-800 dark:text-gray-200 border-b border-gray-200 pb-2 mb-6">
               欢迎,{" "}
               <span className="font-normal text-gray-600 dark:text-gray-300">
                 {user.username}
               </span>
-            </h2>
+            </h2> */}
             <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-300">
               <MapPin className="w-4 h-4" />
               <p>

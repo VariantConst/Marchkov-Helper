@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## 三、二、一，马池口！
 
-## Getting Started
+---
 
-First, run the development server:
+倒数三个数，出示乘车码从未如此优雅。
+
+![](public/demo.gif)
+
+尽管我提供[在线 demo](https://marchkov.variantconst.com/)，但我不推荐真的访问
+
+### Motivation
+
+乘坐往返燕园和马池口的班车需要通过官方网站或 APP 进行预约。然而，官方网站的预约流程繁琐，难以找到想要预约的班车。随着基于客户端浏览器的预约脚本（如 [pku-eutopia](https://github.com/xmcp/pku-eutopia)）的开发，预约的流程得到了简化，但仍然需要进行 IAAA 认证，且用户界面具有太多冗余信息。通过官网预约并获取一个乘车码，至少需要在 7 个页面之间进行跳转并点击 6 次屏幕，而 [pku-eutopia](https://github.com/xmcp/pku-eutopia) 也至少需要点击 5 次屏幕。由于每天两次的预约操作是对心智的无意义消耗，我希望将通过在服务器端进行预约操作，将点击屏幕的次数下降到 0，让出示乘车码成为一种优雅的享受。
+
+### Methods
+
+后端用 python playwright 库进行浏览器操纵，根据当前时间自动选择一个合理的班车，服务端进行预约操作并将乘车码转发给客户端。用户首次登陆时，需要输入用户名、密码，并选择“临界时间”。其后账号和预约配置会保存在浏览器 cookie 中。判断逻辑：
+
+1. 过去 10 分钟内是否有过期的班车，如果有，返回临时码；
+2. 否则获取下面最近的一班班车的乘车码。
+
+### 本地部署
+
+1. 克隆项目到本地
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/VariantConst/3-2-1-Marchkov.git && cd 3-2-1-Marchkov
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. 安装依赖
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+首先安装 python（略）和 pnpm
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+nvm install 18
+nvm use 18
+npm install -g pnpm@latest
+```
 
-## Learn More
+安装 node 依赖
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+安装 playwright
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+pip install pytest-playwright
+playwright install
+```
 
-## Deploy on Vercel
+3. 启动项目
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+chmod +x ./run.sh
+./run.sh
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### TODO
+
+- [ ] 支持取消预约
+- [ ] 支持不退出账号就修改配置信息
+- [ ] 根据历史喜好智能推荐乘坐的班次
+- [ ] 支持 docker 部署

@@ -218,16 +218,15 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
     try:
         page = await context.new_page()
         await page.goto(route_url, timeout=6000)
-        logging.info(f"已导航至 {route_name} 预约页面：{route_url},ready to find a suitable bus time for target_time: {target_time}")
+        logging.info(f"已导航至 {route_name} 预约页面：{route_url}")
 
         # 等待元素数量稳定
         await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
         
         target_time = datetime.strptime(target_time, "%H:%M").time()
 
-        await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
         bus_times = await page.query_selector_all(".m_weekReserve_list > div")
-        logging.info(f"找到 {len(bus_times)} 个巴士时间：{bus_times}")
+        logging.info(f"找到 {len(bus_times)} 个巴士时间")
         has_expired_bus = False
         time_to_reserve = datetime.strptime("23:59", "%H:%M").time()
         
@@ -239,21 +238,24 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
                 t = await time_elem.inner_text()
                 status = await status_elem.inner_text()
                 
-                logging.info(f"时间: {t}, 状态: {status}")
+                # logging.info(f"时间: {t}, 状态: {status}")
 
                 t = datetime.strptime(t, "%H:%M").time()
 
                 target_time_minus_10 = (datetime.combine(datetime.today(), target_time) - timedelta(minutes=10)).time()
-                target_time_plus_30 = (datetime.combine(datetime.today(), target_time) + timedelta(minutes=300)).time()
+                target_time_plus_30 = max((datetime.combine(datetime.today(), target_time) + timedelta(minutes=300)).time(), datetime.strptime("23:59", "%H:%M").time())
 
                 has_expired_bus = has_expired_bus or \
                     (target_time_minus_10 <= t <= target_time and "禁用" not in status)
 
+                # logging.info(f"target_time_minus_10: {target_time_minus_10}, target_time: {target_time}, target_time_plus_30: {target_time_plus_30}, 可预约: {status}")
                 if has_expired_bus:
                     time_to_reserve = t
                     break
                 elif target_time < t < target_time_plus_30 and "可预约" in status:
                     time_to_reserve = min(time_to_reserve, t)
+
+        # logging.info(f"遍历完巴士时间后，time_to_reserve：{time_to_reserve}")
         
         if time_to_reserve == datetime.strptime("23:59", "%H:%M").time():
             logging.warning("未找到合适的巴士时间")
@@ -287,7 +289,7 @@ async def wait_for_stable_element_count(page: Page, selector: str, timeout: int 
             if last_stable_time is None:
                 last_stable_time = datetime.now()
             elif (datetime.now() - last_stable_time).total_seconds() * 1000 >= stability_duration:
-                logging.info(f"元素数量已稳定在 {current_count}")
+                # logging.info(f"元素数量已稳定在 {current_count}")
                 return
         else:
             last_count = current_count

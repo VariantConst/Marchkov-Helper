@@ -30,7 +30,7 @@ async function getReservations(
     }
 
     const data = await response.json();
-    console.log("Reservation data:", data);
+    // console.log("Reservation data:", data);
     return data;
   } catch (error) {
     console.error("获取预约信息时出错:", error);
