@@ -26,6 +26,7 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
     for i in range(max_retries):
         try:
             # 导航到登录页面
+            await asyncio.sleep(0.2)
             await page.goto("https://iaaa.pku.edu.cn/iaaa/oauth.jsp?appID=wproc&appName=办事大厅预约版&redirectUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/site/index", timeout=12000)
             logging.info("已导航至登录页面")
             await page.wait_for_load_state("networkidle", timeout=10000)
@@ -62,9 +63,6 @@ async def login(page: Page, username: str, password: str, max_retries: int = 5) 
         logging.info(f"等待 {wait_time:.2f} 秒后重试")
         await asyncio.sleep(wait_time)
 
-        # 刷新页面或创建新的浏览器上下文
-        await page.close()
-
     # 如果所有重试都失败，抛出异常
     raise HTTPException(status_code=504, detail="登录失败：重试次数过多")
 
@@ -79,8 +77,8 @@ async def get_qr_code(page: Page, reserved_time: str) -> Tuple[str, str, str]:
     """
     try:
         # 导航到预约时间页面
+        logging.info(f"starting to execute get_qr_code with reserved_time: {reserved_time}")
         await page.goto("https://wproc.pku.edu.cn/v2/matter/m_reserveTime", timeout=6000)
-        await page.reload(timeout=6000)
         await page.wait_for_load_state("networkidle", timeout=6000)
         
         # 查找所有预约项
@@ -220,7 +218,7 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
     try:
         page = await context.new_page()
         await page.goto(route_url, timeout=6000)
-        logging.info(f"已导航至 {route_name} 预约页面：{route_url}")
+        logging.info(f"已导航至 {route_name} 预约页面：{route_url},ready to find a suitable bus time for target_time: {target_time}")
 
         # 等待元素数量稳定
         await wait_for_stable_element_count(page, ".m_weekReserve_list > div", timeout=6000, check_interval=10, stability_duration=250)
@@ -246,7 +244,7 @@ async def get_bus_time(context: Page, route_name: str, route_url: str, target_ti
                 t = datetime.strptime(t, "%H:%M").time()
 
                 target_time_minus_10 = (datetime.combine(datetime.today(), target_time) - timedelta(minutes=10)).time()
-                target_time_plus_30 = (datetime.combine(datetime.today(), target_time) + timedelta(minutes=30)).time()
+                target_time_plus_30 = (datetime.combine(datetime.today(), target_time) + timedelta(minutes=300)).time()
 
                 has_expired_bus = has_expired_bus or \
                     (target_time_minus_10 <= t <= target_time and "禁用" not in status)
@@ -299,16 +297,15 @@ async def wait_for_stable_element_count(page: Page, selector: str, timeout: int 
 
     raise PlaywrightTimeoutError(f"等待元素数量稳定超时：{selector}")
 
-async def make_reservation(page: Page, time: str, url: str) -> bool:
-    """
-    进行巴士预约。
+async def wait_for_element(page, selector, timeout=10000):
+    try:
+        return await page.wait_for_selector(selector, timeout=timeout)
+    except TimeoutError:
+        return None
 
-    :param page: Playwright的Page对象
-    :param time: 预约时间
-    :param url: 预约页面URL
-    :return: 预约成功返回True，否则返回False
-    """
-    await page.goto(url, timeout=6000, wait_until="networkidle")
+async def make_reservation(page: Page, time: str, url: str) -> bool:
+    await page.goto(url, timeout=10000, wait_until="networkidle")
+    
     bus_times = await page.query_selector_all(".m_weekReserve_list > div")
     
     for bus in bus_times:
@@ -320,19 +317,27 @@ async def make_reservation(page: Page, time: str, url: str) -> bool:
             status = await status_elem.inner_text()
             
             if t == time and "可预约" in status:
-                await time_elem.click(timeout=3000)
+                await time_elem.click(timeout=5000)
                 logging.info(f"已点击 {time} 的预约按钮")
-                await page.wait_for_load_state("networkidle", timeout=6000)
-                # await page.wait_for_selector(".all:has-text('(1)')", timeout=3000)
-                await page.click("text= 确定预约 ", timeout=3000)
                 
-                try:
-                    await page.wait_for_load_state("networkidle", timeout=6000)
-                    logging.info(f"{time} 的预约已确认")
-                    return True
-                except Exception as e:
-                    logging.error(f"等待预约结果时出错：{str(e)}")
-                    return False
-
-    logging.warning(f"未能成功预约 {time}")
+                # 等待选中状态变化
+                selected = await wait_for_element(page, ".can_subscribe.active", timeout=5000)
+                if not selected:
+                    logging.warning(f"未检测到 {time} 被选中,重试中...")
+                    continue
+                
+                await page.evaluate('''() => {
+                    const button = document.querySelector('.bottom_btn a');
+                    const event = new MouseEvent('click', {
+                        view: window,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    button.dispatchEvent(event);
+                }''')
+                await page.wait_for_timeout(1000)  # 等待1秒
+                logging.info(f"{time} 的预约已确认")
+                return True
+                # await asyncio.sleep(1e5)
+    
     return False

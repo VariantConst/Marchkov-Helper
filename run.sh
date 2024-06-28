@@ -1,5 +1,7 @@
 #!/bin/bash
 
+unset http_proxy; unset https_proxy
+
 # 启动 Python 后端
 python backend/app.py &
 
