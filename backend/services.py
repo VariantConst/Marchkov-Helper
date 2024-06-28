@@ -67,7 +67,7 @@ async def setup_browser_context(p) -> BrowserContext:
         "geolocation": {"latitude": 39.9042, "longitude": 116.4074},
         "permissions": ["geolocation"]
     }
-    browser = await p.webkit.launch(headless=False)
+    browser = await p.webkit.launch(headless=True)
     context = await browser.new_context(**browser_options)
     await context.add_init_script("""
         Object.defineProperty(navigator, 'webdriver', {get: () => undefined});

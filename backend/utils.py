@@ -335,9 +335,19 @@ async def make_reservation(page: Page, time: str, url: str) -> bool:
                     });
                     button.dispatchEvent(event);
                 }''')
-                await page.wait_for_timeout(1000)  # 等待1秒
-                logging.info(f"{time} 的预约已确认")
-                return True
-                # await asyncio.sleep(1e5)
+                try:
+                    # 等待包含"预约成功"或"不可重复预约"的元素出现
+                    success_element = await page.wait_for_selector(
+                        "text=/预约成功|不可重复预约/",
+                        timeout=5000  # 设置5秒超时,可根据实际情况调整
+                    )
+                    
+                    if success_element:
+                        logging.info(f"{time} 的预约已确认")
+                        return True
+                    
+                except TimeoutError:
+                    logging.error(f"{time} 的预约确认失败。没有等到“预约成功”或“不可重复预约”元素")
+                    return False
     
     return False
