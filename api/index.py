@@ -22,6 +22,10 @@ token = None
 
 def get_beijing_time():
     return datetime.datetime.now(timezone('Asia/Shanghai'))
+    # set to 8:31
+    # cur = datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=6, minute=39)
+    # print(f"当前时间: {cur}")
+    # return cur
 
 def login(username, password):
     global token
@@ -53,7 +57,7 @@ def get_bus_info(date=None):
     )
     return json.loads(r.text)["d"]["list"]
 
-def get_available_bus(date, cur_time, prev_interval=10, next_interval=300):
+def get_available_bus(date, cur_time, prev_interval=10, next_interval=30):
     print(f"开始获取 {date} {cur_time} 的车次信息")
     all_bus_info = get_bus_info(date)
     possible_expired_bus = {}
