@@ -54,7 +54,7 @@ class PKUReserve:
 
         return self.bus_info
     
-    def get_available_bus(self, date, cur_time, prev_interval=10, next_interval=30):
+    def get_available_bus(self, date, cur_time, prev_interval=10, next_interval=300):
         '''
         Decide which bus to reserve.
 
@@ -67,6 +67,7 @@ class PKUReserve:
         Returns:
         A dictionary containing the information of the bus to reserve.
         '''
+        print(f"开始获取 {date} {cur_time} 的车次信息")
         all_bus_info = self.get_bus_info(date)
         possible_expired_bus = {}
         possible_future_bus = {}
@@ -108,6 +109,8 @@ class PKUReserve:
         '''
         if date is None:
             date = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+        print(f"准备预约: resource_id: {resource_id}, period: {period}, sub_resource_id: {sub_resource_id}, date: {date}")
 
         s = requests.Session()
         r = s.get("https://wproc.pku.edu.cn/api/login/main")
@@ -131,9 +134,11 @@ class PKUReserve:
                 "data": f'[{{"date": "{date}", "period": {period}, "sub_resource_id": {sub_resource_id}}}]',
             },
         )
+        print(f"预约结果: {r.text}")
         r = s.get(
             "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status=2&sort_time=true&sort=asc",
         )
+        print(f"获取二维码过程中，预约列表: {r.text}")
         apps = json.loads(r.text)["d"]["data"]
         print(f"Apps: {apps}")
         if not apps:

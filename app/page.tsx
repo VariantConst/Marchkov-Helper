@@ -22,7 +22,7 @@ interface ReservationData {
   isTemporary: boolean;
 }
 
-const Base64QRCode = ({ base64String }: { base64String: string }) => {
+const Base64QRCode: React.FC<{ base64String: string }> = ({ base64String }) => {
   return (
     <div className="flex justify-center items-center p-4">
       <QRCode value={base64String} size={256} level="H" includeMargin={true} />
@@ -30,18 +30,18 @@ const Base64QRCode = ({ base64String }: { base64String: string }) => {
   );
 };
 
-const AutoBusReservation = () => {
+const AutoBusReservation: React.FC = () => {
   const [loginStatus, setLoginStatus] = useState<boolean | null>(null);
   const [user, setUser] = useState<string | null>(null);
-  const [loginErrorMessage, setLoginErrorMessage] = useState("");
+  const [loginErrorMessage, setLoginErrorMessage] = useState<string>("");
   const [reservationData, setReservationData] =
     useState<ReservationData | null>(null);
   const [reservationError, setReservationError] = useState<string | null>(null);
   const [busData, setBusData] = useState<BusData | null>(null);
-  const [isReverse, setIsReverse] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isReverse, setIsReverse] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const CRITICAL_TIME = parseInt(process.env.CRITICAL_TIME || "14");
+  const CRITICAL_TIME = parseInt(process.env.NEXT_PUBLIC_CRITICAL_TIME || "14");
 
   useEffect(() => {
     fetch("/api/login")
@@ -124,8 +124,8 @@ const AutoBusReservation = () => {
 
     // 选择时间最接近现在的班车
     return appropriateBuses.sort((a, b) => {
-      const timeA = new Date(a.start_time).getTime();
-      const timeB = new Date(b.start_time).getTime();
+      const timeA = new Date(`1970-01-01T${a.start_time}`).getTime();
+      const timeB = new Date(`1970-01-01T${b.start_time}`).getTime();
       return Math.abs(timeA - now.getTime()) - Math.abs(timeB - now.getTime());
     })[0];
   };
