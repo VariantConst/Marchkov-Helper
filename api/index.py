@@ -57,7 +57,11 @@ def get_bus_info(date=None):
     )
     return json.loads(r.text)["d"]["list"]
 
-def get_available_bus(date, cur_time, prev_interval=getenv("PREV_INTERVAL", 10), next_interval=getenv("NEXT_INTERVAL", 30)):
+def get_available_bus(date, cur_time, prev_interval=None, next_interval=None):
+    if prev_interval is None:
+        prev_interval = int(getenv("PREV_INTERVAL", 10))
+    if next_interval is None:
+        next_interval = int(getenv("NEXT_INTERVAL", 30))
     print(f"开始获取 {date} {cur_time} 的车次信息")
     all_bus_info = get_bus_info(date)
     possible_expired_bus = {}
