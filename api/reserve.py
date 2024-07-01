@@ -54,7 +54,7 @@ class PKUReserve:
 
         return self.bus_info
     
-    def get_available_bus(self, date, cur_time, prev_interval=100, next_interval=600):
+    def get_available_bus(self, date, cur_time, prev_interval=10, next_interval=30):
         '''
         Decide which bus to reserve.
 
@@ -136,6 +136,9 @@ class PKUReserve:
         )
         apps = json.loads(r.text)["d"]["data"]
         print(f"Apps: {apps}")
+        if not apps:
+            print("预约失败，没有找到二维码。")
+            return None, None, None
         app_0 = apps[0]
         app_id = app_0["id"]
         app_appointment_id = app_0["hall_appointment_data_id"]

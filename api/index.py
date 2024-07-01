@@ -46,6 +46,8 @@ def reserve_and_get_qrcode(resource_id: int, period: str, sub_resource_id: int):
     date = datetime.datetime.now().strftime("%Y-%m-%d")
     try:
         qrcode, app_id, app_appointment_id = reserve.reserve_and_get_qrcode(resource_id, period, sub_resource_id, date)
+        if qrcode is None:
+            return {"success": False, "message": "预约失败，没有找到二维码。"}
         print(f"qrcode: {qrcode}")
         return {"success": True, "qrcode": qrcode, "app_id": app_id, "app_appointment_id": app_appointment_id}
     except Exception as e:
