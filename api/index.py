@@ -22,7 +22,7 @@ token = None
 
 def get_beijing_time():
     return datetime.datetime.now(timezone('Asia/Shanghai'))
-    # set to 8:31
+
     # cur = datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=6, minute=39)
     # print(f"当前时间: {cur}")
     # return cur
@@ -67,6 +67,9 @@ def get_available_bus(date, cur_time, prev_interval=None, next_interval=None):
     possible_expired_bus = {}
     possible_future_bus = {}
     cur_time = datetime.datetime.strptime(cur_time, "%H:%M")
+    
+    min_future_time_diff = {}
+
     for bus_info in all_bus_info:
         id = bus_info["id"]
         name = bus_info["name"]
@@ -79,19 +82,28 @@ def get_available_bus(date, cur_time, prev_interval=None, next_interval=None):
             start_time = bus_item['yaxis']
             start_time = datetime.datetime.strptime(start_time, "%H:%M")
             time_diff = (start_time - cur_time).total_seconds() / 60
-
             if 0 < time_diff <= next_interval:
-                possible_future_bus[id] = {
-                    "name": name,
-                    "time_id": time_id,
-                    "start_time": start_time.strftime("%H:%M")
-                }
+                if id not in min_future_time_diff or time_diff < min_future_time_diff[id]['time_diff']:
+                    min_future_time_diff[id] = {
+                        'time_diff': time_diff,
+                        'name': name,
+                        'time_id': time_id,
+                        'start_time': start_time.strftime("%H:%M")
+                    }
             elif 0 >= time_diff >= -prev_interval:
                 possible_expired_bus[id] = {
                     "name": name,
                     "time_id": time_id,
                     "start_time": start_time.strftime("%H:%M")
                 }
+    
+    for id, bus_info in min_future_time_diff.items():
+        possible_future_bus[id] = {
+            "name": bus_info['name'],
+            "time_id": bus_info['time_id'],
+            "start_time": bus_info['start_time']
+        }
+
     print(f"可选的过期车次: {possible_expired_bus}，可选的未来车次: {possible_future_bus}")
     return {"possible_expired_bus": possible_expired_bus, "possible_future_bus": possible_future_bus}
 

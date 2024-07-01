@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode.react";
-import { Loader2, CheckCircle, Bus } from "lucide-react";
+import { Loader2, CheckCircle, Bus, Sun, Moon } from "lucide-react";
 
 interface Bus {
   id: number;
@@ -41,6 +41,20 @@ const AutoBusReservation: React.FC = () => {
   const [busData, setBusData] = useState<BusData | null>(null);
   const [isReverse, setIsReverse] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
 
   const CRITICAL_TIME = parseInt(process.env.NEXT_PUBLIC_CRITICAL_TIME || "14");
 
@@ -94,31 +108,31 @@ const AutoBusReservation: React.FC = () => {
     const downwardIds = ["5", "6", "7"];
     const targetIds = reverse ? downwardIds : upwardIds;
 
-    // 首先检查未来班车
-    let selectedBus = Object.entries(busData.possible_future_bus)
+    // 首先检查过期班车
+    let selectedBus = Object.entries(busData.possible_expired_bus)
       .filter(([id]) => targetIds.includes(id))
       .map(([id, bus]) => ({
         bus: { ...bus, id: parseInt(id) },
-        isExpired: false,
+        isExpired: true,
       }))
       .sort((a, b) => {
         const timeA = new Date(`1970-01-01T${a.bus.start_time}`).getTime();
         const timeB = new Date(`1970-01-01T${b.bus.start_time}`).getTime();
-        return timeA - timeB;
+        return timeB - timeA;
       })[0];
 
-    // 如果没有找到合适的未来班车，检查过期班车
+    // 如果没有找到合适的过期班车，检查未来班车
     if (!selectedBus) {
-      selectedBus = Object.entries(busData.possible_expired_bus)
+      selectedBus = Object.entries(busData.possible_future_bus)
         .filter(([id]) => targetIds.includes(id))
         .map(([id, bus]) => ({
           bus: { ...bus, id: parseInt(id) },
-          isExpired: true,
+          isExpired: false,
         }))
         .sort((a, b) => {
           const timeA = new Date(`1970-01-01T${a.bus.start_time}`).getTime();
           const timeB = new Date(`1970-01-01T${b.bus.start_time}`).getTime();
-          return timeB - timeA;
+          return timeA - timeB;
         })[0];
     }
 
@@ -276,83 +290,209 @@ const AutoBusReservation: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
+    <main
+      className={`min-h-screen flex items-center justify-center p-4 ${
+        darkMode
+          ? "bg-gray-900"
+          : "bg-gradient-to-br from-blue-50 to-indigo-100"
+      }`}
+    >
+      <div
+        className={`rounded-xl shadow-lg p-6 max-w-md w-full ${
+          darkMode ? "bg-gray-800" : "bg-white"
+        }`}
+      >
         {loginStatus && (
-          <div className="mb-6 pb-4 border-b border-gray-200">
-            <p className="text-sm text-gray-600">
+          <div
+            className={`mb-4 pb-3 border-b flex justify-between items-center ${
+              darkMode ? "border-gray-700" : "border-indigo-100"
+            }`}
+          >
+            <p
+              className={`text-lg ${
+                darkMode ? "text-indigo-300" : "text-indigo-600"
+              }`}
+            >
               欢迎回来，
-              <span className="font-medium text-gray-800">{user}</span>
+              <span
+                className={`font-semibold ${
+                  darkMode ? "text-indigo-200" : "text-indigo-800"
+                }`}
+              >
+                {user}
+              </span>
             </p>
+            <button
+              onClick={toggleDarkMode}
+              className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                darkMode
+                  ? "bg-gray-700 text-white focus:ring-gray-500"
+                  : "bg-gray-200 text-gray-800 focus:ring-gray-300"
+              }`}
+            >
+              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
           </div>
         )}
         {loginStatus === null ? (
-          <div className="flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-            <p className="ml-2 text-gray-600">正在加载...</p>
+          <div className="flex items-center justify-center space-x-3">
+            <Loader2
+              className={`h-8 w-8 animate-spin ${
+                darkMode ? "text-indigo-300" : "text-indigo-500"
+              }`}
+            />
+            <p
+              className={`text-xl ${
+                darkMode ? "text-indigo-300" : "text-indigo-600"
+              }`}
+            >
+              正在加载...
+            </p>
           </div>
         ) : loginStatus ? (
           <div>
             {isLoading ? (
-              <div className="flex flex-col items-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                <p className="mt-4 text-gray-600">正在加载班车信息...</p>
+              <div className="flex flex-col items-center space-y-3">
+                <Loader2
+                  className={`h-12 w-12 animate-spin ${
+                    darkMode ? "text-indigo-300" : "text-indigo-500"
+                  }`}
+                />
+                <p
+                  className={`text-xl ${
+                    darkMode ? "text-indigo-300" : "text-indigo-600"
+                  }`}
+                >
+                  正在加载班车信息...
+                </p>
               </div>
             ) : reservationData ? (
               <div className="space-y-6">
-                <div className="flex items-center justify-center text-gray-800">
-                  <CheckCircle className="h-10 w-10 mr-2" />
-                  <span className="text-lg font-medium">预约成功</span>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                    <h3 className="text-sm font-medium text-gray-700">
+                <div
+                  className={`rounded-lg p-4 space-y-3 ${
+                    darkMode ? "bg-gray-700" : "bg-indigo-50"
+                  }`}
+                >
+                  <div
+                    className={`flex justify-between items-center pb-2 border-b ${
+                      darkMode ? "border-gray-600" : "border-indigo-200"
+                    }`}
+                  >
+                    <h3
+                      className={`text-xl font-semibold ${
+                        darkMode ? "text-indigo-200" : "text-indigo-800"
+                      }`}
+                    >
                       班车信息
                     </h3>
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
                         reservationData.isTemporary
-                          ? "bg-gray-200 text-gray-700"
-                          : "bg-gray-700 text-white"
+                          ? darkMode
+                            ? "bg-amber-800 text-amber-200"
+                            : "bg-amber-100 text-amber-800"
+                          : darkMode
+                          ? "bg-emerald-800 text-emerald-200"
+                          : "bg-emerald-100 text-emerald-800"
                       }`}
                     >
                       {reservationData.isTemporary ? "临时码" : "乘车码"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">班车名称</span>
-                    <span className="text-sm font-medium text-gray-800">
+                    <span
+                      className={`text-lg w-2/5 text-left ${
+                        darkMode ? "text-indigo-300" : "text-indigo-600"
+                      }`}
+                    >
+                      班车名称
+                    </span>
+                    <span
+                      className={`text-lg font-medium w-3/5 text-right ${
+                        darkMode ? "text-indigo-100" : "text-indigo-900"
+                      }`}
+                    >
                       {reservationData.bus.name}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">出发时间</span>
-                    <span className="text-sm font-medium text-gray-800">
+                    <span
+                      className={`text-lg ${
+                        darkMode ? "text-indigo-300" : "text-indigo-600"
+                      }`}
+                    >
+                      出发时间
+                    </span>
+                    <span
+                      className={`text-lg font-medium ${
+                        darkMode ? "text-indigo-100" : "text-indigo-900"
+                      }`}
+                    >
                       {reservationData.bus.start_time}
                     </span>
                   </div>
                 </div>
-                <Base64QRCode base64String={reservationData.qrcode} />
+                <div className="flex justify-center">
+                  <div
+                    className={`p-2 rounded-lg shadow-md ${
+                      darkMode ? "bg-gray-700" : "bg-white"
+                    }`}
+                  >
+                    <Base64QRCode base64String={reservationData.qrcode} />
+                  </div>
+                </div>
                 <button
                   onClick={handleReverseBus}
-                  className="w-full px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className={`w-full px-6 py-3 text-white text-lg font-semibold rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 ${
+                    darkMode
+                      ? "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
+                      : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"
+                  }`}
                   disabled={isLoading}
                 >
-                  <Bus className="mr-2" size={18} />
-                  乘坐反向班车
+                  <Bus size={24} />
+                  <span>乘坐反向班车</span>
                 </button>
               </div>
             ) : reservationError ? (
-              <p className="text-red-600 text-center">{reservationError}</p>
+              <p
+                className={`text-xl text-center font-medium ${
+                  darkMode ? "text-red-400" : "text-red-600"
+                }`}
+              >
+                {reservationError}
+              </p>
             ) : (
-              <p className="text-gray-600 text-center">正在为您预约班车...</p>
+              <p
+                className={`text-xl text-center ${
+                  darkMode ? "text-indigo-300" : "text-indigo-600"
+                }`}
+              >
+                正在为您预约班车...
+              </p>
             )}
           </div>
         ) : (
-          <div className="text-center">
-            <h1 className="text-xl font-medium text-gray-800 mb-4">登录失败</h1>
-            <p className="text-gray-600 mb-4">{loginErrorMessage}</p>
-            <p className="text-sm text-gray-500">
+          <div className="text-center space-y-3">
+            <h1
+              className={`text-2xl font-bold mb-3 ${
+                darkMode ? "text-indigo-200" : "text-indigo-800"
+              }`}
+            >
+              登录失败
+            </h1>
+            <p
+              className={`text-xl mb-3 ${
+                darkMode ? "text-indigo-300" : "text-indigo-600"
+              }`}
+            >
+              {loginErrorMessage}
+            </p>
+            <p
+              className={`text-lg ${
+                darkMode ? "text-indigo-400" : "text-indigo-500"
+              }`}
+            >
               请到Vercel后台修改环境变量并重新部署。
             </p>
           </div>
