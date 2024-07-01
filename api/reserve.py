@@ -74,7 +74,7 @@ class PKUReserve:
         for bus_info in all_bus_info:
             id = bus_info["id"]
             name = bus_info["name"]
-            if int(id) not in [2, 3, 4, 5, 6, 7]:
+            if int(id) not in [2, 4, 5, 6, 7]:
                 continue
             for bus_item in list(bus_info["table"].values())[0]:
                 if bus_item['abscissa'] != date or bus_item['row']['margin'] == 0:

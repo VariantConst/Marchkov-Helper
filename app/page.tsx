@@ -18,6 +18,8 @@ interface ReservationData {
   qrcode: string;
   app_id: string;
   app_appointment_id: string;
+  bus: Bus;
+  isTemporary: boolean;
 }
 
 const Base64QRCode = ({ base64String }: { base64String: string }) => {
@@ -28,24 +30,18 @@ const Base64QRCode = ({ base64String }: { base64String: string }) => {
   );
 };
 
-const BusReservation = () => {
+const AutoBusReservation = () => {
   const [loginStatus, setLoginStatus] = useState<boolean | null>(null);
   const [user, setUser] = useState<string | null>(null);
   const [loginErrorMessage, setLoginErrorMessage] = useState("");
-  const [possibleBus, setPossibleBus] = useState<BusData | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [reservationData, setReservationData] =
     useState<ReservationData | null>(null);
   const [reservationError, setReservationError] = useState<string | null>(null);
-  const [tempQRCode, setTempQRCode] = useState<string | null>(null);
-  const [tempQRCodeError, setTempQRCodeError] = useState<string | null>(null);
+  const [busData, setBusData] = useState<BusData | null>(null);
+  const [isReverse, setIsReverse] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const resetModalState = () => {
-    setReservationData(null);
-    setReservationError(null);
-    setTempQRCode(null);
-    setTempQRCodeError(null);
-  };
+  const CRITICAL_TIME = parseInt(process.env.CRITICAL_TIME || "14");
 
   useEffect(() => {
     fetch("/api/login")
@@ -54,6 +50,7 @@ const BusReservation = () => {
         if (data.success) {
           setLoginStatus(true);
           setUser(data.username);
+          fetchBusData();
         } else {
           setLoginStatus(false);
           setLoginErrorMessage(data.message);
@@ -64,23 +61,77 @@ const BusReservation = () => {
         setLoginErrorMessage("发生错误，请稍后再试");
         console.error("Error:", error);
       });
+  }, []);
 
+  const fetchBusData = () => {
+    setIsLoading(true);
     fetch("/api/get_available_bus")
       .then((response) => response.json())
       .then((data) => {
         if (data.success && data.possible_bus) {
-          setPossibleBus(data.possible_bus);
+          setBusData(data.possible_bus);
+          reserveAppropriateBus(data.possible_bus, isReverse);
         } else {
           console.error("Invalid data structure:", data);
+          setReservationError("获取班车数据失败");
         }
       })
       .catch((error) => {
         console.error("Error:", error);
-      });
-  }, []);
+        setReservationError("获取班车数据时发生错误");
+      })
+      .finally(() => setIsLoading(false));
+  };
 
-  const handleReservation = (id: string, bus: Bus) => {
-    resetModalState();
+  const reserveAppropriateBus = (busData: BusData, reverse: boolean) => {
+    const selectedBus = selectAppropriateBus(busData, reverse);
+    if (selectedBus) {
+      if (selectedBus.isExpired) {
+        getTempQRCode(selectedBus.id, selectedBus.start_time);
+      } else {
+        makeReservation(selectedBus.id, selectedBus);
+      }
+    } else {
+      setReservationError("没有找到合适的班车");
+    }
+  };
+
+  const selectAppropriateBus = (busData: BusData, reverse: boolean) => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    let appropriateBuses: (Bus & { isExpired: boolean })[] = [];
+
+    const isCurrentlyReverse = currentHour >= CRITICAL_TIME !== reverse;
+
+    if (!isCurrentlyReverse) {
+      // 上班时间或反向下班，选择2或4
+      appropriateBuses = Object.entries(busData.possible_future_bus)
+        .filter(([id]) => ["2", "4"].includes(id))
+        .map(([id, bus]) => ({ ...bus, id: parseInt(id), isExpired: false }));
+    } else {
+      // 下班时间或反向上班，选择5、6或7
+      appropriateBuses = Object.entries(busData.possible_future_bus)
+        .filter(([id]) => ["5", "6", "7"].includes(id))
+        .map(([id, bus]) => ({ ...bus, id: parseInt(id), isExpired: false }));
+    }
+
+    // 如果没有合适的未来班车，检查过期班车
+    if (appropriateBuses.length === 0) {
+      appropriateBuses = Object.entries(busData.possible_expired_bus).map(
+        ([id, bus]) => ({ ...bus, id: parseInt(id), isExpired: true })
+      );
+    }
+
+    // 选择时间最接近现在的班车
+    return appropriateBuses.sort((a, b) => {
+      const timeA = new Date(a.start_time).getTime();
+      const timeB = new Date(b.start_time).getTime();
+      return Math.abs(timeA - now.getTime()) - Math.abs(timeB - now.getTime());
+    })[0];
+  };
+
+  const makeReservation = (id: number, bus: Bus) => {
+    setIsLoading(true);
     const resource_id = id;
     const period = bus.time_id.toString();
     const sub_resource_id = 0;
@@ -104,24 +155,56 @@ const BusReservation = () => {
             qrcode: data.qrcode,
             app_id: data.app_id,
             app_appointment_id: data.app_appointment_id,
+            bus: bus,
+            isTemporary: false,
           });
-          setShowModal(true);
         } else {
           setReservationError(data.message || "预约失败，请稍后重试");
-          setShowModal(true);
         }
       })
       .catch((error) => {
         console.error("Reservation error:", error);
         setReservationError("预约过程中发生错误，请稍后重试");
-        setShowModal(true);
-      });
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  const getTempQRCode = (resourceId: number, startTime: string) => {
+    setIsLoading(true);
+    fetch(
+      `/api/get_temp_qrcode?resource_id=${resourceId}&start_time=${startTime}`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          setReservationData({
+            qrcode: data.qrcode,
+            app_id: "",
+            app_appointment_id: "",
+            bus: {
+              id: resourceId,
+              name: `班车 ${resourceId}`,
+              time_id: 0,
+              start_time: startTime,
+            },
+            isTemporary: true,
+          });
+        } else {
+          setReservationError(data.message || "获取临时二维码失败");
+        }
+      })
+      .catch((error) => {
+        console.error("获取临时二维码错误:", error);
+        setReservationError("获取临时二维码过程中发生错误，请稍后重试");
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const handleCancelReservation = () => {
-    if (reservationData) {
+    if (reservationData && !reservationData.isTemporary) {
+      setIsLoading(true);
       const { app_id, app_appointment_id } = reservationData;
-      fetch(
+      return fetch(
         `/api/cancel_reservation?appointment_id=${app_id}&hall_appointment_data_id=${app_appointment_id}`,
         {
           method: "GET",
@@ -133,124 +216,43 @@ const BusReservation = () => {
         .then((response) => response.json())
         .then((data) => {
           if (data.success) {
-            resetModalState();
-            setShowModal(false); // 直接关闭模态框
-            setReservationData(null); // 清除预约数据
-            // 可以添加一个临时提示，比如使用toast通知用户预约已取消
+            console.log("预约已取消");
+            return true;
           } else {
-            setReservationError(`取消预约失败: ${data.message}`);
+            console.error("取消预约失败:", data.message);
+            return false;
           }
         })
         .catch((error) => {
           console.error("Cancel reservation error:", error);
-          setReservationError("取消预约过程中发生错误，请稍后重试");
-        });
+          return false;
+        })
+        .finally(() => setIsLoading(false));
     }
+    return Promise.resolve(true);
   };
 
-  const handleGetTempQRCode = (resourceId: string, startTime: string) => {
-    resetModalState();
-    fetch(
-      `/api/get_temp_qrcode?resource_id=${resourceId}&start_time=${startTime}`
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          setTempQRCode(data.qrcode);
-          setTempQRCodeError(null); // 清除临时码错误状态
-          setShowModal(true);
-        } else {
-          setTempQRCodeError(data.message || "获取临时二维码失败");
-          setShowModal(true);
-        }
-      })
-      .catch((error) => {
-        console.error("获取临时二维码错误:", error);
-        setTempQRCodeError("获取临时二维码过程中发生错误，请稍后重试");
-        setShowModal(true);
-      });
-  };
+  const handleReverseBus = async () => {
+    setIsLoading(true);
 
-  const renderBusList = (
-    buses: { [key: string]: Bus } | undefined,
-    title: string
-  ) => {
-    if (!buses || Object.keys(buses).length === 0) {
-      return (
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold mb-2">{title}</h3>
-          <p>暂无数据</p>
-        </div>
-      );
+    if (reservationData && !reservationData.isTemporary) {
+      const cancelSuccess = await handleCancelReservation();
+      if (!cancelSuccess) {
+        setReservationError("取消当前预约失败，无法切换班车");
+        setIsLoading(false);
+        return;
+      }
     }
 
-    return (
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        <ul>
-          {Object.entries(buses).map(([id, bus]) => (
-            <li key={id} className="mb-1">
-              <span className="font-medium">{bus.name}</span> - 出发时间:{" "}
-              {bus.start_time}
-              {title === "未来可用的班车" && (
-                <button
-                  onClick={() => handleReservation(id, bus)}
-                  className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  预约
-                </button>
-              )}
-              {title === "已过期的班车" && (
-                <button
-                  onClick={() => handleGetTempQRCode(id, bus.start_time)}
-                  className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  获取临时码
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
+    setIsReverse(!isReverse);
 
-  const Modal = ({ onClose }: { onClose: () => void }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-4 rounded-lg">
-        {reservationData ? (
-          <>
-            <h2 className="text-xl font-bold mb-2">预约成功</h2>
-            <Base64QRCode base64String={reservationData.qrcode} />
-            <button
-              onClick={handleCancelReservation}
-              className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              取消预约
-            </button>
-          </>
-        ) : tempQRCode ? (
-          <>
-            <h2 className="text-xl font-bold mb-2">临时二维码</h2>
-            <Base64QRCode base64String={tempQRCode} />
-          </>
-        ) : reservationError || tempQRCodeError ? (
-          <>
-            <h2 className="text-xl font-bold mb-2">操作失败</h2>
-            <p className="text-red-500 mb-4">
-              {reservationError || tempQRCodeError}
-            </p>
-          </>
-        ) : null}
-        <button
-          onClick={onClose}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          关闭
-        </button>
-      </div>
-    </div>
-  );
+    if (busData) {
+      reserveAppropriateBus(busData, !isReverse);
+    } else {
+      setReservationError("班车数据不可用");
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
@@ -259,20 +261,32 @@ const BusReservation = () => {
           <p>正在加载...</p>
         ) : loginStatus ? (
           <div>
-            <h1 className="text-2xl font-bold mb-4">登录成功</h1>
-            <h2 className="text-xl mb-2">欢迎：{user}</h2>
-            <p className="mb-4">可用的班车：</p>
-            {possibleBus && (
-              <>
-                {renderBusList(
-                  possibleBus.possible_expired_bus,
-                  "已过期的班车"
-                )}
-                {renderBusList(
-                  possibleBus.possible_future_bus,
-                  "未来可用的班车"
-                )}
-              </>
+            <h1 className="text-2xl font-bold mb-4">欢迎：{user}</h1>
+            {isLoading ? (
+              <p>正在加载班车信息...</p>
+            ) : reservationData ? (
+              <div>
+                <h2 className="text-xl mb-2">预约成功</h2>
+                <p>班车ID: {reservationData.bus.id}</p>
+                <p>班车名称: {reservationData.bus.name}</p>
+                <p>出发时间: {reservationData.bus.start_time}</p>
+                <p>
+                  二维码类型:{" "}
+                  {reservationData.isTemporary ? "临时码" : "乘车码"}
+                </p>
+                <Base64QRCode base64String={reservationData.qrcode} />
+                <button
+                  onClick={handleReverseBus}
+                  className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  disabled={isLoading}
+                >
+                  切换到{isReverse ? "上班" : "下班"}班车
+                </button>
+              </div>
+            ) : reservationError ? (
+              <p className="text-red-500">{reservationError}</p>
+            ) : (
+              <p>正在为您预约班车...</p>
             )}
           </div>
         ) : (
@@ -283,16 +297,8 @@ const BusReservation = () => {
           </div>
         )}
       </div>
-      {showModal && (
-        <Modal
-          onClose={() => {
-            setShowModal(false);
-            setReservationError(null); // 清除错误信息
-          }}
-        />
-      )}
     </main>
   );
 };
 
-export default BusReservation;
+export default AutoBusReservation;
