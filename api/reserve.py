@@ -54,7 +54,7 @@ class PKUReserve:
 
         return self.bus_info
     
-    def get_available_bus(self, date, cur_time, prev_interval=10, next_interval=600):
+    def get_available_bus(self, date, cur_time, prev_interval=100, next_interval=600):
         '''
         Decide which bus to reserve.
 
@@ -74,6 +74,8 @@ class PKUReserve:
         for bus_info in all_bus_info:
             id = bus_info["id"]
             name = bus_info["name"]
+            if int(id) not in [2, 3, 4, 5, 6, 7]:
+                continue
             for bus_item in list(bus_info["table"].values())[0]:
                 if bus_item['abscissa'] != date or bus_item['row']['margin'] == 0:
                     continue
@@ -97,38 +99,39 @@ class PKUReserve:
                         "time_id": time_id,
                         "start_time": start_time.strftime("%H:%M")
                     }
-                    
+        print(f"可选的过期车次: {possible_expired_bus}，可选的未来车次: {possible_future_bus}")
         return {"possible_expired_bus": possible_expired_bus, "possible_future_bus": possible_future_bus}
-    
-    def reserve(self, resource_id, period, sub_resource_id, date=None):
-        '''
-        Reserve a bus.
-        '''
-        if date is None:
-            date = datetime.datetime.now().strftime("%Y-%m-%d")
-        r = self.s.get(
-            "https://wproc.pku.edu.cn/site/reservation/launch",
-            data={
-                "resource_id": resource_id,
-                "data": f'[{{"date": "{date}", "period": {period}, "sub_resource_id": {sub_resource_id}}}]',
-            },
-        )
-        return json.loads(r.text)
-    
+ 
     def reserve_and_get_qrcode(self, resource_id, period, sub_resource_id, date=None):
         '''
         Reserve a bus and get the QR code.
         '''
         if date is None:
             date = datetime.datetime.now().strftime("%Y-%m-%d")
-        r = self.s.get(
+
+        s = requests.Session()
+        r = s.get("https://wproc.pku.edu.cn/api/login/main")
+        r = s.post(
+            "https://iaaa.pku.edu.cn/iaaa/oauthlogin.do",
+            data={
+                "appid": "wproc",
+                "userName": getenv("PKU_USERNAME"),
+                "password": getenv("PKU_PASSWORD"),
+                "redirUrl": "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/",
+            },
+        )
+        token = json.loads(r.text)["token"]
+        r = s.get(
+            f"https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token={token}"
+        )
+        r = s.get(
             "https://wproc.pku.edu.cn/site/reservation/launch",
             data={
                 "resource_id": resource_id,
                 "data": f'[{{"date": "{date}", "period": {period}, "sub_resource_id": {sub_resource_id}}}]',
             },
         )
-        r = self.s.get(
+        r = s.get(
             "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status=2&sort_time=true&sort=asc",
         )
         apps = json.loads(r.text)["d"]["data"]
@@ -136,31 +139,66 @@ class PKUReserve:
         app_0 = apps[0]
         app_id = app_0["id"]
         app_appointment_id = app_0["hall_appointment_data_id"]
-        r = self.s.get(
+        r = s.get(
             f"https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&id=${app_id}&hall_appointment_data_id=${app_appointment_id}"
         )
-        return r.text
+        print(r.text)
+        return json.loads(r.text)["d"]["code"], app_id, app_appointment_id
     
-    def get_apps(self, status=2, sort_time=True, sort="asc"):
+    def get_temp_qrcode(self, resource_id, start_time):
         '''
-        Get all appointments.
+        Get the QR code of a bus.
         '''
-        r = self.s.get(
-            f"https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status={status}&sort_time={sort_time}&sort={sort}"
+        s = requests.Session()
+        r = s.get("https://wproc.pku.edu.cn/api/login/main")
+        r = s.post(
+            "https://iaaa.pku.edu.cn/iaaa/oauthlogin.do",
+            data={
+                "appid": "wproc",
+                "userName": getenv("PKU_USERNAME"),
+                "password": getenv("PKU_PASSWORD"),
+                "redirUrl": "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/",
+            },
         )
-        return json.loads(r.text)["d"]["data"]
-    
-    def cancel_app(self, appointment_id, hall_appointment_data_id):
+        token = json.loads(r.text)["token"]
+        r = s.get(
+            f"https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token={token}"
+        )
+        r = s.get(
+            "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status=2&sort_time=true&sort=asc",
+        )
+        r = s.get(
+            f"https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&resource_id={resource_id}&text={start_time}",
+        )
+        return json.loads(r.text)["d"]["code"]
+ 
+    def cancel_reservation(self, appointment_id, hall_appointment_data_id):
         '''
         Cancel an appointment.
         '''
-        r = self.s.post(
+        s = requests.Session()
+        r = s.get("https://wproc.pku.edu.cn/api/login/main")
+        r = s.post(
+            "https://iaaa.pku.edu.cn/iaaa/oauthlogin.do",
+            data={
+                "appid": "wproc",
+                "userName": getenv("PKU_USERNAME"),
+                "password": getenv("PKU_PASSWORD"),
+                "redirUrl": "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/",
+            },
+        )
+        token = json.loads(r.text)["token"]
+        r = s.get(
+            f"https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token={token}"
+        )
+        r = s.post(
             "https://wproc.pku.edu.cn/site/reservation/single-time-cancel",
             data={
                 "appointment_id": appointment_id,
                 "data_id[0]": hall_appointment_data_id,
             },
         )
+        print(f"取消预约结果: {r.text}")
         return json.loads(r.text)
     
 if __name__ == "__main__":
@@ -173,3 +211,5 @@ if __name__ == "__main__":
     available_bus = pku.get_available_bus(datetime.datetime.now().strftime("%Y-%m-%d"), datetime.datetime.now().strftime("%H:%M"))
     qr_code = pku.reserve_and_get_qrcode(7, 47, 0)
     print(f"QR code: {qr_code}")
+    temp_qr_code = pku.get_temp_qrcode(7, "19:00")
+    print(f"Temp QR code: {temp_qr_code}")
