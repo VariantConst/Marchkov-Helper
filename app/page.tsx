@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode.react";
-import { Loader2, CheckCircle, Bus, Sun, Moon } from "lucide-react";
+import { Loader2, Bus, Sun, Moon } from "../node_modules/lucide-react";
 
 interface Bus {
   id: number;
