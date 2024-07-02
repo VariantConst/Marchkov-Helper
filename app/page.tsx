@@ -267,15 +267,21 @@ const AutoBusReservation: React.FC = () => {
           return;
         }
       }
-
-      const isReserveSuccess = await reserveAppropriateBus(
-        busData,
-        newIsReverse
-      );
-      if (!isReserveSuccess) {
-        setReservationError("切换班车失败");
-        console.error("反向没有班车可坐！");
-        setToastMessage("相反方向没有班车可坐！");
+      if (busData) {
+        const isReserveSuccess = await reserveAppropriateBus(
+          busData,
+          newIsReverse
+        );
+        if (!isReserveSuccess) {
+          setReservationError("切换班车失败");
+          console.error("反向没有班车可坐！");
+          setToastMessage("相反方向没有班车可坐！");
+          setToastVisible(true);
+        }
+      } else {
+        setReservationError("无法获取班车数据");
+        console.error("班车数据不可用");
+        setToastMessage("无法获取班车数据，请稍后重试");
         setToastVisible(true);
       }
     } catch (error) {
