@@ -36,4 +36,5 @@ yarn-error.log*
 next-env.d.ts
 
 # pycache
-**/__pycache__/
+__pycache__/
+api/__pycache__/

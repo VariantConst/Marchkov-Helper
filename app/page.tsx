@@ -40,6 +40,7 @@ const AutoBusReservation: React.FC = () => {
   const CRITICAL_TIME = parseInt(process.env.NEXT_PUBLIC_CRITICAL_TIME || "14");
   const FLAG_MORNING_TO_YANYUAN: boolean =
     process.env.NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN === "1";
+
   useEffect(() => {
     fetch("/api/login")
       .then((response) => response.json())
@@ -68,7 +69,7 @@ const AutoBusReservation: React.FC = () => {
       if (data.success && data.possible_bus) {
         console.log("Fetched bus data:", data.possible_bus);
         setBusData(data.possible_bus);
-        await reserveAppropriateBus(data.possible_bus, isReverse);
+        await reserveBus(data.possible_bus, isReverse);
       } else {
         console.error("Invalid data structure:", data);
         setReservationError("获取班车数据失败");
@@ -133,8 +134,18 @@ const AutoBusReservation: React.FC = () => {
     return selectedBus || null;
   };
 
-  const reserveAppropriateBus = async (busData: BusData, reverse: boolean) => {
-    const selectedBus = selectAppropriateBus(busData, reverse);
+  const reserveBus = async (busData: BusData, reverse: boolean) => {
+    let selectedBus = selectAppropriateBus(busData, reverse);
+    if (!selectedBus) {
+      // 如果当前方向没有班车，尝试反向
+      selectedBus = selectAppropriateBus(busData, !reverse);
+      if (selectedBus) {
+        setIsReverse(!reverse);
+        setToastMessage("当前方向没有班车，已自动切换到反向班车");
+        setToastVisible(true);
+      }
+    }
+
     if (selectedBus) {
       console.log("Reserving bus:", selectedBus);
       if (selectedBus.isExpired) {
@@ -157,9 +168,9 @@ const AutoBusReservation: React.FC = () => {
       }
       return true;
     } else {
-      console.error("No appropriate bus found");
-      setReservationError("没有找到合适的班车");
-      return null;
+      console.error("No appropriate bus found in both directions");
+      setReservationError("这会没有班车可坐。急了？");
+      return false;
     }
   };
 
@@ -253,38 +264,54 @@ const AutoBusReservation: React.FC = () => {
   const handleReverseBus = async () => {
     setIsLoading(true);
     const newIsReverse = !isReverse;
-    setIsReverse(newIsReverse);
 
     try {
-      // 先尝试预约相反方向的班车
       if (busData) {
-        const isReserveSuccess = await reserveAppropriateBus(
-          busData,
-          newIsReverse
-        );
-        if (!isReserveSuccess) {
-          setReservationError("切换班车失败");
-          console.error("反向没有班车可坐！");
-          setToastMessage("相反方向没有班车可坐！");
+        const selectedBus = selectAppropriateBus(busData, newIsReverse);
+        if (!selectedBus) {
+          setToastMessage("反方向没有班车可坐！");
           setToastVisible(true);
           return;
         }
-      }
-      // 如果当前有非临时的预约，取消当前预约
-      if (reservationData && !reservationData.isTemporary) {
-        const cancelSuccess = await cancelReservation(
-          reservationData.app_id,
-          reservationData.app_appointment_id
-        );
-        if (!cancelSuccess) {
-          setReservationError("取消当前预约失败，无法切换班车");
-          setIsLoading(false);
-          return;
+
+        let newReservationData;
+        if (selectedBus.isExpired) {
+          newReservationData = await getTempQRCode(
+            selectedBus.bus.id,
+            selectedBus.bus.start_time,
+            selectedBus.bus
+          );
+        } else {
+          newReservationData = await makeReservation(
+            selectedBus.bus.id,
+            selectedBus.bus
+          );
+        }
+
+        if (newReservationData) {
+          if (reservationData && !reservationData.isTemporary) {
+            const cancelSuccess = await cancelReservation(
+              reservationData.app_id,
+              reservationData.app_appointment_id
+            );
+            if (!cancelSuccess) {
+              setToastMessage("取消当前预约失败，无法切换班车");
+              setToastVisible(true);
+              return;
+            }
+          }
+          setReservationData(newReservationData);
+          setIsReverse(newIsReverse);
+          // 成功切换时不显示横幅
+        } else {
+          setToastMessage("预约反向班车失败");
+          setToastVisible(true);
         }
       }
     } catch (error) {
       console.error("Error:", error);
-      setReservationError("获取班车数据时发生错误");
+      setToastMessage("获取班车数据时发生错误");
+      setToastVisible(true);
     } finally {
       setIsLoading(false);
     }
@@ -326,7 +353,7 @@ const AutoBusReservation: React.FC = () => {
           <div className="flex items-center justify-center space-x-3">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-500 dark:text-indigo-300" />
             <p className="text-xl text-indigo-600 dark:text-indigo-300">
-              正在加载...
+              正在登录...
             </p>
           </div>
         ) : loginStatus ? (
@@ -399,7 +426,7 @@ const AutoBusReservation: React.FC = () => {
             ) : reservationError ? (
               <p className="text-lg text-center font-medium text-indigo-500 dark:text-indigo-400">
                 <p className="text-8xl py-4">😅</p>
-                这会没有班车可坐。急了？
+                {reservationError}
               </p>
             ) : (
               <p className="text-xl text-center text-indigo-600 dark:text-indigo-300">
