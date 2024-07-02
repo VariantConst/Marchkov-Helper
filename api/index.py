@@ -22,10 +22,7 @@ token = None
 
 def get_beijing_time():
     return datetime.datetime.now(timezone('Asia/Shanghai'))
-
-    # cur = datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=17, minute=50)
-    # print(f"当前时间: {cur}")
-    # return cur
+    # return datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=17, minute=50)
 
 def login(username, password):
     global token
