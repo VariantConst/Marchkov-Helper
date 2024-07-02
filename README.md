@@ -8,7 +8,7 @@
 
 乘坐往返燕园和马池口的班车需要通过官方网站或 APP 进行预约。然而，官方网站的预约流程繁琐，难以找到想要预约的班车。随着基于客户端浏览器的预约脚本（如 [pku-eutopia](https://github.com/xmcp/pku-eutopia)）的开发，预约的流程得到了简化，但仍然需要进行 IAAA 认证，且用户界面具有太多冗余信息。通过官网预约并获取一个乘车码，至少需要在 7 个页面之间进行跳转并点击 6 次屏幕，而 [pku-eutopia](https://github.com/xmcp/pku-eutopia) 也至少需要点击 5 次屏幕。
 
-![comparison](public/comparison.png 与现有预约方式的界面效果对比)
+![comparison](public/comparison.png "与现有预约方式的界面效果对比")
 
 由于每天两次的预约操作是对心智的无意义消耗，我希望将通过在服务器端进行预约操作，绕开 IAAA，并根据当前时刻智能选择班车预约，将点击屏幕的次数下降到 0，让出示乘车码成为一种优雅的享受。
 
