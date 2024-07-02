@@ -7,8 +7,8 @@ from os import getenv
 from fastapi import FastAPI
 from pytz import timezone
 
-
-load_dotenv()
+# 从.env.local读取环境变量
+load_dotenv(dotenv_path=".env.local")
 
 logger = getLogger(__name__)
 
@@ -23,7 +23,7 @@ token = None
 def get_beijing_time():
     return datetime.datetime.now(timezone('Asia/Shanghai'))
 
-    # cur = datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=6, minute=39)
+    # cur = datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=17, minute=50)
     # print(f"当前时间: {cur}")
     # return cur
 

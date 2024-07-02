@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode.react";
 import { Loader2, Bus, Sun, Moon, Github } from "../node_modules/lucide-react";
+import Toast from "./components/Toast";
 
 interface Bus {
   id: number;
@@ -23,14 +24,6 @@ interface ReservationData {
   isTemporary: boolean;
 }
 
-const Base64QRCode: React.FC<{ base64String: string }> = ({ base64String }) => {
-  return (
-    <div className="flex justify-center items-center p-4">
-      <QRCode value={base64String} size={256} level="H" includeMargin={true} />
-    </div>
-  );
-};
-
 const AutoBusReservation: React.FC = () => {
   const [loginStatus, setLoginStatus] = useState<boolean | null>(null);
   const [user, setUser] = useState<string | null>(null);
@@ -41,23 +34,12 @@ const AutoBusReservation: React.FC = () => {
   const [busData, setBusData] = useState<BusData | null>(null);
   const [isReverse, setIsReverse] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const [darkMode, setDarkMode] = useState(false);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   const CRITICAL_TIME = parseInt(process.env.NEXT_PUBLIC_CRITICAL_TIME || "14");
-
+  const FLAG_MORNING_TO_YANYUAN: boolean =
+    process.env.NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN === "1";
   useEffect(() => {
     fetch("/api/login")
       .then((response) => response.json())
@@ -104,9 +86,20 @@ const AutoBusReservation: React.FC = () => {
     reverse: boolean
   ): { bus: Bus; isExpired: boolean } | null => {
     const now = new Date();
-    const upwardIds = ["2", "4"];
-    const downwardIds = ["5", "6", "7"];
-    const targetIds = reverse ? downwardIds : upwardIds;
+    const hour = now.getHours();
+    console.log("FLAG_MORNING_TO_YANYUAN =", FLAG_MORNING_TO_YANYUAN);
+    const isToYanyuan = FLAG_MORNING_TO_YANYUAN
+      ? hour < CRITICAL_TIME
+      : hour >= CRITICAL_TIME;
+    const toYuanyuanIds = ["2", "4"];
+    const toChangpingIds = ["5", "6", "7"];
+    const targetIds = reverse
+      ? isToYanyuan
+        ? toChangpingIds
+        : toYuanyuanIds
+      : isToYanyuan
+      ? toYuanyuanIds
+      : toChangpingIds;
 
     // 首先检查过期班车
     let selectedBus = Object.entries(busData.possible_expired_bus)
@@ -162,8 +155,11 @@ const AutoBusReservation: React.FC = () => {
           setReservationData(reservationResult);
         }
       }
+      return true;
     } else {
+      console.error("No appropriate bus found");
       setReservationError("没有找到合适的班车");
+      return null;
     }
   };
 
@@ -272,14 +268,15 @@ const AutoBusReservation: React.FC = () => {
         }
       }
 
-      const response = await fetch("/api/get_available_bus");
-      const data = await response.json();
-      if (data.success && data.possible_bus) {
-        console.log("Fetched bus data for reverse:", data.possible_bus);
-        setBusData(data.possible_bus);
-        await reserveAppropriateBus(data.possible_bus, newIsReverse);
-      } else {
-        setReservationError("获取最新班车数据失败");
+      const isReserveSuccess = await reserveAppropriateBus(
+        busData,
+        newIsReverse
+      );
+      if (!isReserveSuccess) {
+        setReservationError("切换班车失败");
+        console.error("反向没有班车可坐！");
+        setToastMessage("相反方向没有班车可坐！");
+        setToastVisible(true);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -290,35 +287,13 @@ const AutoBusReservation: React.FC = () => {
   };
 
   return (
-    <main
-      className={`min-h-screen flex items-center justify-center p-4 ${
-        darkMode
-          ? "bg-gray-900"
-          : "bg-gradient-to-br from-blue-50 to-indigo-100"
-      }`}
-    >
-      <div
-        className={`rounded-xl shadow-lg p-6 max-w-md w-full ${
-          darkMode ? "bg-gray-800" : "bg-white"
-        }`}
-      >
+    <main className="min-h-screen flex flex-col items-center sm:justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-zinc-800 dark:to-slate-900">
+      <div className="rounded-xl shadow-lg p-6 max-w-md w-full bg-white dark:bg-gray-800">
         {loginStatus && (
-          <div
-            className={`mb-4 pb-3 border-b flex justify-between items-center ${
-              darkMode ? "border-gray-700" : "border-indigo-100"
-            }`}
-          >
-            <p
-              className={`text-lg ${
-                darkMode ? "text-indigo-300" : "text-indigo-600"
-              }`}
-            >
-              欢迎回来，
-              <span
-                className={`font-semibold ${
-                  darkMode ? "text-indigo-200" : "text-indigo-800"
-                }`}
-              >
+          <div className="mb-4 pb-3 border-b border-indigo-100 dark:border-gray-700 flex justify-between items-center">
+            <p className="text-lg text-indigo-600 dark:text-indigo-300">
+              欢迎，
+              <span className="font-semibold text-indigo-800 dark:text-indigo-200">
                 {user}
               </span>
             </p>
@@ -327,39 +302,26 @@ const AutoBusReservation: React.FC = () => {
                 href="https://github.com/VariantConst/3-2-1-Marchkov"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  darkMode
-                    ? "bg-gray-700 text-white focus:ring-gray-500"
-                    : "bg-gray-200 text-gray-800 focus:ring-gray-300"
-                }`}
+                className="p-2 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 dark:focus:ring-gray-500"
               >
                 <Github size={20} />
               </a>
               <button
-                onClick={toggleDarkMode}
-                className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  darkMode
-                    ? "bg-gray-700 text-white focus:ring-gray-500"
-                    : "bg-gray-200 text-gray-800 focus:ring-gray-300"
-                }`}
+                onClick={() =>
+                  document.documentElement.classList.toggle("dark")
+                }
+                className="p-2 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 dark:focus:ring-gray-500"
               >
-                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                <Sun size={20} className="hidden dark:block" />
+                <Moon size={20} className="block dark:hidden" />
               </button>
             </div>
           </div>
         )}
         {loginStatus === null ? (
           <div className="flex items-center justify-center space-x-3">
-            <Loader2
-              className={`h-8 w-8 animate-spin ${
-                darkMode ? "text-indigo-300" : "text-indigo-500"
-              }`}
-            />
-            <p
-              className={`text-xl ${
-                darkMode ? "text-indigo-300" : "text-indigo-600"
-              }`}
-            >
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-500 dark:text-indigo-300" />
+            <p className="text-xl text-indigo-600 dark:text-indigo-300">
               正在加载...
             </p>
           </div>
@@ -367,101 +329,63 @@ const AutoBusReservation: React.FC = () => {
           <div>
             {isLoading ? (
               <div className="flex flex-col items-center space-y-3">
-                <Loader2
-                  className={`h-12 w-12 animate-spin ${
-                    darkMode ? "text-indigo-300" : "text-indigo-500"
-                  }`}
-                />
-                <p
-                  className={`text-xl ${
-                    darkMode ? "text-indigo-300" : "text-indigo-600"
-                  }`}
-                >
+                <Loader2 className="h-12 w-12 animate-spin text-indigo-500 dark:text-indigo-300" />
+                <p className="text-xl text-indigo-600 dark:text-indigo-300">
                   正在加载班车信息...
                 </p>
               </div>
             ) : reservationData ? (
               <div className="space-y-6">
-                <div
-                  className={`rounded-lg p-4 space-y-3 ${
-                    darkMode ? "bg-gray-700" : "bg-indigo-50"
-                  }`}
-                >
-                  <div
-                    className={`flex justify-between items-center pb-2 border-b ${
-                      darkMode ? "border-gray-600" : "border-indigo-200"
-                    }`}
-                  >
-                    <h3
-                      className={`text-xl font-semibold ${
-                        darkMode ? "text-indigo-200" : "text-indigo-800"
-                      }`}
-                    >
-                      班车信息
+                <div className="rounded-lg p-4 space-y-3 bg-indigo-50 dark:bg-gray-700">
+                  <div className="flex justify-between items-center pb-2 border-b border-indigo-200 dark:border-gray-600">
+                    <h3 className="text-xl font-semibold text-indigo-800 dark:text-indigo-200">
+                      预约成功
                     </h3>
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
                         reservationData.isTemporary
-                          ? darkMode
-                            ? "bg-amber-800 text-amber-200"
-                            : "bg-amber-100 text-amber-800"
-                          : darkMode
-                          ? "bg-emerald-800 text-emerald-200"
-                          : "bg-emerald-100 text-emerald-800"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-800 dark:text-amber-200"
+                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-800 dark:text-emerald-200"
                       }`}
                     >
                       {reservationData.isTemporary ? "临时码" : "乘车码"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span
-                      className={`text-lg w-2/5 text-left ${
-                        darkMode ? "text-indigo-300" : "text-indigo-600"
-                      }`}
-                    >
-                      班车名称
+                    <span className="text-lg w-2/5 text-left text-indigo-600 dark:text-indigo-300">
+                      班车路线
                     </span>
                     <span
-                      className={`text-lg font-medium w-3/5 text-right ${
-                        darkMode ? "text-indigo-100" : "text-indigo-900"
-                      }`}
+                      className={`${
+                        reservationData.bus.name.length < 10
+                          ? "text-lg"
+                          : "text-xs"
+                      } font-medium w-3/5 text-right text-indigo-900 dark:text-indigo-100`}
                     >
                       {reservationData.bus.name}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span
-                      className={`text-lg ${
-                        darkMode ? "text-indigo-300" : "text-indigo-600"
-                      }`}
-                    >
-                      出发时间
+                    <span className="text-lg text-indigo-600 dark:text-indigo-300">
+                      发车时间
                     </span>
-                    <span
-                      className={`text-lg font-medium ${
-                        darkMode ? "text-indigo-100" : "text-indigo-900"
-                      }`}
-                    >
+                    <span className="text-lg font-medium text-indigo-900 dark:text-indigo-100">
                       {reservationData.bus.start_time}
                     </span>
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <div
-                    className={`p-2 rounded-lg shadow-md ${
-                      darkMode ? "bg-gray-700" : "bg-white"
-                    }`}
-                  >
-                    <Base64QRCode base64String={reservationData.qrcode} />
-                  </div>
+                  <QRCode
+                    value={reservationData.qrcode}
+                    size={256}
+                    level="H"
+                    includeMargin={true}
+                    className="rounded-lg shadow-lg dark:shadow-slate-300/30"
+                  />
                 </div>
                 <button
                   onClick={handleReverseBus}
-                  className={`w-full px-6 py-3 text-white text-lg font-semibold rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 ${
-                    darkMode
-                      ? "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
-                      : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"
-                  }`}
+                  className="w-full px-6 py-3 text-white text-lg font-semibold rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-500"
                   disabled={isLoading}
                 >
                   <Bus size={24} />
@@ -469,48 +393,32 @@ const AutoBusReservation: React.FC = () => {
                 </button>
               </div>
             ) : reservationError ? (
-              <p
-                className={`text-xl text-center font-medium ${
-                  darkMode ? "text-red-400" : "text-red-600"
-                }`}
-              >
-                {reservationError}
+              <p className="text-lg text-center font-medium text-indigo-500 dark:text-indigo-400">
+                <p className="text-8xl py-4">😅</p>
+                这会没有班车可坐。急了？
               </p>
             ) : (
-              <p
-                className={`text-xl text-center ${
-                  darkMode ? "text-indigo-300" : "text-indigo-600"
-                }`}
-              >
+              <p className="text-xl text-center text-indigo-600 dark:text-indigo-300">
                 正在为您预约班车...
               </p>
             )}
           </div>
         ) : (
           <div className="text-center space-y-3">
-            <h1
-              className={`text-2xl font-bold mb-3 ${
-                darkMode ? "text-indigo-200" : "text-indigo-800"
-              }`}
-            >
+            <h1 className="text-2xl font-bold mb-3 text-indigo-800 dark:text-indigo-200">
+              <p className="text-8xl py-4">😇</p>
               登录失败
             </h1>
-            <p
-              className={`text-xl mb-3 ${
-                darkMode ? "text-indigo-300" : "text-indigo-600"
-              }`}
-            >
-              {loginErrorMessage}
-            </p>
-            <p
-              className={`text-lg ${
-                darkMode ? "text-indigo-400" : "text-indigo-500"
-              }`}
-            >
-              请到Vercel后台修改环境变量并重新部署。
+            <p className="text-lg text-indigo-500 dark:text-indigo-400">
+              请修改环境变量并重新部署。
             </p>
           </div>
         )}
+        <Toast
+          message={toastMessage}
+          isVisible={toastVisible}
+          onClose={() => setToastVisible(false)}
+        />
       </div>
     </main>
   );
