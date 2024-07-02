@@ -26,11 +26,18 @@
 3. 设置 Environment variables
 
 ```bash
-PKU_USERNAME=<your-username>    # 必填，填学号
-PKU_PASSWORD=<your-password>    # 必填
-CRITICAL_TIME=14    # 可选，这里是14点之前都前往燕园的意思。
-PREV_INTERVAL=10    # 可选，向前追溯临时码的时间间隔（分钟）
-NEXT_INTERVAL=30    # 可选，向后检查可乘坐班车的时间间隔（分钟）
+# 必填，填学号
+PKU_USERNAME=<Your Student ID>
+# 必填
+PKU_PASSWORD=<Your Password>
+# 可选，向前追溯临时码的时间间隔（分钟）
+PREV_INTERVAL=10
+# 可选，向后检查可乘坐班车的时间间隔（分钟）
+NEXT_INTERVAL=60
+# 可选，这里是14点之前都前往燕园的意思。
+NEXT_PUBLIC_CRITICAL_TIME=14
+# 可选，这里是1表示早上前往燕园、下午返回昌平，0表示下午前往燕园、晚上返回昌平。
+NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN=1
 ```
 
 Vercel 会自动部署网站。Vercel 免费版的网站是公开可见的，因此记得保存好你的域名，否则可能面临乘车码泄露的严重风险！如果你有在 Cloudflare 托管的域名，你可以很方便的前往 Settings -> Cutstom Domains 设置自定义域名，并使用 Cloudflare Access 管理网站的访问权限。
@@ -69,11 +76,11 @@ pip install -r requirements.txt
 3. 设置环境变量
 
 ```bash
-cp .env.example .env
-vim .env
+cp .env.local.example .env.local
+vim .env.local
 ```
 
-编辑 `.env` 文件中的账号密码信息。
+编辑 `.env.local` 文件中的账号密码信息。
 
 4. 启动项目
 

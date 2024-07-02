@@ -173,6 +173,7 @@ const AutoBusReservation: React.FC = () => {
         resource_id: resource_id.toString(),
         period: period,
         sub_resource_id: sub_resource_id.toString(),
+        start_time: bus.start_time,
       });
 
       const response = await fetch(
@@ -255,18 +256,7 @@ const AutoBusReservation: React.FC = () => {
     setIsReverse(newIsReverse);
 
     try {
-      // 如果当前有非临时的预约，先取消它
-      if (reservationData && !reservationData.isTemporary) {
-        const cancelSuccess = await cancelReservation(
-          reservationData.app_id,
-          reservationData.app_appointment_id
-        );
-        if (!cancelSuccess) {
-          setReservationError("取消当前预约失败，无法切换班车");
-          setIsLoading(false);
-          return;
-        }
-      }
+      // 先尝试预约相反方向的班车
       if (busData) {
         const isReserveSuccess = await reserveAppropriateBus(
           busData,
@@ -277,12 +267,20 @@ const AutoBusReservation: React.FC = () => {
           console.error("反向没有班车可坐！");
           setToastMessage("相反方向没有班车可坐！");
           setToastVisible(true);
+          return;
         }
-      } else {
-        setReservationError("无法获取班车数据");
-        console.error("班车数据不可用");
-        setToastMessage("无法获取班车数据，请稍后重试");
-        setToastVisible(true);
+      }
+      // 如果当前有非临时的预约，取消当前预约
+      if (reservationData && !reservationData.isTemporary) {
+        const cancelSuccess = await cancelReservation(
+          reservationData.app_id,
+          reservationData.app_appointment_id
+        );
+        if (!cancelSuccess) {
+          setReservationError("取消当前预约失败，无法切换班车");
+          setIsLoading(false);
+          return;
+        }
       }
     } catch (error) {
       console.error("Error:", error);
@@ -358,7 +356,7 @@ const AutoBusReservation: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-lg w-2/5 text-left text-indigo-600 dark:text-indigo-300">
+                    <span className="text-lg w-1/3 text-left text-indigo-600 dark:text-indigo-300">
                       班车路线
                     </span>
                     <span
@@ -366,7 +364,7 @@ const AutoBusReservation: React.FC = () => {
                         reservationData.bus.name.length < 10
                           ? "text-lg"
                           : "text-xs"
-                      } font-medium w-3/5 text-right text-indigo-900 dark:text-indigo-100`}
+                      } font-medium w-2/3 text-right text-indigo-900 dark:text-indigo-100`}
                     >
                       {reservationData.bus.name}
                     </span>

@@ -107,11 +107,11 @@ def get_available_bus(date, cur_time, prev_interval=None, next_interval=None):
     print(f"可选的过期车次: {possible_expired_bus}，可选的未来车次: {possible_future_bus}")
     return {"possible_expired_bus": possible_expired_bus, "possible_future_bus": possible_future_bus}
 
-def reserve_and_get_qrcode(resource_id, period, sub_resource_id, date=None):
+def reserve_and_get_qrcode(resource_id, period, sub_resource_id, date=None, start_time=None):
     if date is None:
         date = datetime.datetime.now().strftime("%Y-%m-%d")
     
-    print(f"准备预约: resource_id: {resource_id}, period: {period}, sub_resource_id: {sub_resource_id}, date: {date}")
+    print(f"准备预约: resource_id: {resource_id}, period: {period}, sub_resource_id: {sub_resource_id}, date: {date}, start_time: {start_time}")
 
     r = s.get(
         "https://wproc.pku.edu.cn/site/reservation/launch",
@@ -124,20 +124,23 @@ def reserve_and_get_qrcode(resource_id, period, sub_resource_id, date=None):
     r = s.get(
         "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status=2&sort_time=true&sort=asc",
     )
-    print(f"获取二维码过程中，预约列表: {r.text}")
     apps = json.loads(r.text)["d"]["data"]
-    print(f"Apps: {apps}")
-    if not apps:
+
+    for app in apps:
+        # 检查是否是刚刚预约的班车
+        expected_app_tim = get_beijing_time().strftime("%Y-%m-%d") + " " + start_time
+        if app["resource_id"] != resource_id or app["appointment_tim"].strip() != expected_app_tim:
+            continue
+        app_id = app["id"]
+        app_appointment_id = app["hall_appointment_data_id"]
+        r = s.get(
+            f"https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&id=${app_id}&hall_appointment_data_id=${app_appointment_id}"
+        )
+        print(r.text)
+        return json.loads(r.text)["d"]["code"], app_id, app_appointment_id
+    else:
         print("预约失败，没有找到二维码。")
         return None, None, None
-    app_0 = apps[0]
-    app_id = app_0["id"]
-    app_appointment_id = app_0["hall_appointment_data_id"]
-    r = s.get(
-        f"https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&id=${app_id}&hall_appointment_data_id=${app_appointment_id}"
-    )
-    print(r.text)
-    return json.loads(r.text)["d"]["code"], app_id, app_appointment_id
 
 def get_temp_qrcode(resource_id, start_time):
     r = s.get(
@@ -180,11 +183,11 @@ def api_get_available_bus():
         return {"success": False, "message": f"发生错误: {str(e)}"}
 
 @app.get("/api/reserve_and_get_qrcode")
-def api_reserve_and_get_qrcode(resource_id: int, period: str, sub_resource_id: int):
+def api_reserve_and_get_qrcode(resource_id: int, period: str, sub_resource_id: int, start_time: str):
     print(f"resource_id: {resource_id}, period: {period}, sub_resource_id: {sub_resource_id}")
     date = get_beijing_time().strftime("%Y-%m-%d")
     try:
-        qrcode, app_id, app_appointment_id = reserve_and_get_qrcode(resource_id, period, sub_resource_id, date)
+        qrcode, app_id, app_appointment_id = reserve_and_get_qrcode(resource_id, period, sub_resource_id, date, start_time)
         if qrcode is None:
             return {"success": False, "message": "预约失败，没有找到二维码。"}
         print(f"qrcode: {qrcode}")
