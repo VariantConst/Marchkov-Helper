@@ -1,8 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle } from "../../node_modules/lucide-react";
 
-const Toast = ({ message, isVisible, onClose }) => {
+type ToastProps = {
+  message: string;
+  isVisible: boolean;
+  onClose: () => void;
+};
+
+const Toast = ({ message, isVisible, onClose }: ToastProps) => {
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
