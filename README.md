@@ -1,78 +1,88 @@
-<p align="center">
-  <a href="https://nextjs-fastapi-starter.vercel.app/">
-    <img src="https://assets.vercel.com/image/upload/v1588805858/repositories/vercel/logo.png" height="96">
-    <h3 align="center">Next.js FastAPI Starter</h3>
-  </a>
-</p>
+# 三、二、一，马池口！
 
-<p align="center">Simple Next.js boilerplate that uses <a href="https://fastapi.tiangolo.com/">FastAPI</a> as the API backend.</p>
+倒数三个数，出示乘车码从未如此优雅。
 
-<br/>
+在 vercel 上一键部署你的私有班车预约服务。
 
-## Introduction
+## 动机
 
-This is a hybrid Next.js + Python app that uses Next.js as the frontend and FastAPI as the API backend. One great use case of this is to write Next.js apps that use Python AI libraries on the backend.
+乘坐往返燕园和马池口的班车需要通过官方网站或 APP 进行预约。然而，官方网站的预约流程繁琐，难以找到想要预约的班车。随着基于客户端浏览器的预约脚本（如 [pku-eutopia](https://github.com/xmcp/pku-eutopia)）的开发，预约的流程得到了简化，但仍然需要进行 IAAA 认证，且用户界面具有太多冗余信息。通过官网预约并获取一个乘车码，至少需要在 7 个页面之间进行跳转并点击 6 次屏幕，而 [pku-eutopia](https://github.com/xmcp/pku-eutopia) 也至少需要点击 5 次屏幕。由于每天两次的预约操作是对心智的无意义消耗，我希望将通过在服务器端进行预约操作，绕开 IAAA，并根据当前时刻智能选择班车预约，将点击屏幕的次数下降到 0，让出示乘车码成为一种优雅的享受。
 
-## How It Works
+## 方法
 
-The Python/FastAPI server is mapped into to Next.js app under `/api/`.
+根据当前时间自动选择一个合理的班车，服务端进行预约操作并将乘车码转发给客户端。用户需要在环境变量指定用户名、密码。判断逻辑：
 
-This is implemented using [`next.config.js` rewrites](https://github.com/digitros/nextjs-fastapi/blob/main/next.config.js) to map any request to `/api/:path*` to the FastAPI API, which is hosted in the `/api` folder.
+1. 过去 10 分钟内是否有过期的班车，如果有，返回临时码；
+2. 否则获取下面最近的一班班车的乘车码。
 
-On localhost, the rewrite will be made to the `127.0.0.1:8000` port, which is where the FastAPI server is running.
+## 部署
 
-In production, the FastAPI server is hosted as [Python serverless functions](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python) on Vercel.
+### Vercel 托管（推荐）
 
-## Demo
+1. Fork 本项目。
 
-https://nextjs-fastapi-starter.vercel.app/
+2. 登录 [Vercel](https://vercel.com/)，授权 Github 仓库读取权限，然后从 fork 的仓库创建新的 project。
 
-## Deploy Your Own
-
-You can clone & deploy it to Vercel with one click:
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdigitros%2Fnextjs-fastapi%2Ftree%2Fmain)
-
-## Developing Locally
-
-You can clone & create this repo with the following command
+3. 设置 Environment variables
 
 ```bash
-npx create-next-app nextjs-fastapi --example "https://github.com/digitros/nextjs-fastapi"
+PKU_USERNAME=<your-username>    # 必填，填学号
+PKU_PASSWORD=<your-password>    # 必填
+CRITICAL_TIME=14    # 可选，这里是14点之前都前往燕园的意思。
+PREV_INTERVAL=10    # 可选，向前追溯临时码的时间间隔（分钟）
+NEXT_INTERVAL=30    # 可选，向后检查可乘坐班车的时间间隔（分钟）
 ```
 
-## Getting Started
+Vercel 会自动部署网站。Vercel 免费版的网站是公开可见的，因此记得保存好你的域名，否则可能面临乘车码泄露的严重风险！如果你有在 Cloudflare 托管的域名，你可以很方便的前往 Settings -> Cutstom Domains 设置自定义域名，并使用 Cloudflare Access 管理网站的访问权限。
 
-First, install the dependencies:
+### 本地部署
+
+1. 克隆项目到本地
 
 ```bash
-npm install
-# or
-yarn
-# or
+git clone https://github.com/VariantConst/3-2-1-Marchkov.git && cd 3-2-1-Marchkov
+```
+
+2. 安装依赖
+
+首先安装 python（略）和 pnpm
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+nvm install 18
+nvm use 18
+npm install -g pnpm@latest
+```
+
+安装 node 依赖
+
+```bash
 pnpm install
 ```
 
-Then, run the development server:
+安装 python 依赖
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+pip install -r requirements.txt
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. 设置环境变量
 
-The FastApi server will be running on [http://127.0.0.1:8000](http://127.0.0.1:8000) – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
+```bash
+cp .env.example .env
+vim .env
+```
 
-## Learn More
+编辑 `.env` 文件中的账号密码信息。
 
-To learn more about Next.js, take a look at the following resources:
+4. 启动项目
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [FastAPI Documentation](https://fastapi.tiangolo.com/) - learn about FastAPI features and API.
+```bash
+pnpm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+之后访问 `http://localhost:3000` 即可。如果是内网服务器，你后续可能需要通过 Frp、[Cloudflare tunnels](https://www.cloudflare.com/zh-cn/products/tunnel/) 等工具将服务暴露到公网上。
+
+### TODO
+
+- [ ] 支持 docker 部署

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode.react";
-import { Loader2, Bus, Sun, Moon } from "../node_modules/lucide-react";
+import { Loader2, Bus, Sun, Moon, Github } from "../node_modules/lucide-react";
 
 interface Bus {
   id: number;
@@ -322,16 +322,30 @@ const AutoBusReservation: React.FC = () => {
                 {user}
               </span>
             </p>
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                darkMode
-                  ? "bg-gray-700 text-white focus:ring-gray-500"
-                  : "bg-gray-200 text-gray-800 focus:ring-gray-300"
-              }`}
-            >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+            <div className="flex items-center space-x-2">
+              <a
+                href="https://github.com/VariantConst/3-2-1-Marchkov"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  darkMode
+                    ? "bg-gray-700 text-white focus:ring-gray-500"
+                    : "bg-gray-200 text-gray-800 focus:ring-gray-300"
+                }`}
+              >
+                <Github size={20} />
+              </a>
+              <button
+                onClick={toggleDarkMode}
+                className={`p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  darkMode
+                    ? "bg-gray-700 text-white focus:ring-gray-500"
+                    : "bg-gray-200 text-gray-800 focus:ring-gray-300"
+                }`}
+              >
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+            </div>
           </div>
         )}
         {loginStatus === null ? (
