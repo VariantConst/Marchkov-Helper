@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import QRCode from "qrcode.react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2, Bus, Sun, Moon, Github } from "../node_modules/lucide-react";
 import Toast from "./components/Toast";
+import QRCodeGenerator from "./components/QRCodeGenerator";
 
 interface Bus {
   id: number;
@@ -406,13 +406,7 @@ const AutoBusReservation: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <QRCode
-                    value={decodeURIComponent(reservationData.qrcode)}
-                    size={256}
-                    level="H"
-                    includeMargin={true}
-                    className="rounded-lg shadow-lg dark:shadow-slate-300/30"
-                  />
+                  <QRCodeGenerator value={reservationData.qrcode} />
                 </div>
                 <button
                   onClick={handleReverseBus}
