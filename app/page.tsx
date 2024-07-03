@@ -406,7 +406,10 @@ const AutoBusReservation: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <QRCodeGenerator value={reservationData.qrcode} />
+                  <QRCodeGenerator
+                    value={reservationData.qrcode}
+                    version={reservationData.isTemporary ? 10 : 9}
+                  />
                 </div>
                 <button
                   onClick={handleReverseBus}

@@ -197,6 +197,7 @@ def api_get_temp_qrcode(resource_id: int, start_time: str):
     try:
         print(f"准备获取临时码: resource_id: {resource_id}, start_time: {start_time}")
         qrcode = get_temp_qrcode(resource_id, start_time)
+        print(f"已成功获取临时码: {qrcode}")
         return {"success": True, "qrcode": qrcode}
     except Exception as e:
         return {"success": False, "message": f"获取临时码发生错误: {str(e)}"}
