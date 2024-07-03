@@ -1,6 +1,12 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2, Bus, Sun, Moon, Github } from "../node_modules/lucide-react";
+import {
+  Loader2,
+  BusIcon,
+  Sun,
+  Moon,
+  Github,
+} from "../node_modules/lucide-react";
 import Toast from "./components/Toast";
 import QRCodeGenerator from "./components/QRCodeGenerator";
 
@@ -413,18 +419,14 @@ const AutoBusReservation: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex justify-center">
-                  <QRCodeGenerator
-                    value={reservationData.qrcode}
-                    version={reservationData.isTemporary ? 10 : 9}
-                    onError={handleQRCodeError}
-                  />
+                  <QRCodeGenerator value={reservationData.qrcode} />
                 </div>
                 <button
                   onClick={handleReverseBus}
                   className="w-full px-6 py-3 text-white text-lg font-semibold rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-500"
                   disabled={isLoading}
                 >
-                  <Bus size={24} />
+                  <BusIcon size={24} />
                   <span>乘坐反向班车</span>
                 </button>
               </div>
