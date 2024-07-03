@@ -407,7 +407,7 @@ const AutoBusReservation: React.FC = () => {
                 </div>
                 <div className="flex justify-center">
                   <QRCode
-                    value={reservationData.qrcode}
+                    value={decodeURIComponent(reservationData.qrcode)}
                     size={256}
                     level="H"
                     includeMargin={true}
