@@ -338,7 +338,8 @@ const AutoBusReservation: React.FC = () => {
             <p className="text-lg text-indigo-600 dark:text-indigo-300">
               欢迎，
               <span className="font-semibold text-indigo-800 dark:text-indigo-200">
-                {user}
+                马池口🐮🐴
+                {/* {user} */}
               </span>
             </p>
             <div className="flex items-center space-x-2">
