@@ -21,8 +21,7 @@ headers = {
 token = None
 
 def get_beijing_time():
-    return datetime.datetime.now(timezone('Asia/Shanghai'))
-    # return datetime.datetime.now(timezone('Asia/Shanghai')).replace(hour=17, minute=50)
+    return datetime.datetime.now(timezone('Asia/Shanghai'))#.replace(hour=18, minute=29) + datetime.timedelta(days=1)
 
 def login(username, password):
     global token
@@ -128,12 +127,13 @@ def reserve_and_get_qrcode(resource_id, period, sub_resource_id, date=None, star
         expected_app_tim = get_beijing_time().strftime("%Y-%m-%d") + " " + start_time
         if app["resource_id"] != resource_id or app["appointment_tim"].strip() != expected_app_tim:
             continue
+        print(f"找到了符合条件 expected_app_tim {expected_app_tim} 的预约: 具有 id {app['id']} 和 hall_appointment_data_id {app['hall_appointment_data_id']}")
         app_id = app["id"]
         app_appointment_id = app["hall_appointment_data_id"]
         r = s.get(
             f"https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&id=${app_id}&hall_appointment_data_id=${app_appointment_id}"
         )
-        print(r.text)
+        print(f"获取二维码结果: {r.text}")
         return json.loads(r.text)["d"]["code"], app_id, app_appointment_id
     else:
         print("预约失败，没有找到二维码。")

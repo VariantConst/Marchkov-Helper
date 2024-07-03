@@ -1,39 +1,44 @@
+import React, { useMemo } from "react";
 import QRCode from "qrcode";
-import React, { useState, useEffect } from "react";
 
 interface QRCodeGeneratorProps {
   value: string;
 }
 
-const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ value }) => {
-  const [svgString, setSvgString] = useState<string>("");
-  const size = 256;
+const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = React.memo(
+  ({ value }) => {
+    const size = 256;
 
-  useEffect(() => {
-    const generateQRCode = async () => {
-      try {
-        const string = await QRCode.toString(value, {
+    const svgString = useMemo(() => {
+      let svg = "";
+      QRCode.toString(
+        value,
+        {
           type: "svg",
           errorCorrectionLevel: "M",
           margin: 4,
+          version: 11,
           width: size,
-        });
-        setSvgString(string);
-      } catch (err) {
-        console.error("Error generating QR code:", err);
-      }
-    };
+        },
+        (err, string) => {
+          if (!err) svg = string;
+        }
+      );
+      return svg;
+    }, [value, size]);
 
-    generateQRCode();
-  }, [value, size]);
+    console.log(`渲染了具有 ${value} 字面值的二维码`);
 
-  return (
-    <div
-      className="rounded-lg shadow-lg dark:shadow-slate-300/30"
-      dangerouslySetInnerHTML={{ __html: svgString }}
-      style={{ width: size, height: size }}
-    />
-  );
-};
+    return (
+      <div
+        className="rounded-lg shadow-lg dark:shadow-slate-300/30"
+        dangerouslySetInnerHTML={{ __html: svgString }}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+);
+
+QRCodeGenerator.displayName = "QRCodeGenerator";
 
 export default QRCodeGenerator;

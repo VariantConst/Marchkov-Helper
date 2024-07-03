@@ -141,6 +141,7 @@ const AutoBusReservation: React.FC = () => {
   };
 
   const reserveBus = async (busData: BusData, reverse: boolean) => {
+    console.log("准备看看有没有合适的班车");
     let selectedBus = selectAppropriateBus(busData, reverse);
     if (!selectedBus) {
       // 如果当前方向没有班车，尝试反向
@@ -168,6 +169,7 @@ const AutoBusReservation: React.FC = () => {
           selectedBus.bus.id,
           selectedBus.bus
         );
+        console.log(`预约详细结果：${JSON.stringify(reservationResult)}`);
         if (reservationResult) {
           setReservationData(reservationResult);
         }
@@ -181,6 +183,7 @@ const AutoBusReservation: React.FC = () => {
   };
 
   const makeReservation = async (id: number, bus: Bus) => {
+    console.log(`准备预约班车 ${id} ${bus.start_time} ${bus.name}`);
     try {
       const resource_id = id;
       const period = bus.time_id.toString();
@@ -198,6 +201,9 @@ const AutoBusReservation: React.FC = () => {
       );
       const data = await response.json();
       if (data.success) {
+        console.log(
+          `成功预约班车 ${id} ${bus.start_time} ${bus.name} 的班车，二维码为 ${data.qrcode}`
+        );
         return {
           qrcode: data.qrcode,
           app_id: data.app_id,
@@ -221,6 +227,7 @@ const AutoBusReservation: React.FC = () => {
     startTime: string,
     bus: Bus
   ) => {
+    console.log("准备获取临时二维码");
     try {
       const response = await fetch(
         `/api/get_temp_qrcode?resource_id=${resourceId}&start_time=${startTime}`
@@ -255,7 +262,9 @@ const AutoBusReservation: React.FC = () => {
       );
       const data = await response.json();
       if (data.success) {
-        console.log("Reservation cancelled successfully");
+        console.log(
+          `取消预约成功: app_id=${app_id}, app_appointment_id=${app_appointment_id}`
+        );
         return true;
       } else {
         console.error("Failed to cancel reservation:", data.message);
@@ -268,6 +277,7 @@ const AutoBusReservation: React.FC = () => {
   };
 
   const handleReverseBus = async () => {
+    console.log("正在尝试反向班车");
     setIsLoading(true);
     const newIsReverse = !isReverse;
 
@@ -305,6 +315,7 @@ const AutoBusReservation: React.FC = () => {
               setToastVisible(true);
               return;
             }
+            console.log(`已取消预约: ${JSON.stringify(reservationData)}`);
           }
           setReservationData(newReservationData);
           setIsReverse(newIsReverse);
@@ -321,13 +332,6 @@ const AutoBusReservation: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQRCodeError = async () => {
-    // 这里实现向后台请求新的二维码数据的逻辑
-    const response = await fetch("/api/get_new_qrcode");
-    const newQRCodeData = await response.json();
-    return newQRCodeData.qrcode;
   };
 
   return (
