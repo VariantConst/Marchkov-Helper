@@ -317,6 +317,13 @@ const AutoBusReservation: React.FC = () => {
     }
   };
 
+  const handleQRCodeError = async () => {
+    // 这里实现向后台请求新的二维码数据的逻辑
+    const response = await fetch("/api/get_new_qrcode");
+    const newQRCodeData = await response.json();
+    return newQRCodeData.qrcode;
+  };
+
   return (
     <main className="min-h-screen flex flex-col items-center sm:justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-zinc-800 dark:to-slate-900">
       <div className="rounded-xl shadow-lg p-6 max-w-md w-full bg-white dark:bg-gray-800">
@@ -409,6 +416,7 @@ const AutoBusReservation: React.FC = () => {
                   <QRCodeGenerator
                     value={reservationData.qrcode}
                     version={reservationData.isTemporary ? 10 : 9}
+                    onError={handleQRCodeError}
                   />
                 </div>
                 <button
