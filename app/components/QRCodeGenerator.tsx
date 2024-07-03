@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 interface QRCodeGeneratorProps {
   value: string;
   size?: number;
+  version?: number;
   initialVersion?: number;
   onError?: () => Promise<string>;
 }
