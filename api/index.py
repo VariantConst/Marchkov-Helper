@@ -177,7 +177,7 @@ def reserve_bus(current_time: datetime, is_to_yanyuan: bool):
                 time_diff_with_sign = (aware_datetime - current_time).total_seconds() // 60
                 # print(f"找到班车 {route_name} {start_time}，时间差为 {time_diff_with_sign} 分钟。")
                 has_expired_bus = -int(getenv("PREV_INTERVAL", 10)) < time_diff_with_sign < 0
-                has_future_bus = 0 < time_diff_with_sign < int(getenv("NEXT_INTERVAL", 60))
+                has_future_bus = 0 <= time_diff_with_sign < int(getenv("NEXT_INTERVAL", 60))
                 if not has_expired_bus and not has_future_bus:
                     continue
 
