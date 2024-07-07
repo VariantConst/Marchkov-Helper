@@ -49,6 +49,7 @@ def login(username: str, password: str):
                 "redirUrl": "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/",
             },
         )
+        print(f"登录结果: {r.text}")
         token = json.loads(r.text)["token"]
         logger.info(f"用户 {username} 登录成功。")
 
@@ -85,9 +86,11 @@ def get_bus_info(current_time: datetime):
 
 def get_bus_direction(current_time: datetime):
     '''未指定预约方向时，根据环境变量和当前时间获取应该预约的班车方向。'''
-    CRITICAL_TIME = datetime.strptime(getenv("NEXT_PUBLIC_CRITICAL_TIME"), "%H:%M")
-    FLAG_MORNING_TO_YANYUAN = getenv("NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN") == "true"
+    CRITICAL_TIME = datetime.strptime(getenv("NEXT_PUBLIC_CRITICAL_TIME"), "%H").time()
+    FLAG_MORNING_TO_YANYUAN = getenv("NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN") == "1"
     is_to_yanyuan = FLAG_MORNING_TO_YANYUAN if current_time.time() < CRITICAL_TIME else not FLAG_MORNING_TO_YANYUAN
+    # 打印出判断依据
+    logger.info(f"因为当前时间 {current_time.time()} {'早于' if current_time.time() < CRITICAL_TIME else '晚于'} {CRITICAL_TIME}，所以预约{'去燕园' if is_to_yanyuan else '回昌平'}的班车。")
     return is_to_yanyuan
 
 
@@ -155,7 +158,7 @@ def reserve_bus(current_time: datetime, is_to_yanyuan: bool):
             route_name = bus["name"]
 
             # 筛选方向
-            if resource_id in [2, 4] == is_to_yanyuan:
+            if not (resource_id in [2, 4] and is_to_yanyuan or resource_id in [5, 6, 7] and not is_to_yanyuan):
                 continue
             
             for period in next(iter(bus["table"].values())):
@@ -215,36 +218,34 @@ def reserve_bus(current_time: datetime, is_to_yanyuan: bool):
 
 
 @app.get("/api/auth")
-async def auth(password: str):
-    '''
-    网页登录验证。首先验证前端输入的登录密码，然后调用login函数进行登录。
-
-    Args:
-        - password: 用户指定的登录密码，默认为"123456"。
-    
-    Returns:
-        - success: 是否登录成功。
-        - message: 登录失败时的错误信息。
-        - username: 登录成功时的用户名。
-    '''
+async def auth(token: str):
     try:
-        USER_PASSWORD = getenv("USER_PASSWORD")
-        PKU_USERNAME = getenv("PKU_USERNAME")
-        PKU_PASSWORD = getenv("PKU_PASSWORD")
+        AUTH_TOKEN = getenv("AUTH_TOKEN")
         # 验证网页登录密码
-        if USER_PASSWORD and password != USER_PASSWORD:
-            raise HTTPException(status_code=401, detail="网页登录密码错误。请检查环境变量 USER_PASSWORD。")
-        token = login(PKU_USERNAME, PKU_PASSWORD)
+        if AUTH_TOKEN == "" or token != AUTH_TOKEN:
+            return {"success": False, "message": "环境变量 AUTH_TOKEN 错误或未设置。"}
+        return {"success": True, "message": "TOKEN 验证成功"}
+    except Exception as e:
+        logger.error(f"认证失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/login")
+async def api_login():
+    try:
+        USERNAME = getenv("USERNAME")
+        PASSWORD = getenv("PASSWORD")
+        token = login(USERNAME, PASSWORD)
+        print(f"登录结果: {token}")
         if token:
-            return {"success": True, "message": "登录成功", "username": PKU_USERNAME}
+            return {"success": True, "message": "登录成功", "username": USERNAME}
         else:
-            raise HTTPException(status_code=401, detail="登录失败。请检查环境变量 PKU_USERNAME 和 PKU_PASSWORD。")
+            return {"success": False, "message": "登录失败。请检查环境变量 USERNAME 和 PASSWORD。"}
     except Exception as e:
         logger.error(f"登录失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/reserve")
-async def reserve(is_to_yanyuan: bool = True):
+async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True):
     '''
     完成预约。默认按照环境变量规定的方向进行预约。
 
@@ -268,16 +269,22 @@ async def reserve(is_to_yanyuan: bool = True):
             raise HTTPException(status_code=401, detail="未登录，请先进行认证。")
         
         current_time = get_beijing_time()
-        if not is_to_yanyuan:
+        if is_first_load:
             is_to_yanyuan = get_bus_direction(current_time)
+        print(f"将按照 is_first_load {is_first_load}, is_to_yanyuan {is_to_yanyuan} 进行预约。")
 
         # 尝试预约给定方向的班车
         reservation = reserve_bus(current_time, is_to_yanyuan)
         if not reservation["success"]:
-            is_to_yanyuan = not is_to_yanyuan
-            reservation = reserve_bus(current_time, is_to_yanyuan)
+            if is_first_load:
+                # 如果是第一次加载，尝试预约另一个方向的班车
+                is_to_yanyuan = not is_to_yanyuan
+                reservation = reserve_bus(current_time, is_to_yanyuan)
             if not reservation["success"]:
-                raise HTTPException(status_code=404, detail="当前没有可预约的班车。")
+                return {
+                    "success": False,
+                    "message": "这会没有班车可坐。急了？" if is_first_load else "反向无车可坐。"
+                }
         
         return {
             "success": True,
@@ -305,7 +312,7 @@ async def cancel_reservation(app_id: int, app_appointment_id: int):
                 "data_id[0]": app_appointment_id,
             },
         )
-        logger.info(f"取消预约结果: {r.text}")
+        logger.info(f"取消 appointment_id {app_id} 的预约结果: {r.text}")
         result = json.loads(r.text)
         if result.get("e") == 0:
             return {"success": True, "message": "预约取消成功"}
