@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const NumberAnimation = ({ number }) => (
+const NumberAnimation = ({ number }: { number: number }) => (
   <motion.div
     key={number}
     initial={{ opacity: 0, scale: 0.5 }}
@@ -29,13 +29,13 @@ const PulsingDots = () => (
 );
 
 const SplashScreen = () => {
-  const [currentNumber, setCurrentNumber] = useState(3);
+  const [currentNumber, setCurrentNumber] = useState<number | null>(3);
   const [showMarchkov, setShowMarchkov] = useState(false);
   const [showFavicon, setShowFavicon] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (currentNumber > 1) {
+      if (currentNumber !== null && currentNumber > 1) {
         setCurrentNumber(currentNumber - 1);
       } else {
         setCurrentNumber(null);
