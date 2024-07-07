@@ -227,7 +227,7 @@ const BusReservationPage: React.FC = () => {
             </p>
             <div className="flex items-center space-x-2">
               <a
-                href="https://github.com/your-repo"
+                href="https://github.com/VariantConst/3-2-1-Marchkov/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 dark:focus:ring-gray-500"
