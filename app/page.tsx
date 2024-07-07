@@ -186,10 +186,7 @@ const BusReservationPage: React.FC = () => {
     if (errorMessage) {
       const emoji = errorMessage.includes("环境变量") ? "😇" : "😅";
       return (
-        <div className="rounded-lg p-4 space-y-3 bg-red-50 dark:bg-red-900 text-center">
-          <h3 className="text-xl font-semibold text-red-800 dark:text-red-200">
-            发生错误
-          </h3>
+        <div className="rounded-lg p-4 space-y-3 text-center">
           <p className="text-8xl">{emoji}</p>
           <p className="text-red-600 dark:text-red-300">{errorMessage}</p>
         </div>

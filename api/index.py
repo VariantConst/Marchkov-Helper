@@ -19,7 +19,7 @@ app = FastAPI()
 # 更新CORS设置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # 允许前端开发服务器的域名
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,6 +40,7 @@ def get_beijing_time():
 def login(username: str, password: str):
     global token, bus_info, s
     try:
+        r = s.get("https://wproc.pku.edu.cn/api/login/main")
         r = s.post(
             "https://iaaa.pku.edu.cn/iaaa/oauthlogin.do",
             data={
@@ -267,7 +268,6 @@ async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True):
         global token
         if not token:
             raise HTTPException(status_code=401, detail="未登录，请先进行认证。")
-        
         current_time = get_beijing_time()
         if is_first_load:
             is_to_yanyuan = get_bus_direction(current_time)
