@@ -13,7 +13,7 @@ const QRCodeTypeBadge: React.FC<{ qrcodeType: string }> = ({ qrcodeType }) => {
   const baseClasses = "px-3 py-1 rounded-full text-sm font-medium";
   const colorClasses = isRideCode
     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-800 dark:text-emerald-200"
-    : "bg-yellow-100 text-yellow-800 dark:bg-orange-400/50 dark:text-yellow-200";
+    : "bg-yellow-100 text-yellow-800 dark:bg-orange-300/50 dark:text-yellow-200";
 
   return <span className={`${baseClasses} ${colorClasses}`}>{qrcodeType}</span>;
 };
@@ -50,7 +50,12 @@ const ResultCard: React.FC<ResultCardProps> = ({
         </div>
       </div>
       <div className="flex justify-center">
-        <QRCode value={reservationResult.qrcode} size={256} renderAs="svg" />
+        <QRCode
+          value={reservationResult.qrcode}
+          size={256}
+          renderAs="svg"
+          className="p-2 rounded-lg shadow-md bg-white dark:shadow-white/30"
+        />
       </div>
       <button
         onClick={handleReverseBus}

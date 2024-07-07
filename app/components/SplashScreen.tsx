@@ -19,9 +19,9 @@ const PulsingDots = () => (
     {[0, 1, 2].map((i) => (
       <span
         key={i}
-        className="w-2 h-2 bg-indigo-600 dark:bg-indigo-300 rounded-full"
+        className="w-2 h-2 bg-indigo-500 dark:bg-indigo-300 rounded-full"
         style={{
-          animation: `pulse 1.5s infinite ease-in-out ${i * 0.3}s`,
+          animation: `pulse 1.5s infinite ease-in-out ${i * 0.5}s`,
         }}
       />
     ))}
@@ -75,7 +75,7 @@ const SplashScreen = () => {
             transition={{ duration: 0.5 }}
             className="absolute top-[60%] left-0 right-0 flex justify-center items-center"
           >
-            <div className="text-4xl font-bold text-indigo-600 dark:text-indigo-300 flex items-center space-x-2 whitespace-nowrap">
+            <div className="text-4xl font-bold text-indigo-500 dark:text-indigo-300 flex items-center space-x-2 whitespace-nowrap">
               <span>Marchkov</span>
               <PulsingDots />
             </div>
