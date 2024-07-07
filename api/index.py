@@ -86,8 +86,8 @@ def get_bus_info(current_time: datetime):
 
 def get_bus_direction(current_time: datetime):
     '''未指定预约方向时，根据环境变量和当前时间获取应该预约的班车方向。'''
-    CRITICAL_TIME = datetime.strptime(getenv("NEXT_PUBLIC_CRITICAL_TIME"), "%H").time()
-    FLAG_MORNING_TO_YANYUAN = getenv("NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN") == "1"
+    CRITICAL_TIME = datetime.strptime(getenv("NEXT_PUBLIC_CRITICAL_TIME", "14"), "%H").time()
+    FLAG_MORNING_TO_YANYUAN = getenv("NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN", "1") == "1"
     is_to_yanyuan = FLAG_MORNING_TO_YANYUAN if current_time.time() < CRITICAL_TIME else not FLAG_MORNING_TO_YANYUAN
     # 打印出判断依据
     logger.info(f"因为当前时间 {current_time.time()} {'早于' if current_time.time() < CRITICAL_TIME else '晚于'} {CRITICAL_TIME}，所以预约{'去燕园' if is_to_yanyuan else '回昌平'}的班车。")
@@ -175,8 +175,8 @@ def reserve_bus(current_time: datetime, is_to_yanyuan: bool):
                 aware_datetime = current_time.tzinfo.localize(naive_datetime) # 班车发车时间
                 time_diff_with_sign = (aware_datetime - current_time).total_seconds() // 60
                 # print(f"找到班车 {route_name} {start_time}，时间差为 {time_diff_with_sign} 分钟。")
-                has_expired_bus = -int(getenv("PREV_INTERVAL")) < time_diff_with_sign < 0
-                has_future_bus = 0 < time_diff_with_sign < int(getenv("NEXT_INTERVAL"))
+                has_expired_bus = -int(getenv("PREV_INTERVAL", 10)) < time_diff_with_sign < 0
+                has_future_bus = 0 < time_diff_with_sign < int(getenv("NEXT_INTERVAL", 60))
                 if not has_expired_bus and not has_future_bus:
                     continue
 

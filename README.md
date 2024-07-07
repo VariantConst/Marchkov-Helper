@@ -31,16 +31,18 @@
 
 ```bash
 # 必填，填学号
-PKU_USERNAME=<Your Student ID>
+USERNAME=<your_username>
 # 必填
-PKU_PASSWORD=<Your Password>
+PASSWORD=<your_password>
+# 必填，自定义访问网站时需要的密码
+AUTH_TOKEN=<your_auth_token>
 # 可选，向前追溯临时码的时间间隔（分钟）
 PREV_INTERVAL=10
 # 可选，向后检查可乘坐班车的时间间隔（分钟）
 NEXT_INTERVAL=60
 # 可选，这里是14点之前都前往燕园的意思。
 NEXT_PUBLIC_CRITICAL_TIME=14
-# 可选，这里是1表示早上前往燕园、下午返回昌平，0表示下午前往燕园、晚上返回昌平。
+# 可选，这里是1表示早上前往燕园、下午返回昌平，0表示早上返回昌平、下午前往燕园
 NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN=1
 ```
 
