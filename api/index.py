@@ -87,8 +87,8 @@ def get_bus_info(current_time: datetime):
 
 def get_bus_direction(current_time: datetime):
     '''未指定预约方向时，根据环境变量和当前时间获取应该预约的班车方向。'''
-    CRITICAL_TIME = datetime.strptime(getenv("NEXT_PUBLIC_CRITICAL_TIME", "14"), "%H").time()
-    FLAG_MORNING_TO_YANYUAN = getenv("NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN", "1") == "1"
+    CRITICAL_TIME = datetime.strptime(getenv("CRITICAL_TIME", "14"), "%H").time()
+    FLAG_MORNING_TO_YANYUAN = getenv("FLAG_MORNING_TO_YANYUAN", "1") == "1"
     is_to_yanyuan = FLAG_MORNING_TO_YANYUAN if current_time.time() < CRITICAL_TIME else not FLAG_MORNING_TO_YANYUAN
     # 打印出判断依据
     logger.info(f"因为当前时间 {current_time.time()} {'早于' if current_time.time() < CRITICAL_TIME else '晚于'} {CRITICAL_TIME}，所以预约{'去燕园' if is_to_yanyuan else '回昌平'}的班车。")

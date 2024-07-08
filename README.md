@@ -29,28 +29,31 @@
 
 3. 设置 Environment variables
 
-```bash
-# 必填，填学号
-USERNAME=<your_username>
-# 必填
-PASSWORD=<your_password>
-# 必填，自定义访问网站时需要的密码
-AUTH_TOKEN=<your_auth_token>
-# 可选，向前追溯临时码的时间间隔（分钟）
-PREV_INTERVAL=10
-# 可选，向后检查可乘坐班车的时间间隔（分钟）
-NEXT_INTERVAL=60
-# 可选，这里是14点之前都前往燕园的意思。
-NEXT_PUBLIC_CRITICAL_TIME=14
-# 可选，这里是1表示早上前往燕园、下午返回昌平，0表示早上返回昌平、下午前往燕园
-NEXT_PUBLIC_FLAG_MORNING_TO_YANYUAN=1
-```
+**必填**
 
-Vercel 会自动部署网站。Vercel 免费版的网站是公开可见的，因此记得保存好你的域名，否则可能面临乘车码泄露的严重风险！如果你有在 Cloudflare 托管的域名，你可以很方便的前往 Settings -> Cutstom Domains 设置自定义域名，并使用 Cloudflare Access 管理网站的访问权限。
+| 变量名     | 描述                       | 示例值              |
+| ---------- | -------------------------- | ------------------- |
+| USERNAME   | 学号                       | `<your_username>`   |
+| PASSWORD   | 密码                       | `<your_password>`   |
+| AUTH_TOKEN | 自定义访问网站时需要的密码 | `<your_auth_token>` |
+
+Vercel 会自动部署网站。Vercel 免费版的网站是公开可见的，因此需要设置 `AUTH_TOKEN` 保护网页。
+
+<details>
+<summary><strong>高级选项</strong></summary>
+
+| 变量名                  | 描述                                                               | 示例值 |
+| ----------------------- | ------------------------------------------------------------------ | ------ |
+| PREV_INTERVAL           | 向前追溯临时码的时间间隔（分钟）                                   | 10     |
+| NEXT_INTERVAL           | 向后检查可乘坐班车的时间间隔（分钟）                               | 60     |
+| CRITICAL_TIME           | 14 点之前都前往燕园的时间点                                        | 14     |
+| FLAG_MORNING_TO_YANYUAN | 1 表示早上前往燕园、下午返回昌平，0 表示早上返回昌平、下午前往燕园 | 1      |
+
+</details>
 
 ### 本地部署
 
-本地部署安全性更高，如果部署在校内耗时小于 1 秒。
+本地部署安全性更高，如果部署在校内，预约耗时将小于 1 秒。
 
 1. 克隆项目到本地
 

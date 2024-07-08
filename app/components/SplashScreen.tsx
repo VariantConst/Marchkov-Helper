@@ -73,7 +73,7 @@ const SplashScreen = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
-            className="absolute top-[60%] left-0 right-0 flex justify-center items-center"
+            className="absolute top-[60%] mt-4 left-0 right-0 flex justify-center items-center"
           >
             <div className="text-4xl font-bold text-indigo-500 dark:text-indigo-300 flex items-center space-x-2 whitespace-nowrap">
               <span>Marchkov</span>
