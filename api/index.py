@@ -72,7 +72,7 @@ async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True, session:
             is_to_yanyuan = get_bus_direction(current_time)
         print(f"将按照 is_first_load {is_first_load}, is_to_yanyuan {is_to_yanyuan} 进行预约。")
 
-        bus_info = get_stored_bus_info()  # 使用新的函数名
+        bus_info = get_stored_bus_info()
         if bus_info is None:
             token = get_token()
             bus_info = get_bus_info(get_beijing_time(), token, session)
