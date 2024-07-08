@@ -68,7 +68,6 @@ async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True, session:
     
     try:
         current_time = get_beijing_time()
-        import time; time.sleep(2)
         if is_first_load:
             is_to_yanyuan = get_bus_direction(current_time)
         print(f"将按照 is_first_load {is_first_load}, is_to_yanyuan {is_to_yanyuan} 进行预约。")
