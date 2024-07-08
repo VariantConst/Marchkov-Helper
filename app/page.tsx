@@ -10,7 +10,12 @@ const BusReservationPage: React.FC = () => {
   const [reservationResult, setReservationResult] =
     useState<ReservationResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [isReverseLoading, setIsReverseLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
@@ -27,6 +32,17 @@ const BusReservationPage: React.FC = () => {
   };
 
   useEffect(() => {
+    const darkModeMediaQuery = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    );
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+      document.documentElement.classList.toggle("dark", e.matches);
+    };
+
+    darkModeMediaQuery.addEventListener("change", handleChange);
+    document.documentElement.classList.toggle("dark", isDarkMode);
+
     const initializeApp = async () => {
       const token = localStorage.getItem("authToken");
       if (token) {
@@ -42,6 +58,8 @@ const BusReservationPage: React.FC = () => {
     };
 
     initializeApp();
+
+    return () => darkModeMediaQuery.removeEventListener("change", handleChange);
   }, []);
 
   const handleAuth = async (token: string) => {
