@@ -19,7 +19,6 @@ def init_session():
 def get_session():
     return init_session()
 
-# 这个函数将被用作依赖
 def get_db_session():
     return get_session()
 
