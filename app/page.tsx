@@ -1,11 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Loader2, BusIcon, Sun, Moon, Github } from "lucide-react";
 import Toast from "./components/Toast";
-import SplashScreen from "./components/SplashScreen";
-import PageLogin from "./components/PageLogin";
-import ResultCard from "./components/ResultCard";
 import { AuthError, ReservationResult } from "./types";
+import BusReservationContent from "./components/BusReservationContent";
 
 const BusReservationPage: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -178,70 +175,25 @@ const BusReservationPage: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
-    if (isLoading || showSplash) {
-      return <SplashScreen />;
-    }
-
-    if (errorMessage) {
-      const emoji = errorMessage.includes("环境变量") ? "😇" : "😅";
-      return (
-        <div className="rounded-lg p-4 space-y-3 text-center">
-          <p className="text-8xl">{emoji}</p>
-          <p className="text-red-600 dark:text-red-300">{errorMessage}</p>
-        </div>
-      );
-    }
-
-    if (!isAuthenticated) {
-      return <PageLogin handleLogin={handleLogin} />;
-    }
-
-    if (reservationResult) {
-      return (
-        <ResultCard
-          reservationResult={reservationResult}
-          handleReverseBus={handleReverseBus}
-          isReverseLoading={isReverseLoading}
-        />
-      );
-    }
-
-    return null;
-  };
-
   return (
     <main
       className={`min-h-screen flex flex-col items-center sm:justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-zinc-800 dark:to-slate-900 ${
         isDarkMode ? "dark" : ""
       }`}
     >
-      <div className="rounded-xl shadow-lg p-6 max-w-md w-full bg-white dark:bg-gray-800">
-        {isAuthenticated && (
-          <div className="mb-4 pb-3 border-b border-indigo-100 dark:border-gray-700 flex justify-between items-center">
-            <p className="text-lg text-indigo-600 dark:text-indigo-300">
-              欢迎，<span className="font-semibold">{username}</span>
-            </p>
-            <div className="flex items-center space-x-2">
-              <a
-                href="https://github.com/VariantConst/3-2-1-Marchkov/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 dark:focus:ring-gray-500"
-              >
-                <Github size={20} />
-              </a>
-              <button
-                onClick={toggleDarkMode}
-                className="p-2 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 dark:focus:ring-gray-500"
-              >
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-            </div>
-          </div>
-        )}
-        {renderContent()}
-      </div>
+      <BusReservationContent
+        isLoading={isLoading}
+        showSplash={showSplash}
+        errorMessage={errorMessage}
+        isAuthenticated={isAuthenticated}
+        username={username}
+        reservationResult={reservationResult}
+        isDarkMode={isDarkMode}
+        isReverseLoading={isReverseLoading}
+        handleLogin={handleLogin}
+        handleReverseBus={handleReverseBus}
+        toggleDarkMode={toggleDarkMode}
+      />
       <Toast
         message={toastMessage}
         isVisible={toastVisible}
