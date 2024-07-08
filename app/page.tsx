@@ -220,8 +220,7 @@ const BusReservationPage: React.FC = () => {
         {isAuthenticated && (
           <div className="mb-4 pb-3 border-b border-indigo-100 dark:border-gray-700 flex justify-between items-center">
             <p className="text-lg text-indigo-600 dark:text-indigo-300">
-              {/* 欢迎，<span className="font-semibold">{username}</span> */}
-              欢迎，新燕园 🐮🐴
+              欢迎，<span className="font-semibold">{username}</span>
             </p>
             <div className="flex items-center space-x-2">
               <a
