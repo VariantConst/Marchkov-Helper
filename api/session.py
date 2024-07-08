@@ -1,39 +1,38 @@
 import requests
-from datetime import datetime, timedelta
-import logging
+from fastapi import Depends
 
-logger = logging.getLogger(__name__)
+headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
+}
 
-class ExpiringSession:
-    def __init__(self, expiration_time=timedelta(minutes=1)):
-        self.session = requests.Session()
-        self.expiration_time = expiration_time
-        self.last_used = datetime.now()
-        self.headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
-        }
-        self.session.headers.update(self.headers)
-        self.token = None
-        self.bus_info = None
+session = None
+token = None
+bus_info = None
 
-    def get_session(self):
-        current_time = datetime.now()
-        if current_time - self.last_used > self.expiration_time:
-            logger.info("Session expired. Creating a new session.")
-            self.session = requests.Session()
-            self.session.headers.update(self.headers)
-            self.token = None
-            self.bus_info = None
-        self.last_used = current_time
-        return self.session
+def init_session():
+    global session
+    if session is None:
+        session = requests.Session()
+        session.headers.update(headers)
+    return session
 
-    def update_token(self, token):
-        self.token = token
+def get_session():
+    return init_session()
 
-    def update_bus_info(self, bus_info):
-        self.bus_info = bus_info
-
-global_session = ExpiringSession()
-
+# 这个函数将被用作依赖
 def get_db_session():
-    return global_session.get_session()
+    return get_session()
+
+def update_token(new_token):
+    global token
+    token = new_token
+
+def update_bus_info(new_bus_info):
+    global bus_info
+    bus_info = new_bus_info
+
+def get_token():
+    return token
+
+def get_stored_bus_info():
+    return bus_info

@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .utils import login, get_beijing_time, get_bus_direction, reserve_bus, cancel_reservation, get_bus_info
-from .session import global_session, get_db_session
+from .session import get_db_session, update_token, update_bus_info, get_token, get_stored_bus_info
 import requests
 
 logging.basicConfig(level=logging.INFO)
@@ -20,12 +20,13 @@ app.add_middleware(
 )
 
 async def ensure_login(session: requests.Session = Depends(get_db_session)):
-    if not global_session.token:
+    token = get_token()
+    if not token:
         token = login(settings.USERNAME, settings.PASSWORD, session)
         if token:
-            global_session.update_token(token)
+            update_token(token)
             bus_info = get_bus_info(get_beijing_time(), token, session)
-            global_session.update_bus_info(bus_info)
+            update_bus_info(bus_info)
             logger.info("Logged in and fetched bus info successfully.")
         else:
             logger.error("Failed to log in.")
@@ -40,17 +41,18 @@ async def auth(token: str):
         return {"success": True, "message": "TOKEN 验证成功"}
     except Exception as e:
         logger.error(f"认证失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"success": False, "message": f"认证过程中发生错误: {str(e)}"}
 
 @app.get("/api/login")
 async def api_login(session: requests.Session = Depends(get_db_session)):
     try:
-        if not global_session.token:
+        token = get_token()
+        if not token:
             token = login(settings.USERNAME, settings.PASSWORD, session)
             if token:
-                global_session.update_token(token)
+                update_token(token)
                 bus_info = get_bus_info(get_beijing_time(), token, session)
-                global_session.update_bus_info(bus_info)
+                update_bus_info(bus_info)
                 return {"success": True, "message": "登录成功", "username": settings.USERNAME}
             else:
                 return {"success": False, "message": "登录失败。请检查环境变量 USERNAME 和 PASSWORD。"}
@@ -64,18 +66,23 @@ async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True, session:
     if session is None:
         return {"success": False, "message": "未登录，请先进行登录。"}
     
-    import time; time.sleep(0.1)
     try:
         current_time = get_beijing_time()
         if is_first_load:
             is_to_yanyuan = get_bus_direction(current_time)
         print(f"将按照 is_first_load {is_first_load}, is_to_yanyuan {is_to_yanyuan} 进行预约。")
 
-        reservation = reserve_bus(current_time, is_to_yanyuan, global_session.bus_info, session)
+        bus_info = get_stored_bus_info()  # 使用新的函数名
+        if bus_info is None:
+            token = get_token()
+            bus_info = get_bus_info(get_beijing_time(), token, session)
+            update_bus_info(bus_info)
+
+        reservation = reserve_bus(current_time, is_to_yanyuan, bus_info, session)
         if not reservation["success"]:
             if is_first_load:
                 is_to_yanyuan = not is_to_yanyuan
-                reservation = reserve_bus(current_time, is_to_yanyuan, global_session.bus_info, session)
+                reservation = reserve_bus(current_time, is_to_yanyuan, bus_info, session)
             if not reservation["success"]:
                 return {
                     "success": False,
