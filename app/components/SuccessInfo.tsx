@@ -36,7 +36,11 @@ const ResultCard: React.FC<ResultCardProps> = ({
           <span className="text-lg text-indigo-600 dark:text-indigo-300">
             班车路线
           </span>
-          <span className="text-lg font-medium text-indigo-900 dark:text-indigo-100">
+          <span
+            className={`font-medium ${
+              reservationResult.route_name.length < 10 ? "text-lg" : "text-sm"
+            } text-indigo-900 dark:text-indigo-100`}
+          >
             {reservationResult.route_name}
           </span>
         </div>

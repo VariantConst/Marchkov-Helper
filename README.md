@@ -105,6 +105,10 @@ pnpm run dev
 
 之后访问 `http://localhost:3000` 即可。如果是内网服务器，你后续可能需要通过 Frp、[Cloudflare tunnels](https://www.cloudflare.com/zh-cn/products/tunnel/) 等工具将服务暴露到公网上。
 
-### TODO
+## TODO
 
 - [ ] 支持 docker 部署
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=VariantConst/3-2-1-Marchkov&type=Date)](https://star-history.com/#VariantConst/3-2-1-Marchkov&Date)
