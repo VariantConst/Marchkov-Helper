@@ -78,4 +78,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
     implementation("com.google.code.gson:gson:2.8.9")
     implementation("com.google.zxing:core:3.4.1")
+    implementation("androidx.security:security-crypto:1.1.0-alpha03")
 }
