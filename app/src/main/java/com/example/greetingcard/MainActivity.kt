@@ -12,10 +12,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.*
 import okhttp3.*
 import com.google.gson.Gson
@@ -24,6 +26,9 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import java.text.SimpleDateFormat
 import java.util.*
+import java.net.URLDecoder
+
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 class SimpleCookieJar : CookieJar {
     private val cookieStore = HashMap<String, List<Cookie>>()
@@ -55,6 +60,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var responseTexts by remember { mutableStateOf(listOf<String>()) }
                     var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+                    var reservationDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
+                    var qrCodeString by remember { mutableStateOf<String?>(null) }
 
                     Column(
                         modifier = Modifier
@@ -66,10 +73,14 @@ class MainActivity : ComponentActivity() {
                             name = "Android",
                             responseTexts = responseTexts,
                             qrCodeBitmap = qrCodeBitmap,
+                            reservationDetails = reservationDetails,
+                            qrCodeString = qrCodeString,
                             onLogin = { username, password ->
-                                performLogin(username, password) { response, bitmap ->
+                                performLogin(username, password) { response, bitmap, details, qrCode ->
                                     responseTexts = responseTexts + response
                                     qrCodeBitmap = bitmap
+                                    reservationDetails = details
+                                    qrCodeString = qrCode
                                 }
                             }
                         )
@@ -79,7 +90,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun performLogin(username: String, password: String, callback: (String, Bitmap?) -> Unit) {
+    private fun performLogin(
+        username: String,
+        password: String,
+        callback: (String, Bitmap?, Map<String, Any>?, String?) -> Unit
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Step 1: GET request
@@ -88,7 +103,7 @@ class MainActivity : ComponentActivity() {
                     .build()
                 var response = client.newCall(request).execute()
                 withContext(Dispatchers.Main) {
-                    callback("Step 1: GET https://wproc.pku.edu.cn/api/login/main\n${response.code}", null)
+                    callback("Step 1: GET https://wproc.pku.edu.cn/api/login/main\n${response.code}", null, null, null)
                 }
 
                 // Step 2: POST login
@@ -111,7 +126,7 @@ class MainActivity : ComponentActivity() {
                 val jsonMap: Map<String, Any> = gson.fromJson(responseBody, mapType)
                 val token = jsonMap["token"] as? String ?: "Token not found"
                 withContext(Dispatchers.Main) {
-                    callback("Step 2: POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do\nToken: $token", null)
+                    callback("Step 2: POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do\nToken: $token", null, null, null)
                 }
 
                 // Step 3: GET request with token
@@ -122,7 +137,7 @@ class MainActivity : ComponentActivity() {
 
                 response = client.newCall(request).execute()
                 withContext(Dispatchers.Main) {
-                    callback("Step 3: GET $urlWithToken\n${response.code}", null)
+                    callback("Step 3: GET $urlWithToken\n${response.code}", null, null, null)
                 }
 
                 // Step 4: GET reservation list
@@ -137,7 +152,7 @@ class MainActivity : ComponentActivity() {
                 val resourcesMap: Map<String, Any> = gson.fromJson(resourcesJson, mapType)
                 val resourceList = (resourcesMap["d"] as? Map<String, Any>)?.get("list") as? List<*>
                 withContext(Dispatchers.Main) {
-                    callback("Step 4: GET $reservationListUrl\nResources: ${resourceList?.size ?: "N/A"}", null)
+                    callback("Step 4: GET $reservationListUrl\nResources: ${resourceList?.size ?: "N/A"}", null, null, null)
                 }
 
                 // Step 5: Launch reservation
@@ -153,7 +168,7 @@ class MainActivity : ComponentActivity() {
                 response = client.newCall(request).execute()
                 val launchResponse = response.body?.string() ?: "No response body"
                 withContext(Dispatchers.Main) {
-                    callback("Step 5: POST https://wproc.pku.edu.cn/site/reservation/launch\n$launchResponse", null)
+                    callback("Step 5: POST https://wproc.pku.edu.cn/site/reservation/launch\n$launchResponse", null, null, null)
                 }
 
                 // Step 6: GET my reservations
@@ -166,14 +181,16 @@ class MainActivity : ComponentActivity() {
                 val appsJson = response.body?.string() ?: "No response body"
                 val appsMap: Map<String, Any> = gson.fromJson(appsJson, mapType)
                 val formattedJson = formatMap(appsMap)
+                val reservationData = (appsMap["d"] as? Map<String, Any>)?.get("data") as? List<Map<String, Any>>
+                val reservationDetails = reservationData?.firstOrNull()
                 withContext(Dispatchers.Main) {
-                    callback("Step 6: GET $myReservationsUrl\nReservations: $formattedJson", null)
+                    callback("Step 6: GET $myReservationsUrl\nReservations: $formattedJson", null, reservationDetails, null)
                 }
 
                 // Step 7: Get QR code and cancel reservations
                 val appData = (appsMap["d"] as? Map<String, Any>)?.get("data") as? List<Map<String, Any>>
                 withContext(Dispatchers.Main) {
-                    callback("Step 7: Processing ${appData?.size ?: 0} reservations", null)
+                    callback("Step 7: Processing ${appData?.size ?: 0} reservations", null, null, null)
                 }
                 if (appData?.isNotEmpty() == true) {
                     appData.forEachIndexed { index, app ->
@@ -181,9 +198,9 @@ class MainActivity : ComponentActivity() {
                         val appAppointmentId = app["hall_appointment_data_id"]?.toString()?.substringBefore(".") ?: throw IllegalArgumentException("Invalid appAppointmentId")
 
                         withContext(Dispatchers.Main) {
-                            callback("Processing reservation ${index + 1}:", null)
-                            callback("  App ID: $appId", null)
-                            callback("  Appointment ID: $appAppointmentId", null)
+                            callback("Processing reservation ${index + 1}:", null, null, null)
+                            callback("  App ID: $appId", null, null, null)
+                            callback("  Appointment ID: $appAppointmentId", null, null, null)
                         }
 
                         if (appId != null && appAppointmentId != null) {
@@ -196,50 +213,63 @@ class MainActivity : ComponentActivity() {
                             response = client.newCall(request).execute()
                             val qrCodeResponse = response.body?.string() ?: "No response body"
                             withContext(Dispatchers.Main) {
-                                callback("  QR Code response: $qrCodeResponse", null)
+                                callback("  QR Code response: $qrCodeResponse", null, null, null)
 
                                 // Parse the QR code response and generate the QR code bitmap
                                 val qrCodeJson = Gson().fromJson(qrCodeResponse, Map::class.java)
                                 val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
                                 if (qrCodeData != null) {
-                                    val decodedQrCode = String(Base64.decode(qrCodeData, Base64.DEFAULT))
-                                    val qrCodeBitmap = generateQRCode(decodedQrCode, 300, 300)
-                                    callback("QR Code generated", qrCodeBitmap)
+                                    withContext(Dispatchers.Main) {
+                                        callback("QR Code string to decode: $qrCodeData", null, null, qrCodeData)
+                                    }
+                                    try {
+                                        val decodedQrCode = String(Base64.decode(URLDecoder.decode(qrCodeData, "UTF-8"), Base64.DEFAULT))
+                                        val qrCodeBitmap = generateQRCode(decodedQrCode, 300, 300)
+                                        callback("QR Code generated", qrCodeBitmap, reservationDetails, qrCodeData)
+                                    } catch (e: IllegalArgumentException) {
+                                        withContext(Dispatchers.Main) {
+                                            callback("Failed to decode QR code: ${e.message}", null, null, qrCodeData)
+                                        }
+                                    }
+                                } else {
+                                    withContext(Dispatchers.Main) {
+                                        callback("QR code data not found", null, null, null)
+                                    }
                                 }
                             }
 
                             // Cancel reservation
-//                            val cancelBody = FormBody.Builder()
-//                                .add("appointment_id", appId)
-//                                .add("data_id[0]", appAppointmentId)
-//                                .build()
-//
-//                            request = Request.Builder()
-//                                .url("https://wproc.pku.edu.cn/site/reservation/single-time-cancel")
-//                                .post(cancelBody)
-//                                .build()
-//
-//                            response = client.newCall(request).execute()
-//                            val cancelResponse = response.body?.string() ?: "No response body"
-//                            withContext(Dispatchers.Main) {
-//                                callback("  Cancel response: $cancelResponse", null)
-//                            }
+                            // val cancelBody = FormBody.Builder()
+                            //     .add("appointment_id", appId)
+                            //     .add("data_id[0]", appAppointmentId)
+                            //     .build()
+                            //
+                            // request = Request.Builder()
+                            //     .url("https://wproc.pku.edu.cn/site/reservation/single-time-cancel")
+                            //     .post(cancelBody)
+                            //     .build()
+                            //
+                            // response = client.newCall(request).execute()
+                            // val cancelResponse = response.body?.string() ?: "No response body"
+                            // withContext(Dispatchers.Main) {
+                            //     callback("  Cancel response: $cancelResponse", null, null, null)
+                            // }
                         } else {
                             withContext(Dispatchers.Main) {
-                                callback("  Failed to process this reservation: missing ID or appointment ID", null)
+                                callback("  Failed to process this reservation: missing ID or appointment ID", null, null, null)
                             }
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        callback("No reservations to process", null)
+                        callback("No reservations to process", null, null, null)
                     }
                 }
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    callback("Failed to execute request: ${e.message}", null)
-                    callback("Stack trace: ${e.stackTraceToString()}", null)
+                    callback("Failed to execute request: ${e.message}", null, null, null)
+                    callback("Stack trace: ${e.stackTraceToString()}", null, null, null)
                 }
             }
         }
@@ -276,43 +306,157 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, responseTexts: List<String>, qrCodeBitmap: Bitmap?, onLogin: (String, String) -> Unit) {
+fun Greeting(
+    name: String,
+    responseTexts: List<String>,
+    qrCodeBitmap: Bitmap?,
+    reservationDetails: Map<String, Any>?,
+    qrCodeString: String?,
+    onLogin: (String, String) -> Unit
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    Column {
-        Text(text = "Hello $name!")
-        Spacer(modifier = Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Hello $name!",
+            fontSize = 28.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.align(Alignment.Start)
+        )
+
         TextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Username") }
+            label = { Text("Username") },
+            modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(8.dp))
+
         TextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = { onLogin(username, password) }) {
+
+        Button(
+            onClick = { onLogin(username, password) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Login")
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        for (responseText in responseTexts) {
-            Text(text = responseText)
-            Spacer(modifier = Modifier.height(8.dp))
+
+        reservationDetails?.let { details ->
+            val creatorName = details["creator_name"] as? String ?: "N/A"
+            val resourceName = details["resource_name"] as? String ?: "N/A"
+            val periodText = (details["period_text"] as? Map<*, *>)?.values?.firstOrNull() as? Map<*, *>
+            val period = (periodText?.get("text") as? List<*>)?.firstOrNull() as? String ?: "N/A"
+            val resourceAddress = (details["resource_address"] as? Map<*, *>)?.get("text") as? String ?: "N/A"
+            val creatorDepart = details["creator_depart"] as? String ?: "N/A"
+
+            qrCodeBitmap?.let { bitmap ->
+                Card(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "欢迎，$creatorName",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Divider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f))
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                ReservationDetailRow(label = "路线", value = resourceName)
+                                ReservationDetailRow(label = "时间", value = period)
+                                ReservationDetailRow(label = "Creator Department:", value = creatorDepart)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "QR Code",
+                            modifier = Modifier.size(200.dp)
+                        )
+                    }
+                }
+            }
         }
-        qrCodeBitmap?.let { bitmap ->
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "QR Code",
-                modifier = Modifier.size(300.dp)
+
+        Card(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = "Logs:",
+                    fontSize = 20.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                responseTexts.forEach { responseText ->
+                    Text(
+                        text = responseText,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
+
+@Composable
+fun ReservationDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+    }
+}
+
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
