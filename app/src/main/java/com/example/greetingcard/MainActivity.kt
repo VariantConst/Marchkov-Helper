@@ -3,10 +3,12 @@ package com.example.greetingcard
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
-import android.util.Base64
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +30,10 @@ import com.google.gson.reflect.TypeToken
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import java.text.SimpleDateFormat
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.util.Log
@@ -49,13 +56,7 @@ class SimpleCookieJar : CookieJar {
 }
 
 class MainActivity : ComponentActivity() {
-    private val cookieJar = SimpleCookieJar()
-    private val client by lazy {
-        OkHttpClient.Builder()
-            .cookieJar(cookieJar)
-            .build()
-    }
-
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -75,18 +76,31 @@ class MainActivity : ComponentActivity() {
                     var qrCodeString by remember { mutableStateOf<String?>(null) }
                     var isLoggedIn by remember { mutableStateOf(false) }
                     var showLoading by remember { mutableStateOf(true) }
+                    var errorMessage by remember { mutableStateOf<String?>(null) }
+                    var isToYanyuan by remember { mutableStateOf(true) }
+
+                    val scope = rememberCoroutineScope()
+                    val context = LocalContext.current
 
                     LaunchedEffect(Unit) {
                         if (savedUsername != null && savedPassword != null) {
-                            performLogin(savedUsername, savedPassword) { success, response, bitmap, details, qrCode ->
-                                if (success) {
-                                    isLoggedIn = true
-                                    showLoading = false
+                            withTimeoutOrNull(10000L) {
+                                performLogin(savedUsername, savedPassword, isToYanyuan) { success, response, bitmap, details, qrCode ->
+                                    if (success) {
+                                        isLoggedIn = true
+                                        showLoading = false
+                                    } else {
+                                        errorMessage = response
+                                        showLoading = false
+                                    }
+                                    responseTexts = responseTexts + response
+                                    qrCodeBitmap = bitmap
+                                    reservationDetails = details
+                                    qrCodeString = qrCode
                                 }
-                                responseTexts = responseTexts + response
-                                qrCodeBitmap = bitmap
-                                reservationDetails = details
-                                qrCodeString = qrCode
+                            } ?: run {
+                                errorMessage = "Login timeout"
+                                showLoading = false
                             }
                         } else {
                             showLoading = false
@@ -110,18 +124,64 @@ class MainActivity : ComponentActivity() {
                                         qrCodeBitmap = null
                                         reservationDetails = null
                                         qrCodeString = null
-                                        cookieJar.clearCookies()
                                         clearLoginInfo()
+                                    },
+                                    onToggleBusDirection = {
+                                        isToYanyuan = !isToYanyuan
+                                        showLoading = true
+                                        scope.launch {
+                                            val sessionCookieJar = SimpleCookieJar()
+                                            val client = OkHttpClient.Builder()
+                                                .cookieJar(sessionCookieJar)
+                                                .build()
+
+                                            performLoginWithClient(savedUsername ?: "", savedPassword ?: "", isToYanyuan, client) { success, response, bitmap, details, qrCode ->
+                                                responseTexts = responseTexts + response
+                                                if (success) {
+                                                    qrCodeBitmap = bitmap
+                                                    reservationDetails = details
+                                                    qrCodeString = qrCode
+                                                    Toast.makeText(context, "反向预约成功", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(context, "反向无车可坐", Toast.LENGTH_SHORT).show()
+                                                }
+                                                showLoading = false
+                                            }
+                                        }
                                     }
                                 )
                             } else {
-                                LoginScreen(
+                                errorMessage?.let { msg ->
+                                    ErrorScreen(message = msg, onRetry = {
+                                        errorMessage = null
+                                        showLoading = true
+                                        scope.launch {
+                                            performLogin(savedUsername ?: "", savedPassword ?: "", isToYanyuan) { success, response, bitmap, details, qrCode ->
+                                                if (success) {
+                                                    isLoggedIn = true
+                                                    showLoading = false
+                                                } else {
+                                                    errorMessage = response
+                                                    showLoading = false
+                                                }
+                                                responseTexts = responseTexts + response
+                                                qrCodeBitmap = bitmap
+                                                reservationDetails = details
+                                                qrCodeString = qrCode
+                                            }
+                                        }
+                                    })
+                                } ?: LoginScreen(
                                     onLogin = { username, password ->
-                                        performLogin(username, password) { success, response, bitmap, details, qrCode ->
+                                        showLoading = true
+                                        performLogin(username, password, isToYanyuan) { success, response, bitmap, details, qrCode ->
                                             if (success) {
                                                 isLoggedIn = true
                                                 showLoading = false
                                                 saveLoginInfo(username, password)
+                                            } else {
+                                                errorMessage = response
+                                                showLoading = false
                                             }
                                             responseTexts = responseTexts + response
                                             qrCodeBitmap = bitmap
@@ -138,9 +198,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun performLogin(
         username: String,
         password: String,
+        isToYanyuan: Boolean,
+        callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit
+    ) {
+        val sessionCookieJar = SimpleCookieJar()
+        val client = OkHttpClient.Builder()
+            .cookieJar(sessionCookieJar)
+            .build()
+
+        performLoginWithClient(username, password, isToYanyuan, client, callback)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun performLoginWithClient(
+        username: String,
+        password: String,
+        isToYanyuan: Boolean,
+        client: OkHttpClient,
         callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit
     ) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -151,7 +229,11 @@ class MainActivity : ComponentActivity() {
                     .build()
                 var response = client.newCall(request).execute()
                 withContext(Dispatchers.Main) {
-                    callback(false, "Step 1: GET https://wproc.pku.edu.cn/api/login/main\n${response.code}", null, null, null)
+                    if (response.isSuccessful) {
+                        callback(true, "Step 1: GET https://wproc.pku.edu.cn/api/login/main\n${response.code}", null, null, null)
+                    } else {
+                        callback(false, "Step 1: GET https://wproc.pku.edu.cn/api/login/main\n${response.code}", null, null, null)
+                    }
                 }
 
                 // Step 2: POST login
@@ -174,7 +256,11 @@ class MainActivity : ComponentActivity() {
                 val jsonMap: Map<String, Any> = gson.fromJson(responseBody, mapType)
                 val token = jsonMap["token"] as? String ?: "Token not found"
                 withContext(Dispatchers.Main) {
-                    callback(false, "Step 2: POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do\nToken: $token", null, null, null)
+                    if (response.isSuccessful && token.isNotEmpty()) {
+                        callback(true, "Step 2: POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do\nToken: $token", null, null, null)
+                    } else {
+                        callback(false, "Step 2: POST https://iaaa.pku.edu.cn/iaaa/oauthlogin.do\nToken: $token", null, null, null)
+                    }
                 }
 
                 // Step 3: GET request with token
@@ -185,7 +271,11 @@ class MainActivity : ComponentActivity() {
 
                 response = client.newCall(request).execute()
                 withContext(Dispatchers.Main) {
-                    callback(false, "Step 3: GET $urlWithToken\n${response.code}", null, null, null)
+                    if (response.isSuccessful) {
+                        callback(true, "Step 3: GET $urlWithToken\n${response.code}", null, null, null)
+                    } else {
+                        callback(false, "Step 3: GET $urlWithToken\n${response.code}", null, null, null)
+                    }
                 }
 
                 // Step 4: GET reservation list
@@ -200,15 +290,31 @@ class MainActivity : ComponentActivity() {
                 val resourcesMap: Map<String, Any> = gson.fromJson(resourcesJson, mapType)
                 val resourceList = (resourcesMap["d"] as? Map<String, Any>)?.get("list") as? List<*>
                 withContext(Dispatchers.Main) {
-                    callback(false, "Step 4: GET $reservationListUrl\nResources: ${resourceList?.size ?: "N/A"}", null, null, null)
+                    if (response.isSuccessful && resourceList != null) {
+                        callback(true, "Step 4: GET $reservationListUrl\nResources: ${resourceList.size}", null, null, null)
+                    } else {
+                        callback(false, "Step 4: GET $reservationListUrl\nResources: ${resourceList?.size ?: "N/A"}", null, null, null)
+                    }
                 }
 
                 Log.v("MyTag", "$resourceList")
 
+                val chosenBus = chooseBus(resourceList, isToYanyuan)
+                Log.v("MyTag", "$chosenBus and direction $isToYanyuan")
+                val chosenResourceId = chosenBus.first
+                val chosenPeriod = chosenBus.second
+
+                if (chosenResourceId == 0 || chosenPeriod == 0) {
+                    withContext(Dispatchers.Main) {
+                        callback(false, "No available bus found", null, null, null)
+                    }
+                    return@launch
+                }
+
                 // Step 5: Launch reservation
                 val launchBody = FormBody.Builder()
-                    .add("resource_id", "7")
-                    .add("data", "[{\"date\": \"$date\", \"period\": 47, \"sub_resource_id\": 0}]")
+                    .add("resource_id", "$chosenResourceId")
+                    .add("data", "[{\"date\": \"$date\", \"period\": \"$chosenPeriod\", \"sub_resource_id\": 0}]")
                     .build()
                 request = Request.Builder()
                     .url("https://wproc.pku.edu.cn/site/reservation/launch")
@@ -218,7 +324,11 @@ class MainActivity : ComponentActivity() {
                 response = client.newCall(request).execute()
                 val launchResponse = response.body?.string() ?: "No response body"
                 withContext(Dispatchers.Main) {
-                    callback(false, "Step 5: POST https://wproc.pku.edu.cn/site/reservation/launch\n$launchResponse", null, null, null)
+                    if (response.isSuccessful) {
+                        callback(true, "Step 5: POST https://wproc.pku.edu.cn/site/reservation/launch\n$launchResponse", null, null, null)
+                    } else {
+                        callback(false, "Step 5: POST https://wproc.pku.edu.cn/site/reservation/launch\n$launchResponse", null, null, null)
+                    }
                 }
 
                 // Step 6: GET my reservations
@@ -232,9 +342,23 @@ class MainActivity : ComponentActivity() {
                 val appsMap: Map<String, Any> = gson.fromJson(appsJson, mapType)
                 val formattedJson = formatMap(appsMap)
                 val reservationData = (appsMap["d"] as? Map<String, Any>)?.get("data") as? List<Map<String, Any>>
-                val reservationDetails = reservationData?.firstOrNull()
+                Log.v("MyTag", "reservationData is $reservationData")
+                var reservationDetails = reservationData?.firstOrNull()
+                if (reservationData != null) {
+                    for (reservation in reservationData) {
+                        val reservationResouceId = (reservation["resource_id"] as Double).toInt()
+                        if (reservationResouceId in listOf(2, 4) && isToYanyuan || reservationResouceId in listOf(5, 6, 7) && !isToYanyuan) {
+                            reservationDetails = reservation
+                        }
+                    }
+                }
+
                 withContext(Dispatchers.Main) {
-                    callback(true, "Step 6: GET $myReservationsUrl\nReservations: $formattedJson", null, reservationDetails, null)
+                    if (response.isSuccessful) {
+                        callback(true, "Step 6: GET $myReservationsUrl\nReservations: $formattedJson", null, reservationDetails, null)
+                    } else {
+                        callback(false, "Step 6: GET $myReservationsUrl\nReservations: $formattedJson", null, null, null)
+                    }
                 }
 
                 // Step 7: Get QR code and cancel reservations
@@ -263,46 +387,33 @@ class MainActivity : ComponentActivity() {
                             response = client.newCall(request).execute()
                             val qrCodeResponse = response.body?.string() ?: "No response body"
                             withContext(Dispatchers.Main) {
-                                callback(true, "  QR Code response: $qrCodeResponse", null, null, null)
+                                if (response.isSuccessful) {
+                                    callback(true, "  QR Code response: $qrCodeResponse", null, null, null)
 
-                                // Parse the QR code response and generate the QR code bitmap
-                                val qrCodeJson = Gson().fromJson(qrCodeResponse, Map::class.java)
-                                val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
-                                if (qrCodeData != null) {
-                                    withContext(Dispatchers.Main) {
-                                        callback(true, "QR Code string to decode: $qrCodeData", null, null,qrCodeData)
-                                    }
-                                    try {
-                                        val qrCodeBitmap = generateQRCode(qrCodeData, 300, 300)
-                                        callback(true, "QR Code generated", qrCodeBitmap, reservationDetails, qrCodeData)
-                                    } catch (e: IllegalArgumentException) {
+                                    // Parse the QR code response and generate the QR code bitmap
+                                    val qrCodeJson = Gson().fromJson(qrCodeResponse, Map::class.java)
+                                    val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
+                                    if (qrCodeData != null) {
                                         withContext(Dispatchers.Main) {
-                                            callback(false, "Failed to decode QR code: ${e.message}", null, null, qrCodeData)
+                                            callback(true, "QR Code string to decode: $qrCodeData", null, null, qrCodeData)
+                                        }
+                                        try {
+                                            val qrCodeBitmap = generateQRCode(qrCodeData, 300, 300)
+                                            callback(true, "QR Code generated", qrCodeBitmap, reservationDetails, qrCodeData)
+                                        } catch (e: IllegalArgumentException) {
+                                            withContext(Dispatchers.Main) {
+                                                callback(false, "Failed to decode QR code: ${e.message}", null, null, qrCodeData)
+                                            }
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            callback(false, "QR code data not found", null, null, null)
                                         }
                                     }
                                 } else {
-                                    withContext(Dispatchers.Main) {
-                                        callback(false, "QR code data not found", null, null, null)
-                                    }
+                                    callback(false, "QR Code response: $qrCodeResponse", null, null, null)
                                 }
                             }
-
-                            // Cancel reservation
-                            // val cancelBody = FormBody.Builder()
-                            //     .add("appointment_id", appId)
-                            //     .add("data_id[0]", appAppointmentId)
-                            //     .build()
-                            //
-                            // request = Request.Builder()
-                            //     .url("https://wproc.pku.edu.cn/site/reservation/single-time-cancel")
-                            //     .post(cancelBody)
-                            //     .build()
-                            //
-                            // response = client.newCall(request).execute()
-                            // val cancelResponse = response.body?.string() ?: "No response body"
-                            // withContext(Dispatchers.Main) {
-                            //     callback("  Cancel response: $cancelResponse", null, null, null)
-                            // }
                         } else {
                             withContext(Dispatchers.Main) {
                                 callback(false, "  Failed to process this reservation: missing ID or appointment ID", null, null, null)
@@ -322,6 +433,57 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun chooseBus(resourceList: List<*>?, isToYanyuan: Boolean): Pair<Int, Int> {
+        var chosenResourceId = 0
+        var chosenPeriod = 0
+        if (resourceList != null) {
+            val currentTime = LocalDateTime.now(ZoneId.of("Asia/Shanghai"))
+            for (bus in resourceList) {
+                if (bus is Map<*, *>) {
+                    val resourceIdStr = bus["id"] as Double
+                    val resourceId = resourceIdStr.toInt()
+                    val routeName = bus["name"] as String
+
+                    if (!(resourceId in listOf(2, 4) && isToYanyuan || resourceId in listOf(5, 6, 7) && !isToYanyuan)) {
+                        continue
+                    }
+
+                    val periods = (bus["table"] as Map<String, List<Map<String, Any>>>).values.first()
+                    Log.v("periods", "$periods")
+                    for (period in periods) {
+                        val timeId = (period["time_id"] as Double).toInt()
+                        val date = period["date"] as String
+                        val startTime = period["yaxis"] as String
+                        val margin = ((period["row"] as Map<String, Any>)["margin"] as Double).toInt()
+                        if (margin == 0) {
+                            continue
+                        }
+
+                        val naiveDateTime = LocalDateTime.parse(
+                            "$date $startTime",
+                            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                        )
+                        val awareDateTime = naiveDateTime.atZone(ZoneId.of("Asia/Shanghai"))
+                        val timeDiffWithSign = Duration.between(currentTime, awareDateTime).toMinutes()
+                        val hasExpiredBus = -Settings.PREV_INTERVAL < timeDiffWithSign && timeDiffWithSign < 0
+                        val hasFutureBus = 0 <= timeDiffWithSign && timeDiffWithSign < Settings.NEXT_INTERVAL
+
+                        if (!hasExpiredBus && !hasFutureBus) {
+                            continue
+                        }
+                        Log.v("details", "$routeName at $date $startTime has a valid bus")
+                        chosenResourceId = resourceId
+                        chosenPeriod = timeId
+                        Log.v("details", "chosenResourceId $chosenResourceId chosenPeriod $chosenPeriod")
+                        break
+                    }
+                }
+            }
+        }
+        return Pair(chosenResourceId, chosenPeriod)
     }
 
     private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
@@ -368,6 +530,13 @@ class MainActivity : ComponentActivity() {
             remove("username")
             remove("password")
             apply()
+        }
+    }
+
+    companion object {
+        object Settings {
+            const val PREV_INTERVAL = 30
+            const val NEXT_INTERVAL = 900
         }
     }
 }
@@ -423,7 +592,8 @@ fun DetailScreen(
     responseTexts: List<String>,
     qrCodeBitmap: Bitmap?,
     reservationDetails: Map<String, Any>?,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onToggleBusDirection: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -482,9 +652,16 @@ fun DetailScreen(
                             contentDescription = "QR Code",
                             modifier = Modifier.size(200.dp)
                         )
+
+                        Button(
+                            onClick = onToggleBusDirection,
+                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                        ) {
+                            Text("乘坐反向班车")
+                        }
                     }
                 }
-            }
+            } ?: Text("没有找到二维码或预约信息", color = MaterialTheme.colorScheme.error)
         }
 
         Card(
@@ -522,6 +699,25 @@ fun DetailScreen(
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
         ) {
             Text("Logout")
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(message: String, onRetry: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize().padding(16.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = "Error: $message", color = MaterialTheme.colorScheme.error, fontSize = 20.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry) {
+                Text("Retry")
+            }
         }
     }
 }

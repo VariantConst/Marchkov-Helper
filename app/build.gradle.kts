@@ -79,4 +79,5 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.9")
     implementation("com.google.zxing:core:3.4.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha03")
+    implementation(kotlin("stdlib"))
 }
