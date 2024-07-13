@@ -82,4 +82,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation("com.google.accompanist:accompanist-pager:0.24.13-rc")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.24.13-rc")
+    implementation("androidx.compose.material:material-icons-extended:1.4.3")
+    implementation("androidx.compose.material3:material3:1.0.1")
+    implementation("androidx.compose.foundation:foundation:1.0.0")
 }
