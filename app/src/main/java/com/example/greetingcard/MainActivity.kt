@@ -2,7 +2,6 @@ package com.example.greetingcard
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -22,24 +21,43 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.*
-import okhttp3.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.ui.graphics.vector.ImageVector
+
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.google.accompanist.pager.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.coroutines.*
+import okhttp3.*
 import java.text.SimpleDateFormat
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import android.util.Log
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.ArrowBack
 
 class SimpleCookieJar : CookieJar {
     private val cookieStore = HashMap<String, List<Cookie>>()
@@ -85,6 +103,7 @@ class MainActivity : ComponentActivity() {
             var snackbarMessage by remember { mutableStateOf("") }
             var showLogs by remember { mutableStateOf(false) }
             var showSettingsDialog by remember { mutableStateOf(false) }
+            var currentPage by remember { mutableStateOf(0) }
 
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
@@ -96,6 +115,7 @@ class MainActivity : ComponentActivity() {
                             if (success) {
                                 isLoggedIn = true
                                 showLoading = false
+                                currentPage = 0  // 登录成功后重置为第一页
                             } else {
                                 errorMessage = response
                                 showLoading = false
@@ -129,10 +149,13 @@ class MainActivity : ComponentActivity() {
                                 if (showLogs) {
                                     LogScreen(
                                         responseTexts = responseTexts,
-                                        onBack = { showLogs = false }
+                                        onBack = {
+                                            showLogs = false
+                                            currentPage = 1 // 返回时设置页码为第二屏
+                                        }
                                     )
                                 } else {
-                                    DetailScreen(
+                                    MainPagerScreen(
                                         responseTexts = responseTexts,
                                         qrCodeBitmap = qrCodeBitmap,
                                         reservationDetails = reservationDetails,
@@ -169,7 +192,9 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         onShowLogs = { showLogs = true },
-                                        onEditSettings = { showSettingsDialog = true }
+                                        onEditSettings = { showSettingsDialog = true },
+                                        currentPage = currentPage,
+                                        setPage = { currentPage = it }
                                     )
                                 }
                             } else {
@@ -182,6 +207,7 @@ class MainActivity : ComponentActivity() {
                                                 if (success) {
                                                     isLoggedIn = true
                                                     showLoading = false
+                                                    currentPage = 0  // 登录成功后重置为第一页
                                                 } else {
                                                     errorMessage = response
                                                     showLoading = false
@@ -201,6 +227,7 @@ class MainActivity : ComponentActivity() {
                                                 isLoggedIn = true
                                                 showLoading = false
                                                 saveLoginInfo(username, password)
+                                                currentPage = 0  // 登录成功后重置为第一页
                                             } else {
                                                 errorMessage = response
                                                 showLoading = false
@@ -274,6 +301,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -573,7 +602,7 @@ class MainActivity : ComponentActivity() {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
         for (x in 0 until width) {
             for (y in 0 until height) {
-                bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+                bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
             }
         }
         return bitmap
@@ -676,7 +705,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "三、二、一，马池口！",
+            text = "MARCHKOV",
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 32.dp)
@@ -782,45 +811,28 @@ fun DetailScreen(
                         Image(
                             bitmap = bitmap.asImageBitmap(),
                             contentDescription = "QR Code",
-                            modifier = Modifier.size(200.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
                         )
                     }
                 }
             } ?: Text("没有找到二维码或预约信息", color = MaterialTheme.colorScheme.error)
         }
 
+        Spacer(modifier = Modifier.weight(1f))
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 16.dp),
+                .padding(top = 16.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Button(
-                onClick = onShowLogs,
-                modifier = Modifier.weight(1f).padding(end = 8.dp)
-            ) {
-                Text("查看log")
-            }
-
-            Button(
                 onClick = onToggleBusDirection,
-                modifier = Modifier.weight(1f).padding(start = 8.dp, end = 8.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
             ) {
                 Text("乘坐反向班车")
-            }
-
-            Button(
-                onClick = onEditSettings,
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
-            ) {
-                Text("编辑配置")
-            }
-
-            Button(
-                onClick = onLogout,
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
-            ) {
-                Text("Logout")
             }
         }
     }
@@ -837,18 +849,49 @@ fun DetailScreen(
 }
 
 @Composable
+fun ReservationDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.align(Alignment.CenterVertically),
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.align(Alignment.CenterVertically),
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+    }
+}
+
+
+
+@Composable
 fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
         Button(
             onClick = onBack,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = RoundedCornerShape(8.dp)
         ) {
-            Text("返回")
+            Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = Color.White)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("返回", color = Color.White)
         }
 
         Card(
@@ -858,7 +901,8 @@ fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            ),
+            shape = RoundedCornerShape(12.dp)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -867,16 +911,17 @@ fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
             ) {
                 Text(
                     text = "Logs:",
-                    fontSize = 20.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 responseTexts.forEach { responseText ->
                     Text(
                         text = responseText,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                    Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 }
             }
         }
@@ -902,15 +947,152 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalPagerApi::class)
 @Composable
-fun ReservationDetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+fun MainPagerScreen(
+    responseTexts: List<String>,
+    qrCodeBitmap: Bitmap?,
+    reservationDetails: Map<String, Any>?,
+    onLogout: () -> Unit,
+    onToggleBusDirection: () -> Unit,
+    onShowLogs: () -> Unit,
+    onEditSettings: () -> Unit,
+    currentPage: Int = 0,
+    setPage: (Int) -> Unit
+) {
+    val pagerState = rememberPagerState(initialPage = currentPage)
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        HorizontalPager(
+            count = 2,
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { page ->
+            when (page) {
+                0 -> DetailScreen(
+                    responseTexts = responseTexts,
+                    qrCodeBitmap = qrCodeBitmap,
+                    reservationDetails = reservationDetails,
+                    onLogout = onLogout,
+                    onToggleBusDirection = onToggleBusDirection,
+                    onShowLogs = onShowLogs,
+                    onEditSettings = onEditSettings
+                )
+                1 -> AdditionalActionsScreen(
+                    onShowLogs = onShowLogs,
+                    onEditSettings = onEditSettings,
+                    onLogout = onLogout
+                )
+            }
+        }
+        LaunchedEffect(pagerState.currentPage) {
+            setPage(pagerState.currentPage)
+        }
+        HorizontalPagerIndicator(
+            pagerState = pagerState,
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp)
+        )
+    }
+}
+
+
+@Composable
+fun AdditionalActionsScreen(
+    onShowLogs: () -> Unit,
+    onEditSettings: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        ActionCard(
+            icon = Icons.Default.List,
+            text = "查看日志",
+            gradient = Brush.horizontalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                )
+            ),
+            onClick = onShowLogs
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ActionCard(
+            icon = Icons.Default.Settings,
+            text = "编辑配置",
+            gradient = Brush.horizontalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                )
+            ),
+            onClick = onEditSettings
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ActionCard(
+            icon = Icons.Default.ExitToApp,
+            text = "退出登录",
+            gradient = Brush.horizontalGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.error,
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+            ),
+            onClick = onLogout
+        )
+    }
+}
+
+@Composable
+fun ActionCard(
+    icon: ImageVector,
+    text: String,
+    gradient: Brush,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(gradient)
+                .fillMaxSize()
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = text,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

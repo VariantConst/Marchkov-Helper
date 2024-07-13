@@ -80,4 +80,6 @@ dependencies {
     implementation("com.google.zxing:core:3.4.1")
     implementation("androidx.security:security-crypto:1.1.0-alpha03")
     implementation(kotlin("stdlib"))
+    implementation("com.google.accompanist:accompanist-pager:0.24.13-rc")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.24.13-rc")
 }
