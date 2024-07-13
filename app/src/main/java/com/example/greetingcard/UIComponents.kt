@@ -10,6 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -105,8 +108,8 @@ fun DetailScreen(
     reservationDetails: Map<String, Any>?,
     onToggleBusDirection: () -> Unit,
 ) {
-    var showSnackbar by remember { mutableStateOf(false) }
-    var snackbarMessage by remember { mutableStateOf("") }
+    val showSnackbar by remember { mutableStateOf(false) }
+    val snackbarMessage by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -255,7 +258,7 @@ fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 }
             }
         }
@@ -272,7 +275,7 @@ fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = Color.White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("返回", color = Color.White)
             }
@@ -321,7 +324,6 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 fun MainPagerScreen(
-    responseTexts: List<String>,
     qrCodeBitmap: Bitmap?,
     reservationDetails: Map<String, Any>?,
     onLogout: () -> Unit,
@@ -388,7 +390,7 @@ fun AdditionalActionsScreen(
         verticalArrangement = Arrangement.Center
     ) {
         ActionCard(
-            icon = Icons.Default.List,
+            icon = Icons.AutoMirrored.Filled.List,
             text = "查看日志",
             gradient = Brush.horizontalGradient(
                 colors = listOf(
@@ -416,7 +418,7 @@ fun AdditionalActionsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         ActionCard(
-            icon = Icons.Default.ExitToApp,
+            icon = Icons.AutoMirrored.Filled.ExitToApp,
             text = "退出登录",
             gradient = Brush.horizontalGradient(
                 colors = listOf(

@@ -47,8 +47,8 @@ class MainActivity : ComponentActivity() {
         val savedPassword = sharedPreferences.getString("password", null)
 
         setContent {
-            val prevInterval = remember { mutableStateOf(Settings.PREV_INTERVAL) }
-            val nextInterval = remember { mutableStateOf(Settings.NEXT_INTERVAL) }
+            val prevInterval = remember { mutableIntStateOf(Settings.PREV_INTERVAL) }
+            val nextInterval = remember { mutableIntStateOf(Settings.NEXT_INTERVAL) }
             var responseTexts by remember { mutableStateOf(listOf<String>()) }
             var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
             var reservationDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
             var snackbarMessage by remember { mutableStateOf("") }
             var showLogs by remember { mutableStateOf(false) }
             var showSettingsDialog by remember { mutableStateOf(false) }
-            var currentPage by remember { mutableStateOf(0) }
+            var currentPage by remember { mutableIntStateOf(0) }
             var isReservationLoaded by remember { mutableStateOf(false) }
             var isReservationLoading by remember { mutableStateOf(false) }
             var loadingMessage by remember { mutableStateOf("") }
@@ -120,7 +120,6 @@ class MainActivity : ComponentActivity() {
                                     )
                                 } else {
                                     MainPagerScreen(
-                                        responseTexts = responseTexts,
                                         qrCodeBitmap = qrCodeBitmap,
                                         reservationDetails = reservationDetails,
                                         onLogout = {
@@ -238,15 +237,15 @@ class MainActivity : ComponentActivity() {
                                 text = {
                                     Column {
                                         OutlinedTextField(
-                                            value = prevInterval.value.toString(),
-                                            onValueChange = { prevInterval.value = it.toIntOrNull() ?: Settings.PREV_INTERVAL },
+                                            value = prevInterval.intValue.toString(),
+                                            onValueChange = { prevInterval.intValue = it.toIntOrNull() ?: Settings.PREV_INTERVAL },
                                             label = { Text("PREV_INTERVAL") },
                                             modifier = Modifier.fillMaxWidth()
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         OutlinedTextField(
-                                            value = nextInterval.value.toString(),
-                                            onValueChange = { nextInterval.value = it.toIntOrNull() ?: Settings.NEXT_INTERVAL },
+                                            value = nextInterval.intValue.toString(),
+                                            onValueChange = { nextInterval.intValue = it.toIntOrNull() ?: Settings.NEXT_INTERVAL },
                                             label = { Text("NEXT_INTERVAL") },
                                             modifier = Modifier.fillMaxWidth()
                                         )
@@ -255,8 +254,8 @@ class MainActivity : ComponentActivity() {
                                 confirmButton = {
                                     Button(
                                         onClick = {
-                                            Settings.updatePrevInterval(context, prevInterval.value)
-                                            Settings.updateNextInterval(context, nextInterval.value)
+                                            Settings.updatePrevInterval(context, prevInterval.intValue)
+                                            Settings.updateNextInterval(context, nextInterval.intValue)
                                             showSettingsDialog = false
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -377,7 +376,9 @@ class MainActivity : ComponentActivity() {
                 response = client.newCall(request).execute()
                 val resourcesJson = response.body?.string() ?: "No response body"
                 val resourcesMap: Map<String, Any> = gson.fromJson(resourcesJson, mapType)
-                val resourceList = (resourcesMap["d"] as? Map<String, Any>)?.get("list") as? List<*>
+                val resourceList: List<*>? = (resourcesMap["d"] as? Map<*, *>)?.let { map ->
+                    (map["list"] as? List<*>)
+                }
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful && resourceList != null) {
                         callback(true, "Step 4: GET $reservationListUrl\nResources: ${resourceList.size}", null, null, null)
@@ -430,7 +431,9 @@ class MainActivity : ComponentActivity() {
                 val appsJson = response.body?.string() ?: "No response body"
                 val appsMap: Map<String, Any> = gson.fromJson(appsJson, mapType)
                 val formattedJson = formatMap(appsMap)
-                val reservationData = (appsMap["d"] as? Map<String, Any>)?.get("data") as? List<Map<String, Any>>
+                val reservationData: List<Map<String, Any>>? = (appsMap["d"] as? Map<*, *>)?.let { map ->
+                    (map["data"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
+                }
                 Log.v("MyTag", "reservationData is $reservationData")
                 var reservationDetails: Map<String, Any>? = null
                 if (reservationData != null) {
@@ -455,7 +458,9 @@ class MainActivity : ComponentActivity() {
 
                 updateLoadingMessage("正在生成二维码...")
                 // Step 7: Get QR code and cancel reservations
-                val appData = (appsMap["d"] as? Map<String, Any>)?.get("data") as? List<Map<String, Any>>
+                val appData: List<Map<String, Any>>? = (appsMap["d"] as? Map<*, *>)?.let { map ->
+                    (map["data"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
+                }
                 withContext(Dispatchers.Main) {
                     callback(true, "Step 7: Processing ${appData?.size ?: 0} reservations", null, null, null)
                 }
@@ -470,46 +475,40 @@ class MainActivity : ComponentActivity() {
                             callback(true, "  Appointment ID: $appAppointmentId", null, null, null)
                         }
 
-                        if (appId != null && appAppointmentId != null) {
-                            // Get QR code
-                            val qrCodeUrl = "https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=0&id=$appId&hall_appointment_data_id=$appAppointmentId"
-                            request = Request.Builder()
-                                .url(qrCodeUrl)
-                                .build()
+                        // Get QR code
+                        val qrCodeUrl = "https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=0&id=$appId&hall_appointment_data_id=$appAppointmentId"
+                        request = Request.Builder()
+                            .url(qrCodeUrl)
+                            .build()
 
-                            response = client.newCall(request).execute()
-                            val qrCodeResponse = response.body?.string() ?: "No response body"
-                            withContext(Dispatchers.Main) {
-                                if (response.isSuccessful) {
-                                    callback(true, "  QR Code response: $qrCodeResponse", null, null, null)
+                        response = client.newCall(request).execute()
+                        val qrCodeResponse = response.body?.string() ?: "No response body"
+                        withContext(Dispatchers.Main) {
+                            if (response.isSuccessful) {
+                                callback(true, "  QR Code response: $qrCodeResponse", null, null, null)
 
-                                    // Parse the QR code response and generate the QR code bitmap
-                                    val qrCodeJson = Gson().fromJson(qrCodeResponse, Map::class.java)
-                                    val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
-                                    if (qrCodeData != null) {
+                                // Parse the QR code response and generate the QR code bitmap
+                                val qrCodeJson = Gson().fromJson(qrCodeResponse, Map::class.java)
+                                val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
+                                if (qrCodeData != null) {
+                                    withContext(Dispatchers.Main) {
+                                        callback(true, "QR Code string to decode: $qrCodeData", null, null, qrCodeData)
+                                    }
+                                    try {
+                                        val qrCodeBitmap = generateQRCode(qrCodeData)
+                                        callback(true, "QR Code generated", qrCodeBitmap, reservationDetails, qrCodeData)
+                                    } catch (e: IllegalArgumentException) {
                                         withContext(Dispatchers.Main) {
-                                            callback(true, "QR Code string to decode: $qrCodeData", null, null, qrCodeData)
-                                        }
-                                        try {
-                                            val qrCodeBitmap = generateQRCode(qrCodeData, 300, 300)
-                                            callback(true, "QR Code generated", qrCodeBitmap, reservationDetails, qrCodeData)
-                                        } catch (e: IllegalArgumentException) {
-                                            withContext(Dispatchers.Main) {
-                                                callback(false, "Failed to decode QR code: ${e.message}", null, null, qrCodeData)
-                                            }
-                                        }
-                                    } else {
-                                        withContext(Dispatchers.Main) {
-                                            callback(false, "QR code data not found", null, null, null)
+                                            callback(false, "Failed to decode QR code: ${e.message}", null, null, qrCodeData)
                                         }
                                     }
                                 } else {
-                                    callback(false, "QR Code response: $qrCodeResponse", null, null, null)
+                                    withContext(Dispatchers.Main) {
+                                        callback(false, "QR code data not found", null, null, null)
+                                    }
                                 }
-                            }
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                callback(false, "  Failed to process this reservation: missing ID or appointment ID", null, null, null)
+                            } else {
+                                callback(false, "QR Code response: $qrCodeResponse", null, null, null)
                             }
                         }
                     }
@@ -550,7 +549,7 @@ class MainActivity : ComponentActivity() {
                         val timeId = (period["time_id"] as Double).toInt()
                         val date = period["date"] as String
                         val startTime = period["yaxis"] as String
-                        val margin = ((period["row"] as Map<String, Any>)["margin"] as Double).toInt()
+                        val margin = ((period["row"] as? Map<*, *>)?.get("margin") as? Double)?.toInt() ?: 0
                         if (margin == 0) {
                             continue
                         }
@@ -579,7 +578,9 @@ class MainActivity : ComponentActivity() {
         return Pair(chosenResourceId, chosenPeriod)
     }
 
-    private fun generateQRCode(content: String, width: Int, height: Int): Bitmap {
+    private fun generateQRCode(content: String): Bitmap {
+        val width = 300
+        val height = 300
         val writer = QRCodeWriter()
         val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, width, height)
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
@@ -645,7 +646,7 @@ object Settings {
         NEXT_INTERVAL = sharedPreferences.getInt(KEY_NEXT_INTERVAL, DEFAULT_NEXT_INTERVAL)
     }
 
-    fun save(context: Context) {
+    private fun save(context: Context) {
         val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             putInt(KEY_PREV_INTERVAL, PREV_INTERVAL)
@@ -675,10 +676,6 @@ class SimpleCookieJar : CookieJar {
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val cookies = cookieStore[url.host]
         return cookies ?: ArrayList()
-    }
-
-    fun clearCookies() {
-        cookieStore.clear()
     }
 }
 
