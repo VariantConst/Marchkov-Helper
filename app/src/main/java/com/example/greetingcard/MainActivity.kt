@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
@@ -38,6 +37,10 @@ import java.util.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import android.util.Log
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+
 class SimpleCookieJar : CookieJar {
     private val cookieStore = HashMap<String, List<Cookie>>()
 
@@ -60,53 +63,62 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 加载设置
+        Settings.load(this)
+
         val sharedPreferences = getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
         val savedUsername = sharedPreferences.getString("username", null)
         val savedPassword = sharedPreferences.getString("password", null)
 
         setContent {
+            val prevInterval = remember { mutableStateOf(Settings.PREV_INTERVAL) }
+            val nextInterval = remember { mutableStateOf(Settings.NEXT_INTERVAL) }
+            var responseTexts by remember { mutableStateOf(listOf<String>()) }
+            var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+            var reservationDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
+            var qrCodeString by remember { mutableStateOf<String?>(null) }
+            var isLoggedIn by remember { mutableStateOf(false) }
+            var showLoading by remember { mutableStateOf(true) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+            var isToYanyuan by remember { mutableStateOf(true) }
+            var showSnackbar by remember { mutableStateOf(false) }
+            var snackbarMessage by remember { mutableStateOf("") }
+            var showLogs by remember { mutableStateOf(false) }
+            var showSettingsDialog by remember { mutableStateOf(false) }
+
+            val scope = rememberCoroutineScope()
+            val context = LocalContext.current
+
+            LaunchedEffect(Unit) {
+                if (savedUsername != null && savedPassword != null) {
+                    withTimeoutOrNull(10000L) {
+                        performLogin(savedUsername, savedPassword, isToYanyuan) { success, response, bitmap, details, qrCode ->
+                            if (success) {
+                                isLoggedIn = true
+                                showLoading = false
+                            } else {
+                                errorMessage = response
+                                showLoading = false
+                            }
+                            responseTexts = responseTexts + response
+                            qrCodeBitmap = bitmap
+                            reservationDetails = details
+                            qrCodeString = qrCode
+                        }
+                    } ?: run {
+                        errorMessage = "Login timeout"
+                        showLoading = false
+                    }
+                } else {
+                    showLoading = false
+                }
+            }
+
             AppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    var responseTexts by remember { mutableStateOf(listOf<String>()) }
-                    var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
-                    var reservationDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
-                    var qrCodeString by remember { mutableStateOf<String?>(null) }
-                    var isLoggedIn by remember { mutableStateOf(false) }
-                    var showLoading by remember { mutableStateOf(true) }
-                    var errorMessage by remember { mutableStateOf<String?>(null) }
-                    var isToYanyuan by remember { mutableStateOf(true) }
-
-                    val scope = rememberCoroutineScope()
-                    val context = LocalContext.current
-
-                    LaunchedEffect(Unit) {
-                        if (savedUsername != null && savedPassword != null) {
-                            withTimeoutOrNull(10000L) {
-                                performLogin(savedUsername, savedPassword, isToYanyuan) { success, response, bitmap, details, qrCode ->
-                                    if (success) {
-                                        isLoggedIn = true
-                                        showLoading = false
-                                    } else {
-                                        errorMessage = response
-                                        showLoading = false
-                                    }
-                                    responseTexts = responseTexts + response
-                                    qrCodeBitmap = bitmap
-                                    reservationDetails = details
-                                    qrCodeString = qrCode
-                                }
-                            } ?: run {
-                                errorMessage = "Login timeout"
-                                showLoading = false
-                            }
-                        } else {
-                            showLoading = false
-                        }
-                    }
-
                     Box(modifier = Modifier.fillMaxSize()) {
                         AnimatedVisibility(visible = showLoading) {
                             LoadingScreen()
@@ -114,42 +126,52 @@ class MainActivity : ComponentActivity() {
 
                         if (!showLoading) {
                             if (isLoggedIn) {
-                                DetailScreen(
-                                    responseTexts = responseTexts,
-                                    qrCodeBitmap = qrCodeBitmap,
-                                    reservationDetails = reservationDetails,
-                                    onLogout = {
-                                        isLoggedIn = false
-                                        responseTexts = listOf()
-                                        qrCodeBitmap = null
-                                        reservationDetails = null
-                                        qrCodeString = null
-                                        clearLoginInfo()
-                                    },
-                                    onToggleBusDirection = {
-                                        isToYanyuan = !isToYanyuan
-                                        showLoading = true
-                                        scope.launch {
-                                            val sessionCookieJar = SimpleCookieJar()
-                                            val client = OkHttpClient.Builder()
-                                                .cookieJar(sessionCookieJar)
-                                                .build()
+                                if (showLogs) {
+                                    LogScreen(
+                                        responseTexts = responseTexts,
+                                        onBack = { showLogs = false }
+                                    )
+                                } else {
+                                    DetailScreen(
+                                        responseTexts = responseTexts,
+                                        qrCodeBitmap = qrCodeBitmap,
+                                        reservationDetails = reservationDetails,
+                                        onLogout = {
+                                            isLoggedIn = false
+                                            responseTexts = listOf()
+                                            qrCodeBitmap = null
+                                            reservationDetails = null
+                                            qrCodeString = null
+                                            clearLoginInfo()
+                                        },
+                                        onToggleBusDirection = {
+                                            isToYanyuan = !isToYanyuan
+                                            showLoading = true
+                                            scope.launch {
+                                                val sessionCookieJar = SimpleCookieJar()
+                                                val client = OkHttpClient.Builder()
+                                                    .cookieJar(sessionCookieJar)
+                                                    .build()
 
-                                            performLoginWithClient(savedUsername ?: "", savedPassword ?: "", isToYanyuan, client) { success, response, bitmap, details, qrCode ->
-                                                responseTexts = responseTexts + response
-                                                if (success) {
-                                                    qrCodeBitmap = bitmap
-                                                    reservationDetails = details
-                                                    qrCodeString = qrCode
-                                                    Toast.makeText(context, "反向预约成功", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    Toast.makeText(context, "反向无车可坐", Toast.LENGTH_SHORT).show()
+                                                performLoginWithClient(savedUsername ?: "", savedPassword ?: "", isToYanyuan, client) { success, response, bitmap, details, qrCode ->
+                                                    responseTexts = responseTexts + response
+                                                    if (success) {
+                                                        qrCodeBitmap = bitmap
+                                                        reservationDetails = details
+                                                        qrCodeString = qrCode
+                                                        snackbarMessage = "反向预约成功"
+                                                    } else {
+                                                        snackbarMessage = "反向无车可坐"
+                                                    }
+                                                    showLoading = false
+                                                    showSnackbar = true
                                                 }
-                                                showLoading = false
                                             }
-                                        }
-                                    }
-                                )
+                                        },
+                                        onShowLogs = { showLogs = true },
+                                        onEditSettings = { showSettingsDialog = true }
+                                    )
+                                }
                             } else {
                                 errorMessage?.let { msg ->
                                     ErrorScreen(message = msg, onRetry = {
@@ -191,6 +213,62 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+                        }
+
+                        LaunchedEffect(showSnackbar) {
+                            if (showSnackbar) {
+                                delay(1000)
+                                showSnackbar = false
+                            }
+                        }
+
+                        if (showSnackbar) {
+                            Snackbar(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .defaultMinSize(minWidth = 150.dp)
+                            ) {
+                                Text(snackbarMessage, color = MaterialTheme.colorScheme.onSecondary)
+                            }
+                        }
+
+                        if (showSettingsDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showSettingsDialog = false },
+                                title = { Text("编辑配置") },
+                                text = {
+                                    Column {
+                                        TextField(
+                                            value = prevInterval.value.toString(),
+                                            onValueChange = { prevInterval.value = it.toIntOrNull() ?: Settings.PREV_INTERVAL },
+                                            label = { Text("PREV_INTERVAL") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        TextField(
+                                            value = nextInterval.value.toString(),
+                                            onValueChange = { nextInterval.value = it.toIntOrNull() ?: Settings.NEXT_INTERVAL },
+                                            label = { Text("NEXT_INTERVAL") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                },
+                                confirmButton = {
+                                    Button(onClick = {
+                                        Settings.updatePrevInterval(context, prevInterval.value)
+                                        Settings.updateNextInterval(context, nextInterval.value)
+                                        showSettingsDialog = false
+                                    }) {
+                                        Text("保存")
+                                    }
+                                },
+                                dismissButton = {
+                                    Button(onClick = { showSettingsDialog = false }) {
+                                        Text("取消")
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -343,12 +421,15 @@ class MainActivity : ComponentActivity() {
                 val formattedJson = formatMap(appsMap)
                 val reservationData = (appsMap["d"] as? Map<String, Any>)?.get("data") as? List<Map<String, Any>>
                 Log.v("MyTag", "reservationData is $reservationData")
-                var reservationDetails = reservationData?.firstOrNull()
+                var reservationDetails: Map<String, Any>? = null
                 if (reservationData != null) {
                     for (reservation in reservationData) {
-                        val reservationResouceId = (reservation["resource_id"] as Double).toInt()
-                        if (reservationResouceId in listOf(2, 4) && isToYanyuan || reservationResouceId in listOf(5, 6, 7) && !isToYanyuan) {
+                        val reservationResourceId = (reservation["resource_id"] as Double).toInt()
+                        Log.v("MyTag", "reservationResourceId is $reservationResourceId, and isToYanyuan is $isToYanyuan")
+                        if ((reservationResourceId in listOf(2, 4) && isToYanyuan) ||
+                            (reservationResourceId in listOf(5, 6, 7) && !isToYanyuan)) {
                             reservationDetails = reservation
+                            break
                         }
                     }
                 }
@@ -532,12 +613,43 @@ class MainActivity : ComponentActivity() {
             apply()
         }
     }
+}
 
-    companion object {
-        object Settings {
-            const val PREV_INTERVAL = 30
-            const val NEXT_INTERVAL = 900
+object Settings {
+    private const val PREFS_NAME = "SettingsPrefs"
+    private const val KEY_PREV_INTERVAL = "prev_interval"
+    private const val KEY_NEXT_INTERVAL = "next_interval"
+    private const val DEFAULT_PREV_INTERVAL = 30
+    private const val DEFAULT_NEXT_INTERVAL = 300
+
+    var PREV_INTERVAL = DEFAULT_PREV_INTERVAL
+        private set
+    var NEXT_INTERVAL = DEFAULT_NEXT_INTERVAL
+        private set
+
+    fun load(context: Context) {
+        val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        PREV_INTERVAL = sharedPreferences.getInt(KEY_PREV_INTERVAL, DEFAULT_PREV_INTERVAL)
+        NEXT_INTERVAL = sharedPreferences.getInt(KEY_NEXT_INTERVAL, DEFAULT_NEXT_INTERVAL)
+    }
+
+    fun save(context: Context) {
+        val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putInt(KEY_PREV_INTERVAL, PREV_INTERVAL)
+            putInt(KEY_NEXT_INTERVAL, NEXT_INTERVAL)
+            apply()
         }
+    }
+
+    fun updatePrevInterval(context: Context, value: Int) {
+        PREV_INTERVAL = value
+        save(context)
+    }
+
+    fun updateNextInterval(context: Context, value: Int) {
+        NEXT_INTERVAL = value
+        save(context)
     }
 }
 
@@ -563,29 +675,43 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        TextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") },
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            text = "三、二、一，马池口！",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        TextField(
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("用户名") },
+            leadingIcon = { Icon(Icons.Default.Person, contentDescription = "用户名") },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        )
+
+        OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text("密码") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "密码") },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         )
 
         Button(
             onClick = { onLogin(username, password) },
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+                .height(50.dp),
+            shape = RoundedCornerShape(8.dp)
         ) {
-            Text("Login")
+            Text("登录")
         }
     }
 }
+
 
 @Composable
 fun DetailScreen(
@@ -593,8 +719,14 @@ fun DetailScreen(
     qrCodeBitmap: Bitmap?,
     reservationDetails: Map<String, Any>?,
     onLogout: () -> Unit,
-    onToggleBusDirection: () -> Unit
+    onToggleBusDirection: () -> Unit,
+    onShowLogs: () -> Unit,
+    onEditSettings: () -> Unit
 ) {
+    var isButtonEnabled by remember { mutableStateOf(true) }
+    var showSnackbar by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -652,16 +784,71 @@ fun DetailScreen(
                             contentDescription = "QR Code",
                             modifier = Modifier.size(200.dp)
                         )
-
-                        Button(
-                            onClick = onToggleBusDirection,
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                        ) {
-                            Text("乘坐反向班车")
-                        }
                     }
                 }
             } ?: Text("没有找到二维码或预约信息", color = MaterialTheme.colorScheme.error)
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                onClick = onShowLogs,
+                modifier = Modifier.weight(1f).padding(end = 8.dp)
+            ) {
+                Text("查看log")
+            }
+
+            Button(
+                onClick = onToggleBusDirection,
+                modifier = Modifier.weight(1f).padding(start = 8.dp, end = 8.dp)
+            ) {
+                Text("乘坐反向班车")
+            }
+
+            Button(
+                onClick = onEditSettings,
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            ) {
+                Text("编辑配置")
+            }
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            ) {
+                Text("Logout")
+            }
+        }
+    }
+
+    if (showSnackbar) {
+        Snackbar(
+            modifier = Modifier
+                .padding(16.dp)
+                .defaultMinSize(minWidth = 150.dp)
+        ) {
+            Text(snackbarMessage, color = MaterialTheme.colorScheme.onSecondary)
+        }
+    }
+}
+
+@Composable
+fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Text("返回")
         }
 
         Card(
@@ -692,13 +879,6 @@ fun DetailScreen(
                     )
                 }
             }
-        }
-
-        Button(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-        ) {
-            Text("Logout")
         }
     }
 }
