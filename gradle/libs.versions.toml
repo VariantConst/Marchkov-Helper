@@ -1,5 +1,15 @@
 [versions]
+accompanistPagerIndicators = "0.28.0"
+activityComposeVersion = "1.6.1"
 agp = "8.5.0"
+androidxActivityCompose = "1.3.1"
+core = "3.4.1"
+coreKtxVersion = "1.8.0"
+fontawesomeTypeface = "5.9.0.0"
+foundation = "1.6.8"
+gson = "2.8.8"
+gsonVersion = "2.10.1"
+iconicsViews = "5.3.0"
 kotlin = "1.9.0"
 coreKtx = "1.10.1"
 junit = "4.13.2"
@@ -8,9 +18,42 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
 composeBom = "2024.04.01"
+lifecycleRuntimeKtxVersion = "2.5.1"
+material = "1.6.8"
+material3 = "1.0.1"
+material3Version = "1.2.1"
+materialIconsExtended = "1.6.8"
+okhttp = "4.9.3"
+okhttpVersion = "4.10.0"
+securityCrypto = "1.1.0-alpha06"
+ui = "1.6.8"
+uiToolingPreview = "1.6.8"
+uiToolingPreviewVersion = "1.2.0"
+uiVersion = "1.2.0"
 
 [libraries]
+accompanist-pager = { module = "com.google.accompanist:accompanist-pager", version.ref = "accompanistPagerIndicators" }
+accompanist-pager-indicators = { module = "com.google.accompanist:accompanist-pager-indicators", version.ref = "accompanistPagerIndicators" }
+androidx-activity-compose-v131 = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
+androidx-activity-compose-v161 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
+androidx-compose-material3-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3Version" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-ktx-v180 = { module = "androidx.core:core-ktx", version.ref = "coreKtxVersion" }
+androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
+androidx-lifecycle-runtime-ktx-v251 = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
+androidx-material = { module = "androidx.compose.material:material", version.ref = "material" }
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
+androidx-material3-v101 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+androidx-ui-tooling-preview-v120 = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreviewVersion" }
+androidx-ui-v120 = { module = "androidx.compose.ui:ui", version.ref = "uiVersion" }
+core = { module = "com.google.zxing:core", version.ref = "core" }
+fontawesome-typeface = { module = "com.mikepenz:fontawesome-typeface", version.ref = "fontawesomeTypeface" }
+google-gson = { module = "com.google.code.gson:gson", version.ref = "gsonVersion" }
+gson-v288 = { module = "com.google.code.gson:gson", version.ref = "gson" }
+iconics-compose = { module = "com.mikepenz:iconics-compose", version.ref = "iconicsViews" }
+iconics-core = { module = "com.mikepenz:iconics-core", version.ref = "iconicsViews" }
+iconics-views = { module = "com.mikepenz:iconics-views", version.ref = "iconicsViews" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -24,6 +67,10 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+okhttp-v493 = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp3-okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttpVersion" }
+ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
+ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
