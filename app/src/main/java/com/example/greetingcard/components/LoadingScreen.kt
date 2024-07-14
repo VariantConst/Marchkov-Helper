@@ -1,19 +1,16 @@
 package com.example.greetingcard.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,8 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -89,14 +84,14 @@ fun LoadingScreen(message: String) {
 
 @Composable
 fun EnhancedProgressIndicator() {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "")
     val rotationAnimation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
-        )
+        ), label = ""
     )
 
     Box(contentAlignment = Alignment.Center) {
@@ -106,12 +101,14 @@ fun EnhancedProgressIndicator() {
             strokeWidth = 8.dp
         )
         CircularProgressIndicator(
+            progress = {
+                0.25f
+            },
             modifier = Modifier
                 .size(80.dp)
                 .rotate(rotationAnimation),
             color = MaterialTheme.colorScheme.primary,
             strokeWidth = 8.dp,
-            progress = 0.25f
         )
     }
 }

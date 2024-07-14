@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -15,8 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -212,11 +209,11 @@ fun ToggleDirectionButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
-        )
+        ), label = ""
     )
     val scale by animateFloatAsState(
         targetValue = if (isRotated) 1.05f else 1f,
-        animationSpec = tween(durationMillis = 200)
+        animationSpec = tween(durationMillis = 200), label = ""
     )
 
     Button(
@@ -287,50 +284,6 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
     }
 }
 
-
-
-@Composable
-fun ActionCard(
-    icon: ImageVector,
-    text: String,
-    gradient: Brush,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .background(gradient)
-                .fillMaxSize()
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = text,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {

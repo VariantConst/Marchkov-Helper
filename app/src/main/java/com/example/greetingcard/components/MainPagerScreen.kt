@@ -3,7 +3,6 @@ package com.example.greetingcard.components
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -203,16 +201,15 @@ fun SectionTitle(text: String) {
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            Divider(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+            HorizontalDivider(
+                modifier = Modifier.width(110.dp),
                 thickness = 2.dp,
-                modifier = Modifier.width(110.dp)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnimatedActionCard(
     icon: ImageVector,

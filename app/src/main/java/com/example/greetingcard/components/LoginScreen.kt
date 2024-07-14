@@ -5,7 +5,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,14 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(onLogin: (String, String) -> Unit) {
     var username by remember { mutableStateOf("") }
@@ -110,7 +107,6 @@ fun AnimatedLogo() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StyledTextField(
     value: String,
@@ -143,7 +139,7 @@ fun StyledTextField(
         visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        colors = TextFieldDefaults.outlinedTextFieldColors(
+        colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outline,
             focusedLabelColor = MaterialTheme.colorScheme.primary,
@@ -159,7 +155,7 @@ fun StyledTextField(
 fun AnimatedLoginButton(onClick: () -> Unit, isEnabled: Boolean) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.95f else 1f)
+    val scale by animateFloatAsState(if (isPressed) 0.95f else 1f, label = "")
 
     Button(
         onClick = onClick,

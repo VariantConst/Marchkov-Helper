@@ -14,8 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Text
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import com.google.gson.Gson
@@ -32,7 +30,7 @@ import com.example.greetingcard.components.LogScreen
 import com.example.greetingcard.components.LoginScreen
 import com.example.greetingcard.components.MainPagerScreen
 import com.example.greetingcard.components.LoadingScreen
-import com.example.greetingcard.utils.util.*
+import com.example.greetingcard.utils.*
 import com.example.greetingcard.utils.SimpleCookieJar
 import com.example.greetingcard.utils.Settings
 
@@ -172,7 +170,6 @@ class MainActivity : ComponentActivity() {
                                                             qrCodeBitmap = bitmap
                                                             reservationDetails = details
                                                             qrCodeString = qrCode
-                                                        } else {
                                                         }
                                                         isReservationLoading = false
                                                     }
@@ -324,9 +321,7 @@ class MainActivity : ComponentActivity() {
             try {
                 updateLoadingMessage("正在登录...")
                 // Step 1: GET request and POST login
-                var request = Request.Builder()
-                    .url("https://wproc.pku.edu.cn/api/login/main")
-                    .build()
+                var request: Request
 
                 val formBody = FormBody.Builder()
                     .add("appid", "wproc")
@@ -428,12 +423,11 @@ class MainActivity : ComponentActivity() {
                             Log.v("MyTag", "临时码响应是 is $tempQrCodeResponse")
                             val creatorNameFull = (qrCodeJson["d"] as? Map<*, *>)?.get("name") as? String
                             val creatorName = creatorNameFull?.split("\r\n")?.get(0)
-                            val periodText = startTime
 
                             val reservationDetails = mapOf<String, Any>(
                                 "creator_name" to (creatorName ?: ""),
                                 "resource_name" to resourceName,
-                                "start_time" to periodText,
+                                "start_time" to startTime,
                                 "is_temp" to true
                             )
                             if (qrCodeData != null) {

@@ -113,7 +113,6 @@ private fun DialogHeader(title: String) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EnhancedSettingField(
     label: String,
