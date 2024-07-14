@@ -32,7 +32,12 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.filled.ContentCopy
-
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun LoadingScreen(message: String) {
@@ -48,60 +53,7 @@ fun LoadingScreen(message: String) {
     }
 }
 
-@Composable
-fun LoginScreen(onLogin: (String, String) -> Unit) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "MARCHKOV",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("用户名") },
-            leadingIcon = { Icon(Icons.Default.Person, contentDescription = "用户名") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("密码") },
-            visualTransformation = PasswordVisualTransformation(),
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "密码") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-
-        Button(
-            onClick = { onLogin(username, password) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp)
-                .height(50.dp),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("登录")
-        }
-    }
-}
-
-
+@OptIn(ExperimentalPagerApi::class)
 @Composable
 fun DetailScreen(
     qrCodeBitmap: Bitmap?,
@@ -120,43 +72,23 @@ fun DetailScreen(
         ) {
             reservationDetails?.let { details ->
                 val creatorName = details["creator_name"] as? String ?: "访客"
-                val resourceName = details["resource_name"] as? String ?: "未知路线"
-                val periodText = (details["period_text"] as? Map<*, *>)?.values?.firstOrNull() as? Map<*, *>
-                val period = (periodText?.get("text") as? List<*>)?.firstOrNull() as? String ?: "未知时间"
+                var resourceName = details["resource_name"] as? String ?: "未知路线"
+                var period = details["start_time"] as? String ?: "未知时间"
+                val isTemp = details["is_temp"] as? Boolean ?: false
 
-                Text(
-                    text = "欢迎, $creatorName",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 24.dp)
+                resourceName = resourceName.replace("→", "➔")
+                period = period.replace("\n", "")
+
+                WelcomeHeader(creatorName)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                ReservationCard(
+                    isTemp = isTemp,
+                    resourceName = resourceName,
+                    period = period,
+                    qrCodeBitmap = qrCodeBitmap
                 )
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ReservationDetailRow("路线", resourceName)
-                        ReservationDetailRow("时间", period)
-
-                        qrCodeBitmap?.let { bitmap ->
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "QR Code",
-                                modifier = Modifier
-                                    .size(200.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .align(Alignment.CenterHorizontally),
-                            )
-                        }
-                    }
-                }
             } ?: Text(
                 "当前方向无车可坐",
                 style = MaterialTheme.typography.bodyLarge,
@@ -164,141 +96,176 @@ fun DetailScreen(
             )
 
             Spacer(modifier = Modifier.weight(1f))
+        }
 
-            Button(
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        ) {
+            ToggleDirectionButton(
                 onClick = onToggleBusDirection,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Text(
-                    "乘坐反向班车",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
+                    .padding(horizontal = 24.dp)
+            )
         }
 
         if (showSnackbar) {
             Snackbar(
                 modifier = Modifier
+                    .padding(16.dp)
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    .defaultMinSize(minWidth = 150.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Text(snackbarMessage)
+                Text(snackbarMessage, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
 }
 
 @Composable
-fun ReservationDetailRow(label: String, value: String) {
+fun WelcomeHeader(creatorName: String) {
     Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector = Icons.Default.DirectionsBus,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(48.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                text = "欢迎",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = creatorName,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+fun ReservationCard(
+    isTemp: Boolean,
+    resourceName: String,
+    period: String,
+    qrCodeBitmap: Bitmap?
+) {
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ReservationDetailItem("发车时间", period, Icons.Default.Schedule, Modifier.weight(1f))
+                ReservationDetailItem("预约类型", if (isTemp) "临时码" else "乘车码", Icons.Default.QrCode, Modifier.weight(1f))
+            }
+            ReservationDetailItem("班车路线", resourceName, Icons.Default.DirectionsBus, Modifier.fillMaxWidth())
+
+            qrCodeBitmap?.let { bitmap ->
+                QrCodeSection(bitmap)
+            }
+        }
+    }
+}
+
+@Composable
+fun ReservationDetailItem(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
-
 
 @Composable
-fun LogScreen(responseTexts: List<String>, onBack: () -> Unit) {
-    val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
-
-    Column(
+fun QrCodeSection(bitmap: Bitmap) {
+    Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Card(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth()
-                .weight(1f), // 使Card填充剩余空间
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-                    .weight(1f) // 修改这里，使Column填充Card的剩余空间
-                    .verticalScroll(rememberScrollState()), // 内部滚动
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = "Logs:",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                responseTexts.forEach { responseText ->
-                    Text(
-                        text = responseText,
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(
-                onClick = onBack,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("返回", color = Color.White)
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Button(
-                onClick = {
-                    val allLogs = responseTexts.joinToString("\n")
-                    clipboardManager.setText(AnnotatedString(allLogs))
-                    Toast.makeText(context, "Logs已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.ContentCopy, contentDescription = "复制", tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("复制", color = Color.White)
-            }
-        }
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "QR Code",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
     }
 }
+
+@Composable
+fun ToggleDirectionButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    var isRotated by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(if (isRotated) 180f else 0f)
+
+    Button(
+        onClick = {
+            isRotated = !isRotated
+            onClick()
+        },
+        modifier = modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.SwapVert,
+            contentDescription = "切换方向",
+            modifier = Modifier
+                .size(24.dp)
+                .rotate(rotation),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            "乘坐反向班车",
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
+
+
 
 @Composable
 fun ErrorScreen(message: String, onRetry: () -> Unit) {
@@ -321,115 +288,7 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalPagerApi::class)
-@Composable
-fun MainPagerScreen(
-    qrCodeBitmap: Bitmap?,
-    reservationDetails: Map<String, Any>?,
-    onLogout: () -> Unit,
-    onToggleBusDirection: () -> Unit,
-    onShowLogs: () -> Unit,
-    onEditSettings: () -> Unit,
-    currentPage: Int = 0,
-    setPage: (Int) -> Unit,
-    isReservationLoading: Boolean
-) {
-    val pagerState = rememberPagerState(initialPage = currentPage)
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        HorizontalPager(
-            count = 2,
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { page ->
-            when (page) {
-                0 -> {
-                    if (isReservationLoading) {
-                        LoadingScreen(message = "正在获取预约信息...")
-                    } else {
-                        DetailScreen(
-                            qrCodeBitmap = qrCodeBitmap,
-                            reservationDetails = reservationDetails,
-                            onToggleBusDirection = onToggleBusDirection,
-                        )
-                    }
-                }
-                1 -> AdditionalActionsScreen(
-                    onShowLogs = onShowLogs,
-                    onEditSettings = onEditSettings,
-                    onLogout = onLogout
-                )
-            }
-        }
-        LaunchedEffect(pagerState.currentPage) {
-            setPage(pagerState.currentPage)
-        }
-        HorizontalPagerIndicator(
-            pagerState = pagerState,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(16.dp)
-        )
-    }
-}
 
-
-@Composable
-fun AdditionalActionsScreen(
-    onShowLogs: () -> Unit,
-    onEditSettings: () -> Unit,
-    onLogout: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        ActionCard(
-            icon = Icons.AutoMirrored.Filled.List,
-            text = "查看日志",
-            gradient = Brush.horizontalGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                )
-            ),
-            onClick = onShowLogs
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ActionCard(
-            icon = Icons.Default.Settings,
-            text = "编辑配置",
-            gradient = Brush.horizontalGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
-                )
-            ),
-            onClick = onEditSettings
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        ActionCard(
-            icon = Icons.AutoMirrored.Filled.ExitToApp,
-            text = "退出登录",
-            gradient = Brush.horizontalGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.error,
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                )
-            ),
-            onClick = onLogout
-        )
-    }
-}
 
 @Composable
 fun ActionCard(
