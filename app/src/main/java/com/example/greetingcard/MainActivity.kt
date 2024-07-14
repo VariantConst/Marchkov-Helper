@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val prevInterval = remember { mutableIntStateOf(Settings.PREV_INTERVAL) }
             val nextInterval = remember { mutableIntStateOf(Settings.NEXT_INTERVAL) }
+            val criticalTime = remember { mutableIntStateOf(Settings.CRITICAL_TIME) }
             var responseTexts by remember { mutableStateOf(listOf<String>()) }
             var qrCodeBitmap by remember { mutableStateOf<Bitmap?>(null) }
             var reservationDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
             var isLoggedIn by remember { mutableStateOf(false) }
             var showLoading by remember { mutableStateOf(true) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
-            var isToYanyuan by remember { mutableStateOf(true) }
+            var isToYanyuan by remember { mutableStateOf(getInitialDirection()) }
             var showSnackbar by remember { mutableStateOf(false) }
             var snackbarMessage by remember { mutableStateOf("") }
             var showLogs by remember { mutableStateOf(false) }
@@ -91,6 +92,39 @@ class MainActivity : ComponentActivity() {
                         }
                     } ?: run {
                         errorMessage = "Login timeout"
+                        showLoading = false
+                    }
+
+                    // 如果第一次预定不成功，尝试反方向预定
+                    if (!isLoggedIn) {
+                        isToYanyuan = !isToYanyuan
+                        withTimeoutOrNull(10000L) {
+                            performLogin(savedUsername, savedPassword, isToYanyuan, updateLoadingMessage = { message ->
+                                loadingMessage = message
+                            }) { success, response, bitmap, details, qrCode ->
+                                if (success) {
+                                    isLoggedIn = true
+                                    showLoading = details == null // 如果没有获取到预约详情，继续显示加载页面
+                                    isReservationLoaded = details != null // 设置预约详情是否已加载
+                                    currentPage = 0
+                                } else {
+                                    errorMessage = response
+                                    showLoading = false
+                                }
+                                responseTexts = responseTexts + response
+                                qrCodeBitmap = bitmap
+                                reservationDetails = details
+                                qrCodeString = qrCode
+                            }
+                        } ?: run {
+                            errorMessage = "Login timeout"
+                            showLoading = false
+                        }
+                    }
+
+                    // 如果两次预定都不成功，显示错误页面
+                    if (!isLoggedIn) {
+                        errorMessage = "当前时段无车可坐！"
                         showLoading = false
                     }
                 } else {
@@ -224,9 +258,11 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .padding(16.dp)
                                     .align(Alignment.BottomCenter)
-                                    .defaultMinSize(minWidth = 150.dp)
+                                    .defaultMinSize(minWidth = 150.dp),
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ) {
-                                Text(snackbarMessage, color = MaterialTheme.colorScheme.onSecondary)
+                                Text(snackbarMessage, color = MaterialTheme.colorScheme.onPrimary)
                             }
                         }
 
@@ -249,6 +285,13 @@ class MainActivity : ComponentActivity() {
                                             label = { Text("NEXT_INTERVAL") },
                                             modifier = Modifier.fillMaxWidth()
                                         )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        OutlinedTextField(
+                                            value = criticalTime.intValue.toString(),
+                                            onValueChange = { criticalTime.intValue = it.toIntOrNull() ?: Settings.CRITICAL_TIME },
+                                            label = { Text("CRITICAL_TIME") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
                                     }
                                 },
                                 confirmButton = {
@@ -256,6 +299,7 @@ class MainActivity : ComponentActivity() {
                                         onClick = {
                                             Settings.updatePrevInterval(context, prevInterval.intValue)
                                             Settings.updateNextInterval(context, nextInterval.intValue)
+                                            Settings.updateCriticalTime(context, criticalTime.intValue)
                                             showSettingsDialog = false
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -274,12 +318,12 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.padding(16.dp)
                             )
                         }
+
+
                     }
                 }
             }
         }
-
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -397,6 +441,7 @@ class MainActivity : ComponentActivity() {
                 if (chosenResourceId == 0 || chosenPeriod == 0) {
                     withContext(Dispatchers.Main) {
                         callback(false, "No available bus found", null, null, null)
+                        updateLoadingMessage("")  // 清除加载信息
                     }
                     return@launch
                 }
@@ -528,6 +573,12 @@ class MainActivity : ComponentActivity() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
+    private fun getInitialDirection(): Boolean {
+        val currentTime = LocalDateTime.now(ZoneId.of("Asia/Shanghai")).hour
+        return currentTime < Settings.CRITICAL_TIME
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun chooseBus(resourceList: List<*>?, isToYanyuan: Boolean): Pair<Int, Int> {
         var chosenResourceId = 0
         var chosenPeriod = 0
@@ -542,9 +593,8 @@ class MainActivity : ComponentActivity() {
                     if (!(resourceId in listOf(2, 4) && isToYanyuan || resourceId in listOf(5, 6, 7) && !isToYanyuan)) {
                         continue
                     }
-
+                    Log.v("MyTag", "resourceId is $resourceId, routeName is $routeName")
                     val periods = (bus["table"] as Map<String, List<Map<String, Any>>>).values.first()
-                    Log.v("periods", "$periods")
                     for (period in periods) {
                         val timeId = (period["time_id"] as Double).toInt()
                         val date = period["date"] as String
@@ -566,10 +616,9 @@ class MainActivity : ComponentActivity() {
                         if (!hasExpiredBus && !hasFutureBus) {
                             continue
                         }
-                        Log.v("details", "$routeName at $date $startTime has a valid bus")
+
                         chosenResourceId = resourceId
                         chosenPeriod = timeId
-                        Log.v("details", "chosenResourceId $chosenResourceId chosenPeriod $chosenPeriod")
                         break
                     }
                 }
@@ -632,18 +681,23 @@ object Settings {
     private const val PREFS_NAME = "SettingsPrefs"
     private const val KEY_PREV_INTERVAL = "prev_interval"
     private const val KEY_NEXT_INTERVAL = "next_interval"
+    private const val KEY_CRITICAL_TIME = "critical_time"
     private const val DEFAULT_PREV_INTERVAL = 30
     private const val DEFAULT_NEXT_INTERVAL = 300
+    private const val DEFAULT_CRITICAL_TIME = 14
 
     var PREV_INTERVAL = DEFAULT_PREV_INTERVAL
         private set
     var NEXT_INTERVAL = DEFAULT_NEXT_INTERVAL
+        private set
+    var CRITICAL_TIME = DEFAULT_CRITICAL_TIME
         private set
 
     fun load(context: Context) {
         val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         PREV_INTERVAL = sharedPreferences.getInt(KEY_PREV_INTERVAL, DEFAULT_PREV_INTERVAL)
         NEXT_INTERVAL = sharedPreferences.getInt(KEY_NEXT_INTERVAL, DEFAULT_NEXT_INTERVAL)
+        CRITICAL_TIME = sharedPreferences.getInt(KEY_CRITICAL_TIME, DEFAULT_CRITICAL_TIME)
     }
 
     private fun save(context: Context) {
@@ -651,6 +705,7 @@ object Settings {
         with(sharedPreferences.edit()) {
             putInt(KEY_PREV_INTERVAL, PREV_INTERVAL)
             putInt(KEY_NEXT_INTERVAL, NEXT_INTERVAL)
+            putInt(KEY_CRITICAL_TIME, CRITICAL_TIME)
             apply()
         }
     }
@@ -664,7 +719,16 @@ object Settings {
         NEXT_INTERVAL = value
         save(context)
     }
+
+    fun updateCriticalTime(context: Context, value: Int) {
+        if (value in 0..24) {
+            CRITICAL_TIME = value
+            save(context)
+        }
+    }
+
 }
+
 
 class SimpleCookieJar : CookieJar {
     private val cookieStore = HashMap<String, List<Cookie>>()

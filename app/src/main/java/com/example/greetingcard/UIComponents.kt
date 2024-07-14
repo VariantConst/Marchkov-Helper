@@ -158,7 +158,7 @@ fun DetailScreen(
                     }
                 }
             } ?: Text(
-                "正在加载预约信息...",
+                "当前方向无车可坐",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
             )
