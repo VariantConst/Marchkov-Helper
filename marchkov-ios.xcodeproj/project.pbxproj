@@ -8,13 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */; };
-		F5D8A6DC2C451C6D001E0280 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6DB2C451C6D001E0280 /* ContentView.swift */; };
-		F5D8A6DE2C451C6D001E0280 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6DD2C451C6D001E0280 /* Item.swift */; };
 		F5D8A6E02C451C6E001E0280 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */; };
-		F5D8A6E32C451C6E001E0280 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5D8A6E22C451C6E001E0280 /* Preview Assets.xcassets */; };
 		F5D8A6ED2C451C6F001E0280 /* marchkov_iosTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6EC2C451C6F001E0280 /* marchkov_iosTests.swift */; };
 		F5D8A6F72C451C6F001E0280 /* marchkov_iosUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6F62C451C6F001E0280 /* marchkov_iosUITests.swift */; };
 		F5D8A6F92C451C6F001E0280 /* marchkov_iosUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6F82C451C6F001E0280 /* marchkov_iosUITestsLaunchTests.swift */; };
+		F5D8A7092C452F09001E0280 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7082C452F09001E0280 /* LoginView.swift */; };
+		F5D8A70B2C454064001E0280 /* LoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A70A2C454064001E0280 /* LoginService.swift */; };
+		F5D8A70F2C454F84001E0280 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A70E2C454F84001E0280 /* Item.swift */; };
+		F5D8A7132C4566B5001E0280 /* UserDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7122C4566B5001E0280 /* UserDataManager.swift */; };
+		F5D8A7152C457D83001E0280 /* BusReservationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7142C457D83001E0280 /* BusReservationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,15 +39,17 @@
 /* Begin PBXFileReference section */
 		F5D8A6D62C451C6D001E0280 /* marchkov-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "marchkov-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = marchkov_iosApp.swift; sourceTree = "<group>"; };
-		F5D8A6DB2C451C6D001E0280 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		F5D8A6DD2C451C6D001E0280 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
 		F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F5D8A6E22C451C6E001E0280 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F5D8A6E82C451C6E001E0280 /* marchkov-iosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "marchkov-iosTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5D8A6EC2C451C6F001E0280 /* marchkov_iosTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = marchkov_iosTests.swift; sourceTree = "<group>"; };
 		F5D8A6F22C451C6F001E0280 /* marchkov-iosUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "marchkov-iosUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5D8A6F62C451C6F001E0280 /* marchkov_iosUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = marchkov_iosUITests.swift; sourceTree = "<group>"; };
 		F5D8A6F82C451C6F001E0280 /* marchkov_iosUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = marchkov_iosUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		F5D8A7082C452F09001E0280 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		F5D8A70A2C454064001E0280 /* LoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginService.swift; sourceTree = "<group>"; };
+		F5D8A70E2C454F84001E0280 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		F5D8A7122C4566B5001E0280 /* UserDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataManager.swift; sourceTree = "<group>"; };
+		F5D8A7142C457D83001E0280 /* BusReservationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusReservationService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,20 +101,14 @@
 			isa = PBXGroup;
 			children = (
 				F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */,
-				F5D8A6DB2C451C6D001E0280 /* ContentView.swift */,
-				F5D8A6DD2C451C6D001E0280 /* Item.swift */,
+				F5D8A7082C452F09001E0280 /* LoginView.swift */,
+				F5D8A70E2C454F84001E0280 /* Item.swift */,
+				F5D8A70A2C454064001E0280 /* LoginService.swift */,
+				F5D8A7122C4566B5001E0280 /* UserDataManager.swift */,
+				F5D8A7142C457D83001E0280 /* BusReservationService.swift */,
 				F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */,
-				F5D8A6E12C451C6E001E0280 /* Preview Content */,
 			);
 			path = "marchkov-ios";
-			sourceTree = "<group>";
-		};
-		F5D8A6E12C451C6E001E0280 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				F5D8A6E22C451C6E001E0280 /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 		F5D8A6EB2C451C6E001E0280 /* marchkov-iosTests */ = {
@@ -124,10 +122,18 @@
 		F5D8A6F52C451C6F001E0280 /* marchkov-iosUITests */ = {
 			isa = PBXGroup;
 			children = (
+				F5D8A7072C452EE9001E0280 /* New Group */,
 				F5D8A6F62C451C6F001E0280 /* marchkov_iosUITests.swift */,
 				F5D8A6F82C451C6F001E0280 /* marchkov_iosUITestsLaunchTests.swift */,
 			);
 			path = "marchkov-iosUITests";
+			sourceTree = "<group>";
+		};
+		F5D8A7072C452EE9001E0280 /* New Group */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = "New Group";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -234,7 +240,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F5D8A6E32C451C6E001E0280 /* Preview Assets.xcassets in Resources */,
 				F5D8A6E02C451C6E001E0280 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -260,8 +265,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F5D8A6DC2C451C6D001E0280 /* ContentView.swift in Sources */,
-				F5D8A6DE2C451C6D001E0280 /* Item.swift in Sources */,
+				F5D8A70F2C454F84001E0280 /* Item.swift in Sources */,
+				F5D8A7152C457D83001E0280 /* BusReservationService.swift in Sources */,
+				F5D8A7132C4566B5001E0280 /* UserDataManager.swift in Sources */,
+				F5D8A70B2C454064001E0280 /* LoginService.swift in Sources */,
+				F5D8A7092C452F09001E0280 /* LoginView.swift in Sources */,
 				F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

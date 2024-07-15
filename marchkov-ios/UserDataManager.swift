@@ -3,76 +3,62 @@ import Foundation
 class UserDataManager {
     static let shared = UserDataManager()
     
-    private let userDefaults = UserDefaults.standard
-    private let usernameKey = "savedUsername"
-    private let passwordKey = "savedPassword"
-    private let prevIntervalKey = "prevInterval"
-    private let nextIntervalKey = "nextInterval"
-    private let criticalTimeKey = "criticalTime"
-    private let flagMorningToYanyuanKey = "flagMorningToYanyuan"
-    
     private init() {}
     
+    private let userDefaultsUsernameKey = "username"
+    private let userDefaultsPasswordKey = "password"
+    
     func saveUserCredentials(username: String, password: String) {
-        userDefaults.set(username, forKey: usernameKey)
-        userDefaults.set(password, forKey: passwordKey)
+        UserDefaults.standard.set(username, forKey: userDefaultsUsernameKey)
+        UserDefaults.standard.set(password, forKey: userDefaultsPasswordKey)
     }
     
     func getUserCredentials() -> (username: String, password: String)? {
-        guard let username = userDefaults.string(forKey: usernameKey),
-              let password = userDefaults.string(forKey: passwordKey) else {
+        guard let username = UserDefaults.standard.string(forKey: userDefaultsUsernameKey),
+              let password = UserDefaults.standard.string(forKey: userDefaultsPasswordKey) else {
             return nil
         }
         return (username, password)
     }
     
     func clearUserCredentials() {
-        userDefaults.removeObject(forKey: usernameKey)
-        userDefaults.removeObject(forKey: passwordKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsUsernameKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsPasswordKey)
     }
     
     func isUserLoggedIn() -> Bool {
         return getUserCredentials() != nil
     }
     
-    // New methods for additional settings
-    
-    func savePrevInterval(_ interval: Int) {
-        userDefaults.set(interval, forKey: prevIntervalKey)
-    }
+    // Default settings
+    private let defaultPrevInterval = 10
+    private let defaultNextInterval = 60
+    private let defaultCriticalTime = 14
+    private let defaultFlagMorningToYanyuan = true
     
     func getPrevInterval() -> Int {
-        return userDefaults.integer(forKey: prevIntervalKey)
-    }
-    
-    func saveNextInterval(_ interval: Int) {
-        userDefaults.set(interval, forKey: nextIntervalKey)
+        return UserDefaults.standard.integer(forKey: "prevInterval") != 0 ?
+            UserDefaults.standard.integer(forKey: "prevInterval") : defaultPrevInterval
     }
     
     func getNextInterval() -> Int {
-        return userDefaults.integer(forKey: nextIntervalKey)
-    }
-    
-    func saveCriticalTime(_ time: Int) {
-        userDefaults.set(time, forKey: criticalTimeKey)
+        return UserDefaults.standard.integer(forKey: "nextInterval") != 0 ?
+            UserDefaults.standard.integer(forKey: "nextInterval") : defaultNextInterval
     }
     
     func getCriticalTime() -> Int {
-        return userDefaults.integer(forKey: criticalTimeKey)
-    }
-    
-    func saveFlagMorningToYanyuan(_ flag: Bool) {
-        userDefaults.set(flag, forKey: flagMorningToYanyuanKey)
+        return UserDefaults.standard.integer(forKey: "criticalTime") != 0 ?
+            UserDefaults.standard.integer(forKey: "criticalTime") : defaultCriticalTime
     }
     
     func getFlagMorningToYanyuan() -> Bool {
-        return userDefaults.bool(forKey: flagMorningToYanyuanKey)
+        return UserDefaults.standard.object(forKey: "flagMorningToYanyuan") as? Bool ?? defaultFlagMorningToYanyuan
     }
     
     func resetToDefaultSettings() {
-        userDefaults.set(10, forKey: prevIntervalKey)
-        userDefaults.set(60, forKey: nextIntervalKey)
-        userDefaults.set(14, forKey: criticalTimeKey)
-        userDefaults.set(true, forKey: flagMorningToYanyuanKey)
+        UserDefaults.standard.set(defaultPrevInterval, forKey: "prevInterval")
+        UserDefaults.standard.set(defaultNextInterval, forKey: "nextInterval")
+        UserDefaults.standard.set(defaultCriticalTime, forKey: "criticalTime")
+        UserDefaults.standard.set(defaultFlagMorningToYanyuan, forKey: "flagMorningToYanyuan")
     }
 }
