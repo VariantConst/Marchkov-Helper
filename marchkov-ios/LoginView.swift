@@ -54,6 +54,8 @@ struct LoginView: View {
     
     private func login() {
         isLoading = true
+        LogManager.shared.clearLogs()
+        LogManager.shared.addLog("开始登录流程")
         LoginService.shared.login(username: username, password: password) { result in
             DispatchQueue.main.async {
                 switch result {
@@ -62,14 +64,17 @@ struct LoginView: View {
                         self.loginResult = "登录成功!"
                         self.isLoggedIn = true
                         self.token = token
+                        LogManager.shared.addLog("登录成功，开始获取资源")
                         self.getResources(token: token)
                     } else {
                         self.isLoading = false
                         self.loginResult = "登录失败: 用户名或密码无效。"
+                        LogManager.shared.addLog("登录失败：用户名或密码无效")
                     }
                 case .failure(let error):
                     self.isLoading = false
                     self.loginResult = "登录失败: \(error.localizedDescription)"
+                    LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
                 }
             }
         }
@@ -150,18 +155,24 @@ struct ReservationResultView: View {
     @Binding var isLoading: Bool
     @Binding var errorMessage: String
     @Binding var reservationResult: ReservationResult?
+    @State private var showLogs: Bool = false
     
     var body: some View {
         NavigationView {
-            Group {
-                if isLoading {
-                    ProgressView("加载中...")
-                } else if !errorMessage.isEmpty {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
+            ScrollView {
+                VStack(spacing: 20) {
+                    if isLoading {
+                        ProgressView("加载中...")
+                    } else if !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .padding()
+                        
+                        Button("显示日志") {
+                            showLogs = true
+                        }
                         .padding()
-                } else if let result = reservationResult {
-                    VStack(spacing: 20) {
+                    } else if let result = reservationResult {
                         Text(result.isPastBus ? "过期班车" : "未来班车")
                             .font(.headline)
                         
@@ -173,14 +184,34 @@ struct ReservationResultView: View {
                         
                         Text("请出示二维码乘车")
                             .font(.caption)
+                    } else {
+                        Text("暂无预约结果")
+                            .foregroundColor(.secondary)
                     }
-                    .padding()
-                } else {
-                    Text("暂无预约结果")
-                        .foregroundColor(.secondary)
                 }
+                .padding()
             }
             .navigationTitle("预约结果")
+            .sheet(isPresented: $showLogs) {
+                LogView()
+            }
+        }
+    }
+}
+
+struct LogView: View {
+    @State private var logs: String = LogManager.shared.getLogs()
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                Text(logs)
+                    .padding()
+            }
+            .navigationTitle("日志")
+            .navigationBarItems(trailing: Button("复制") {
+                UIPasteboard.general.string = logs
+            })
         }
     }
 }

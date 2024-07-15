@@ -17,6 +17,7 @@
 		F5D8A70F2C454F84001E0280 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A70E2C454F84001E0280 /* Item.swift */; };
 		F5D8A7132C4566B5001E0280 /* UserDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7122C4566B5001E0280 /* UserDataManager.swift */; };
 		F5D8A7152C457D83001E0280 /* BusReservationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7142C457D83001E0280 /* BusReservationService.swift */; };
+		F5D8A7172C4585D4001E0280 /* LogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7162C4585D4001E0280 /* LogManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +51,7 @@
 		F5D8A70E2C454F84001E0280 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
 		F5D8A7122C4566B5001E0280 /* UserDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataManager.swift; sourceTree = "<group>"; };
 		F5D8A7142C457D83001E0280 /* BusReservationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusReservationService.swift; sourceTree = "<group>"; };
+		F5D8A7162C4585D4001E0280 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,6 +107,7 @@
 				F5D8A70E2C454F84001E0280 /* Item.swift */,
 				F5D8A70A2C454064001E0280 /* LoginService.swift */,
 				F5D8A7122C4566B5001E0280 /* UserDataManager.swift */,
+				F5D8A7162C4585D4001E0280 /* LogManager.swift */,
 				F5D8A7142C457D83001E0280 /* BusReservationService.swift */,
 				F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */,
 			);
@@ -268,6 +271,7 @@
 				F5D8A70F2C454F84001E0280 /* Item.swift in Sources */,
 				F5D8A7152C457D83001E0280 /* BusReservationService.swift in Sources */,
 				F5D8A7132C4566B5001E0280 /* UserDataManager.swift in Sources */,
+				F5D8A7172C4585D4001E0280 /* LogManager.swift in Sources */,
 				F5D8A70B2C454064001E0280 /* LoginService.swift in Sources */,
 				F5D8A7092C452F09001E0280 /* LoginView.swift in Sources */,
 				F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */,
