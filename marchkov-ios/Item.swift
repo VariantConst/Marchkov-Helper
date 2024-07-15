@@ -1,10 +1,3 @@
-//
-//  Item.swift
-//  marchkov-ios
-//
-//  Created by 夏一飞 on 2024/7/15.
-//
-
 import Foundation
 import SwiftData
 
