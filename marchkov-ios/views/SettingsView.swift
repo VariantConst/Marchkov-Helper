@@ -46,7 +46,7 @@ struct SettingsView: View {
                 }
                 
                 Section(header: Text("方向设置")) {
-                    Toggle("临界前往燕园", isOn: $flagMorningToYanyuan)
+                    Toggle("上午去燕园", isOn: $flagMorningToYanyuan)
                 }
                 
                 

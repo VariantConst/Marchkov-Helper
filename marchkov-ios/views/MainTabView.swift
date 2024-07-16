@@ -12,7 +12,7 @@ struct MainTabView: View {
         TabView(selection: $currentTab) {
             ReservationResultView(isLoading: $isLoading, errorMessage: $errorMessage, reservationResult: $reservationResult)
                 .tabItem {
-                    Label("预约结果", systemImage: "ticket.fill")
+                    Label("预约结果", systemImage: "car.fill")
                 }
                 .tag(0)
 

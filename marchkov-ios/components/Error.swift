@@ -27,11 +27,6 @@ struct ErrorView: View {
                     .foregroundColor(Color(.secondaryLabel))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
-                
-                if isDeveloperMode {
-                    LogButton(showLogs: $showLogs)
-                        .padding(.top, 10)
-                }
             }
             .padding(.vertical, 30)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
