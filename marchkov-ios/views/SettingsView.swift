@@ -37,7 +37,7 @@ struct SettingsView: View {
                         Text("临界时刻")
                         Spacer()
                         Picker("", selection: $criticalTime) {
-                            ForEach(0...23, id: \.self) { hour in
+                            ForEach(6...22, id: \.self) { hour in
                                 Text("\(hour):00").tag(hour)
                             }
                         }
@@ -87,3 +87,4 @@ struct SettingsView: View {
         flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
     }
 }
+

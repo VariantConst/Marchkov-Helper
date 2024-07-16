@@ -1,29 +1,40 @@
 import SwiftUI
 
-
 struct ErrorView: View {
     let errorMessage: String
     let isDeveloperMode: Bool
     @Binding var showLogs: Bool
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        VStack(spacing: 15) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 50))
-                .foregroundColor(.red)
-            
-            Text(errorMessage)
-                .font(.headline)
-                .foregroundColor(.red)
-                .multilineTextAlignment(.center)
-            
-            if isDeveloperMode {
-                LogButton(showLogs: $showLogs)
+        GeometryReader { geometry in
+            VStack(spacing: 20) {
+                Text("😅")
+                    .font(.system(size: 128))
+                
+                VStack(alignment: .center, spacing: 10) {
+                    Text("这会没有班车可坐")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(.label))
+                    Text("急了？")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(.label))
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                
+                Text(errorMessage)
+                    .font(.system(size: 17, weight: .regular, design: .rounded))
+                    .foregroundColor(Color(.secondaryLabel))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                if isDeveloperMode {
+                    LogButton(showLogs: $showLogs)
+                        .padding(.top, 10)
+                }
             }
+            .padding(.vertical, 30)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 5)
     }
 }

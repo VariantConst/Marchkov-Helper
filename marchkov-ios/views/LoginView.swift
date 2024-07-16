@@ -142,26 +142,6 @@ struct LoginView: View {
     }
 }
 
-struct LogButton: View {
-    @Binding var showLogs: Bool
-    
-    var body: some View {
-        Button(action: {
-            showLogs = true
-        }) {
-            HStack {
-                Image(systemName: "doc.text.fill")
-                Text("显示日志")
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(8)
-        }
-    }
-}
-
 #Preview {
     LoginView()
 }

@@ -247,7 +247,7 @@ struct LoginService {
         }
     }
     
-    func getReservationResult(resources: [Resource], forceDirection: BusDirection? = nil, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
+    func getReservationResult(resources: [Resource], forceDirection: BusDirection? = nil, isReverseAttempt: Bool = false, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
         LogManager.shared.addLog("开始获取预约结果")
         let userDefaults = UserDefaults.standard
         let criticalTime = userDefaults.integer(forKey: "criticalTime")
@@ -335,7 +335,13 @@ struct LoginService {
         }
         
         LogManager.shared.addLog("未找到合适的班车")
-        completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No suitable bus found"])))
+        if !isReverseAttempt && forceDirection == nil {
+            LogManager.shared.addLog("尝试反向预约")
+            let reverseDirection: BusDirection = direction == .toYanyuan ? .toChangping : .toYanyuan
+            getReservationResult(resources: resources, forceDirection: reverseDirection, isReverseAttempt: true, completion: completion)
+        } else {
+            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No suitable bus found"])))
+        }
     }
 
     

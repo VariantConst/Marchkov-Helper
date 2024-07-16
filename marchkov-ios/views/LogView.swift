@@ -8,8 +8,12 @@ struct LogView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
+            VStack(spacing: 0) {
                 SearchBar(text: $searchText)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                    .background(Color(.systemBackground))
                 
                 List {
                     ForEach(filteredLogs) { log in
@@ -20,18 +24,27 @@ struct LogView: View {
             }
             .navigationTitle("日志")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("关闭") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing:
-                    Button("复制") {
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("关闭") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
                         UIPasteboard.general.string = logs.map { $0.fullText }.joined(separator: "\n")
                         showCopiedAlert = true
+                    }) {
+                        Image(systemName: "doc.on.doc")
                     }
-            )
+                }
+            }
             .alert(isPresented: $showCopiedAlert) {
-                Alert(title: Text("已复制"), message: Text("日志已复制到剪贴板"), dismissButton: .default(Text("确定")))
+                Alert(
+                    title: Text("已复制"),
+                    message: Text("日志已复制到剪贴板"),
+                    dismissButton: .default(Text("确定"))
+                )
             }
         }
         .onAppear(perform: refreshLogs)
@@ -62,7 +75,7 @@ struct SearchBar: View {
                 .foregroundColor(.secondary)
             
             TextField("搜索日志", text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .textFieldStyle(PlainTextFieldStyle())
             
             if !text.isEmpty {
                 Button(action: {
@@ -73,8 +86,9 @@ struct SearchBar: View {
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.top, 8)
+        .padding(8)
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
     }
 }
 
@@ -119,7 +133,6 @@ struct LogEntryView: View {
     }
 }
 
-// Preview
 struct LogView_Previews: PreviewProvider {
     static var previews: some View {
         LogView()
