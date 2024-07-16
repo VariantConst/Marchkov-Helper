@@ -33,18 +33,18 @@
 
 **必填**
 
-| 变量名     | 描述                       | 示例值              |
-| ---------- | -------------------------- | ------------------- |
-| USERNAME   | 学号                       | `<your_username>`   |
-| PASSWORD   | 密码                       | `<your_password>`   |
-| AUTH_TOKEN | 自定义访问网站时需要的密码 | `<your_auth_token>` |
+| 变量名     | 描述                       |
+| ---------- | -------------------------- |
+| USERNAME   | 学号                       |
+| PASSWORD   | 密码                       |
+| AUTH_TOKEN | 自定义访问网站时需要的密码 |
 
 Vercel 会自动部署网站。Vercel 免费版的网站是公开可见的，因此需要设置 `AUTH_TOKEN` 保护网页。
 
 <details>
 <summary><strong>高级选项</strong></summary>
 
-| 变量名                  | 描述                                                                         | 示例值 |
+| 变量名                  | 描述                                                                         | 默认值 |
 | ----------------------- | ---------------------------------------------------------------------------- | ------ |
 | PREV_INTERVAL           | 向前追溯临时码的时间间隔（分钟）                                             | 10     |
 | NEXT_INTERVAL           | 向后检查可乘坐班车的时间间隔（分钟）                                         | 60     |
@@ -108,7 +108,5 @@ pnpm run dev
 ## TODO
 
 - [ ] 支持 docker 部署
-
-## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=VariantConst/3-2-1-Marchkov&type=Date)](https://star-history.com/#VariantConst/3-2-1-Marchkov&Date)

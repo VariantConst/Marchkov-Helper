@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .utils import login, get_beijing_time, get_bus_direction, reserve_bus, cancel_reservation, get_bus_info
@@ -63,9 +63,6 @@ async def api_login(session: requests.Session = Depends(get_db_session)):
 
 @app.get("/api/reserve")
 async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True, session: requests.Session = Depends(ensure_login)):
-    if session is None:
-        return {"success": False, "message": "未登录，请先进行登录。"}
-    
     try:
         current_time = get_beijing_time()
         if is_first_load:
@@ -107,9 +104,6 @@ async def reserve(is_first_load: bool=True, is_to_yanyuan: bool = True, session:
 
 @app.get("/api/cancel")
 async def api_cancel_reservation(app_id: int, app_appointment_id: int, session: requests.Session = Depends(ensure_login)):
-    if session is None:
-        return {"success": False, "message": "未登录，请先进行登录。"}
-    
     result = cancel_reservation(app_id, app_appointment_id, session)
     return result
 

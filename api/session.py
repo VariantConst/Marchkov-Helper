@@ -1,5 +1,5 @@
 import requests
-from fastapi import Depends
+from datetime import datetime, timedelta
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"
@@ -8,16 +8,27 @@ headers = {
 session = None
 token = None
 bus_info = None
+last_access_time = None
+SESSION_TIMEOUT = timedelta(hours=1)
 
 def init_session():
-    global session
-    if session is None:
-        session = requests.Session()
-        session.headers.update(headers)
+    global session, last_access_time, token, bus_info
+    session = requests.Session()
+    session.headers.update(headers)
+    last_access_time = datetime.now()
+    token = None
+    bus_info = None
     return session
 
 def get_session():
-    return init_session()
+    global session, last_access_time
+    current_time = datetime.now()
+    
+    if session is None or (last_access_time and current_time - last_access_time > SESSION_TIMEOUT):
+        return init_session()
+    
+    last_access_time = current_time
+    return session
 
 def get_db_session():
     return get_session()
