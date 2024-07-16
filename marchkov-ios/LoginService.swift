@@ -121,13 +121,22 @@ struct LoginService {
             do {
                 let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
                 LogManager.shared.addLog("登录响应解码成功")
-                if loginResponse.success {
-                    LogManager.shared.addLog("登录成功")
-                    UserDataManager.shared.saveUserCredentials(username: username, password: password)
+                if loginResponse.success, let token = loginResponse.token {
+                    LogManager.shared.addLog("登录成功，开始跟随重定向")
+                    self.followRedirect(token: token) { result in
+                        switch result {
+                        case .success:
+                            LogManager.shared.addLog("重定向成功")
+                            completion(.success(loginResponse))
+                        case .failure(let error):
+                            LogManager.shared.addLog("重定向失败：\(error.localizedDescription)")
+                            completion(.failure(error))
+                        }
+                    }
                 } else {
                     LogManager.shared.addLog("登录失败：响应表示失败")
+                    completion(.success(loginResponse))
                 }
-                completion(.success(loginResponse))
             } catch {
                 LogManager.shared.addLog("登录响应解码失败：\(error.localizedDescription)")
                 completion(.failure(error))
@@ -137,8 +146,36 @@ struct LoginService {
         task.resume()
     }
     
+    private func followRedirect(token: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let redirectURL = URL(string: "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=\(token)")!
+        
+        LogManager.shared.addLog("发送重定向请求 - URL: \(redirectURL.absoluteString)")
+        let task = session.dataTask(with: redirectURL) { _, response, error in
+            if let error = error {
+                LogManager.shared.addLog("重定向失败: \(error.localizedDescription)")
+                completion(.failure(error))
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                LogManager.shared.addLog("重定向成功: 状态码 \(httpResponse.statusCode)")
+                completion(.success(()))
+            } else {
+                let error = NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+                LogManager.shared.addLog("重定向失败: 无效的响应")
+                completion(.failure(error))
+            }
+        }
+        task.resume()
+    }
+    
     func getResources(token: String, completion: @escaping (Result<[Resource], Error>) -> Void) {
-        LogManager.shared.addLog("开始获取资源")
+        if let cachedBusInfo = getCachedBusInfo(), Calendar.current.isDateInToday(cachedBusInfo.date) {
+            LogManager.shared.addLog("使用缓存的班车信息")
+            completion(.success(cachedBusInfo.resources))
+            return
+        }
+        LogManager.shared.addLog("从网络获取班车信息")
         // Step 1: Follow redirect with token
         let redirectURL = URL(string: "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=\(token)")!
         
@@ -185,6 +222,7 @@ struct LoginService {
                     let listData = try JSONSerialization.data(withJSONObject: (json?["d"] as? [String: Any])?["list"] ?? [], options: [])
                     let resources = try JSONDecoder().decode([Resource].self, from: listData)
                     LogManager.shared.addLog("成功解析资源: 共\(resources.count)个资源")
+                    self.cacheBusInfo(DatedBusInfo(date: Date(), resources: resources))
                     completion(.success(resources))
                 } catch {
                     LogManager.shared.addLog("解析资源失败: \(error.localizedDescription)")
@@ -194,6 +232,19 @@ struct LoginService {
             task2.resume()
         }
         task1.resume()
+    }
+    
+    private func getCachedBusInfo() -> DatedBusInfo? {
+        guard let data = UserDefaults.standard.data(forKey: "cachedBusInfo") else {
+            return nil
+        }
+        return try? JSONDecoder().decode(DatedBusInfo.self, from: data)
+    }
+    
+    private func cacheBusInfo(_ busInfo: DatedBusInfo) {
+        if let encoded = try? JSONEncoder().encode(busInfo) {
+            UserDefaults.standard.set(encoded, forKey: "cachedBusInfo")
+        }
     }
     
     func getReservationResult(resources: [Resource], completion: @escaping (Result<ReservationResult, Error>) -> Void) {
@@ -240,11 +291,9 @@ struct LoginService {
         for resource in filteredResources {
             LogManager.shared.addLog("检查资源: ID = \(resource.id), 名称 = \(resource.name)")
             for busInfo in resource.busInfos {
-                LogManager.shared.addLog("检查班车信息: 日期 = \(busInfo.date), 时间 = \(busInfo.yaxis), 余票 = \(busInfo.margin)")
                 if busInfo.date == today && busInfo.margin > 0 {
                     let busTime = busInfo.yaxis
                     if let timeDifference = getTimeDifference(currentTime: currentTime, busTime: busTime) {
-                        LogManager.shared.addLog("时间差: \(timeDifference) 分钟")
                         if timeDifference >= -prevInterval && timeDifference <= nextInterval {
                             if timeDifference < 0 {
                                 // Past bus
@@ -323,7 +372,7 @@ struct LoginService {
             
             do {
                 if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                    LogManager.shared.addLog("获取临时码 - 收到的JSON数据: \(json)")
+                    LogManager.shared.addLog("尝试获取临时码")
                     if let d = json["d"] as? [String: Any],
                        let code = d["code"] as? String {
                         LogManager.shared.addLog("获取临时码成功: \(code)")
@@ -398,7 +447,7 @@ struct LoginService {
             
             do {
                 if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                    LogManager.shared.addLog("获取预约二维码 - 收到的JSON数据: \(json)")
+                    LogManager.shared.addLog("尝试获取预约二维码")
                     if let d = json["d"] as? [String: Any],
                        let apps = d["data"] as? [[String: Any]] {
                         

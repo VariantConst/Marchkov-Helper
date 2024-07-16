@@ -58,21 +58,20 @@ struct LoginView: View {
         LogManager.shared.addLog("开始登录流程")
         LoginService.shared.login(username: username, password: password) { result in
             DispatchQueue.main.async {
+                self.isLoading = false
                 switch result {
                 case .success(let loginResponse):
                     if loginResponse.success, let token = loginResponse.token {
                         self.loginResult = "登录成功!"
                         self.isLoggedIn = true
                         self.token = token
-                        LogManager.shared.addLog("登录成功，开始获取资源")
+                        LogManager.shared.addLog("登录和重定向成功，开始获取资源")
                         self.getResources(token: token)
                     } else {
-                        self.isLoading = false
                         self.loginResult = "登录失败: 用户名或密码无效。"
                         LogManager.shared.addLog("登录失败：用户名或密码无效")
                     }
                 case .failure(let error):
-                    self.isLoading = false
                     self.loginResult = "登录失败: \(error.localizedDescription)"
                     LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
                 }
@@ -184,9 +183,19 @@ struct ReservationResultView: View {
                         
                         Text("请出示二维码乘车")
                             .font(.caption)
+                        
+                        Button("显示日志") {
+                            showLogs = true
+                        }
+                        .padding()
                     } else {
                         Text("暂无预约结果")
                             .foregroundColor(.secondary)
+                        
+                        Button("显示日志") {
+                            showLogs = true
+                        }
+                        .padding()
                     }
                 }
                 .padding()
