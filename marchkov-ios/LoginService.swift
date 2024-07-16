@@ -262,8 +262,8 @@ struct LoginService {
                                 }
                             } else {
                                 // Future bus
-                                LogManager.shared.addLog("找到未来班车, 开始预约")
-                                reserveBus(resourceId: resource.id, date: today, timeId: busInfo.timeId) { result in
+                                LogManager.shared.addLog("找到未来班车 resourceId=\(resource.id), name=\(resource.name) yaxis=\(busTime), 开始预约")
+                                reserveBus(resourceId: resource.id, date: today, timeId: busInfo.timeId, busTime: busTime) { result in
                                     switch result {
                                     case .success(let qrCode):
                                         LogManager.shared.addLog("预约成功")
@@ -340,7 +340,7 @@ struct LoginService {
         }.resume()
     }
     
-    private func reserveBus(resourceId: Int, date: String, timeId: Int, completion: @escaping (Result<String, Error>) -> Void) {
+    private func reserveBus(resourceId: Int, date: String, timeId: Int, busTime: String, completion: @escaping (Result<String, Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/launch")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -368,13 +368,13 @@ struct LoginService {
             }
             
             LogManager.shared.addLog("预约班车成功,开始获取预约二维码")
-            self.getReservationQRCode(resourceId: resourceId, date: date, yaxis: "") { result in
+            self.getReservationQRCode(resourceId: resourceId, date: date, busTime: busTime) { result in
                 completion(result)
             }
         }.resume()
     }
     
-    private func getReservationQRCode(resourceId: Int, date: String, yaxis: String, completion: @escaping (Result<String, Error>) -> Void) {
+    private func getReservationQRCode(resourceId: Int, date: String, busTime: String, completion: @escaping (Result<String, Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status=2&sort_time=true&sort=asc")!
         
         LogManager.shared.addLog("获取预约二维码 - URL: \(url.absoluteString)")
@@ -405,14 +405,15 @@ struct LoginService {
                         let dateFormatter = DateFormatter()
                         dateFormatter.dateFormat = "yyyy-MM-dd"
                         let today = dateFormatter.string(from: Date())
+                        LogManager.shared.addLog("正在寻找具有 ID = \(resourceId), yaxis = \(today) \(busTime) 的预约信息")
                         
                         for app in apps {
                             if let appResourceId = app["resource_id"] as? Int,
-                               let appTime = app["appointment_time"] as? String,
+                               let appTime = (app["appointment_tim"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
                                let appId = app["id"] as? Int,
                                let appAppointmentId = app["hall_appointment_data_id"] as? Int,
                                appResourceId == resourceId,
-                               appTime.starts(with: "\(today) \(yaxis)") {
+                               appTime.starts(with: "\(today) \(busTime)") {
                                 
                                 LogManager.shared.addLog("找到匹配的预约: ID = \(appId), AppointmentID = \(appAppointmentId)")
                                 self.getQRCode(appId: appId, appAppointmentId: appAppointmentId) { result in
