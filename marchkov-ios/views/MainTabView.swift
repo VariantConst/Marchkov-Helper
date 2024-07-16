@@ -49,7 +49,7 @@ struct ReservationResultView: View {
                         } else if !errorMessage.isEmpty {
                             ErrorView(errorMessage: errorMessage, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
                         } else if let result = reservationResult {
-                            SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
+                            SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult)
                         } else {
                             Text("暂无预约结果")
                                 .font(.headline)
@@ -76,6 +76,9 @@ struct SuccessView: View {
     let result: ReservationResult
     let isDeveloperMode: Bool
     @Binding var showLogs: Bool
+    @State private var isReverseReserving: Bool = false
+    @State private var showReverseReservationError: Bool = false
+    @Binding var reservationResult: ReservationResult?
     
     var body: some View {
         VStack(spacing: 10) {
@@ -94,6 +97,22 @@ struct SuccessView: View {
                 .frame(width: 200, height: 200)
                 .padding()
             
+            Button(action: {
+                reverseReservation()
+            }) {
+                if isReverseReserving {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Text("预约反向班车")
+                }
+            }
+            .padding()
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .disabled(isReverseReserving)
+            
             if isDeveloperMode {
                 LogButton(showLogs: $showLogs)
             }
@@ -102,5 +121,26 @@ struct SuccessView: View {
         .background(Color(.systemBackground))
         .cornerRadius(20)
         .shadow(radius: 10)
+        .alert(isPresented: $showReverseReservationError) {
+            Alert(title: Text("反向预约失败"), message: Text("反向无车可坐"), dismissButton: .default(Text("确定")))
+        }
+    }
+    
+    private func reverseReservation() {
+        isReverseReserving = true
+        LoginService.shared.reverseReservation(currentResult: result) { result in
+            DispatchQueue.main.async {
+                isReverseReserving = false
+                switch result {
+                case .success(let newReservation):
+                    reservationResult = newReservation
+                case .failure:
+                    showReverseReservationError = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        showReverseReservationError = false
+                    }
+                }
+            }
+        }
     }
 }

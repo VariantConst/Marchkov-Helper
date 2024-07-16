@@ -11,6 +11,9 @@ struct ReservationResult {
     let yaxis: String
     let qrCode: String
     let username: String
+    let busId: Int
+    let appointmentId: Int?
+    let appAppointmentId: Int?
 }
 
 struct DatedBusInfo: Codable {

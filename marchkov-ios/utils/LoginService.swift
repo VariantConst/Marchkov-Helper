@@ -247,7 +247,7 @@ struct LoginService {
         }
     }
     
-    func getReservationResult(resources: [Resource], completion: @escaping (Result<ReservationResult, Error>) -> Void) {
+    func getReservationResult(resources: [Resource], forceDirection: BusDirection? = nil, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
         LogManager.shared.addLog("开始获取预约结果")
         let userDefaults = UserDefaults.standard
         let criticalTime = userDefaults.integer(forKey: "criticalTime")
@@ -262,7 +262,9 @@ struct LoginService {
         let currentHour = calendar.component(.hour, from: currentDate)
         
         let direction: BusDirection
-        if currentHour < criticalTime {
+        if let forcedDirection = forceDirection {
+            direction = forcedDirection
+        } else if currentHour < criticalTime {
             direction = flagMorningToYanyuan ? .toYanyuan : .toChangping
         } else {
             direction = flagMorningToYanyuan ? .toChangping : .toYanyuan
@@ -298,11 +300,20 @@ struct LoginService {
                             if timeDifference < 0 {
                                 // Past bus
                                 LogManager.shared.addLog("找到过期班车, 获取临时码")
-                                getTempCode(resourceId: resource.id, startTime: busTime) { result in
+                                getTempCode(resourceId: resource.id, startTime: busTime) { (result: Result<(code: String, name: String), Error>) in
                                     switch result {
-                                    case .success(let qrCode):
+                                    case .success(let (qrCode, name)):
                                         LogManager.shared.addLog("成功获取临时码")
-                                        let reservationResult = ReservationResult(isPastBus: true, name: resource.name, yaxis: busTime, qrCode: qrCode, username: "N/A")
+                                        let reservationResult = ReservationResult(
+                                            isPastBus: true,
+                                            name: resource.name,
+                                            yaxis: busTime,
+                                            qrCode: qrCode,
+                                            username: name,
+                                            busId: resource.id,
+                                            appointmentId: nil,
+                                            appAppointmentId: nil
+                                        )
                                         completion(.success(reservationResult))
                                     case .failure(let error):
                                         LogManager.shared.addLog("获取临时码失败: \(error.localizedDescription)")
@@ -341,7 +352,7 @@ struct LoginService {
         return Int(difference)
     }
     
-    private func getTempCode(resourceId: Int, startTime: String, completion: @escaping (Result<String, Error>) -> Void) {
+    private func getTempCode(resourceId: Int, startTime: String, completion: @escaping (Result<(code: String, name: String), Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&resource_id=\(resourceId)&text=\(startTime)")!
         
         LogManager.shared.addLog("获取临时码 - URL: \(url.absoluteString)")
@@ -367,9 +378,18 @@ struct LoginService {
                 if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
                     LogManager.shared.addLog("尝试获取临时码")
                     if let d = json["d"] as? [String: Any],
-                       let code = d["code"] as? String {
-                        LogManager.shared.addLog("获取临时码成功: \(code)")
-                        completion(.success(code))
+                       let code = d["code"] as? String,
+                       let rawName = d["name"] as? String {
+                       // 处理 name 字段，提取第一个非空的子字符串
+                       let nameComponents = rawName.split { $0.isWhitespace }
+                       if let firstNonEmptyName = nameComponents.first {
+                           let name = String(firstNonEmptyName)
+                           LogManager.shared.addLog("获取临时码成功: \(code)")
+                           completion(.success((code: code, name: name)))
+                       } else {
+                           LogManager.shared.addLog("获取临时码 - name 字段为空")
+                           completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Name field is empty"])))
+                       }
                     } else {
                         LogManager.shared.addLog("获取临时码 - 无效的响应格式")
                         completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])))
@@ -415,6 +435,97 @@ struct LoginService {
             }
         }.resume()
     }
+    
+    func reverseReservation(currentResult: ReservationResult, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
+        LogManager.shared.addLog("开始反向预约")
+        
+        // 确定反向预约的方向
+        LogManager.shared.addLog("现在预约的方向为 \(currentResult.name)")
+        let yanYanyuanIds = [2, 4]
+        let reverseDirection: BusDirection = yanYanyuanIds.contains(currentResult.busId) ? .toChangping : .toYanyuan
+        
+        // 获取资源
+        self.getResources(token: token ?? "") { result in
+            switch result {
+            case .success(let resources):
+                // 使用新的方向进行预约
+                LogManager.shared.addLog("使用方向 \(reverseDirection) 进行反向预约")
+                self.getReservationResult(resources: resources, forceDirection: reverseDirection) { result in
+                    switch result {
+                    case .success(let newResult):
+                        if !currentResult.isPastBus {
+                            guard let appointmentId = currentResult.appointmentId, let appAppointmentId = currentResult.appAppointmentId else {
+                                LogManager.shared.addLog("取消原有预约失败：缺少 appointmentId 或 appAppointmentId")
+                                completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing appointmentId or appAppointmentId"])))
+                                return
+                            }
+                            
+                            self.cancelReservation(appointmentId: appointmentId, appAppointmentId: appAppointmentId) { cancelResult in
+                                switch cancelResult {
+                                case .success:
+                                    LogManager.shared.addLog("取消原有预约成功")
+                                    completion(.success(newResult))
+                                case .failure(let error):
+                                    LogManager.shared.addLog("取消原有预约失败：\(error.localizedDescription)")
+                                    completion(.failure(error))
+                                }
+                            }
+                        } else {
+                            completion(.success(newResult))
+                        }
+
+                    case .failure(let error):
+                        completion(.failure(error))
+                    }
+                }
+            case .failure(let error):
+                LogManager.shared.addLog("反向预约失败：获取资源出错 - \(error.localizedDescription)")
+                completion(.failure(error))
+            }
+        }
+    }
+
+    private func cancelReservation(appointmentId: Int, appAppointmentId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/single-time-cancel")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let bodyData = "appointment_id=\(appointmentId)&data_id[0]=\(appAppointmentId)"
+        request.httpBody = bodyData.data(using: .utf8)
+
+        LogManager.shared.addLog("取消预约 - URL: \(url.absoluteString)")
+        LogManager.shared.addLog("取消预约 - 请求体: \(bodyData)")
+
+        session.dataTask(with: request) { data, response, error in
+            if let error = error {
+                LogManager.shared.addLog("取消预约失败: \(error.localizedDescription)")
+                completion(.failure(error))
+                return
+            }
+
+            guard let data = data else {
+                LogManager.shared.addLog("取消预约 - 未收到数据")
+                completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data received"])))
+                return
+            }
+
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any], let e = json["e"] as? Int, e == 0 {
+                    LogManager.shared.addLog("取消预约成功")
+                    completion(.success(()))
+                } else {
+                    let message = "预约取消失败"
+                    LogManager.shared.addLog(message)
+                    completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: message])))
+                }
+            } catch {
+                LogManager.shared.addLog("取消预约 - JSON解析失败: \(error.localizedDescription)")
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+
 
     
     private func getReservationQRCode(resource: Resource, date: String, busTime: String, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
@@ -463,7 +574,16 @@ struct LoginService {
                                 self.getQRCode(appId: appId, appAppointmentId: appAppointmentId) { result in
                                     switch result {
                                     case .success(let qrCode):
-                                        let reservationResult = ReservationResult(isPastBus: false, name: resource.name, yaxis: busTime, qrCode: qrCode, username: username)
+                                        let reservationResult = ReservationResult(
+                                            isPastBus: false,
+                                            name: resource.name,
+                                            yaxis: busTime,
+                                            qrCode: qrCode,
+                                            username: username,
+                                            busId: resource.id,
+                                            appointmentId: appId,
+                                            appAppointmentId: appAppointmentId
+                                        )
                                         completion(.success(reservationResult))
                                     case .failure(let error):
                                         completion(.failure(error))
