@@ -12,7 +12,7 @@ struct MainTabView: View {
         TabView(selection: $currentTab) {
             ReservationResultView(isLoading: $isLoading, errorMessage: $errorMessage, reservationResult: $reservationResult)
                 .tabItem {
-                    Label("预约结果", systemImage: "car.fill")
+                    Label("乘车", systemImage: "car.fill")
                 }
                 .tag(0)
 
@@ -104,14 +104,12 @@ struct SuccessView: View {
     @Binding var reservationResult: ReservationResult?
     @Environment(\.colorScheme) var colorScheme
     
-    // 更新的颜色定义
-    private let primaryGreen = Color(hex: "6B8E73")  // 保持不变的柔和绿色
-    private let primaryOrange = Color(hex: "C1864F")  // 新的高级橙色
+    private let primaryGreen = Color(hex: "6B8E73")
+    private let primaryOrange = Color(hex: "C1864F")
     
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // 顶部窄条显示乘车码类型
                 Text(result.isPastBus ? "临时码" : "乘车码")
                     .font(.caption)
                     .fontWeight(.bold)
