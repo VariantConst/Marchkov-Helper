@@ -302,7 +302,7 @@ struct LoginService {
                                     switch result {
                                     case .success(let qrCode):
                                         LogManager.shared.addLog("成功获取临时码")
-                                        let reservationResult = ReservationResult(isPastBus: true, name: resource.name, yaxis: busTime, qrCode: qrCode)
+                                        let reservationResult = ReservationResult(isPastBus: true, name: resource.name, yaxis: busTime, qrCode: qrCode, username: "N/A")
                                         completion(.success(reservationResult))
                                     case .failure(let error):
                                         LogManager.shared.addLog("获取临时码失败: \(error.localizedDescription)")
@@ -312,16 +312,8 @@ struct LoginService {
                             } else {
                                 // Future bus
                                 LogManager.shared.addLog("找到未来班车 resourceId=\(resource.id), name=\(resource.name) yaxis=\(busTime), 开始预约")
-                                reserveBus(resourceId: resource.id, date: today, timeId: busInfo.timeId, busTime: busTime) { result in
-                                    switch result {
-                                    case .success(let qrCode):
-                                        LogManager.shared.addLog("预约成功")
-                                        let reservationResult = ReservationResult(isPastBus: false, name: resource.name, yaxis: busTime, qrCode: qrCode)
-                                        completion(.success(reservationResult))
-                                    case .failure(let error):
-                                        LogManager.shared.addLog("预约失败: \(error.localizedDescription)")
-                                        completion(.failure(error))
-                                    }
+                                reserveBus(resource: resource, date: today, timeId: busInfo.timeId, busTime: busTime) { result in
+                                    completion(result)
                                 }
                             }
                             return
@@ -334,6 +326,7 @@ struct LoginService {
         LogManager.shared.addLog("未找到合适的班车")
         completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No suitable bus found"])))
     }
+
     
     private func getTimeDifference(currentTime: String, busTime: String) -> Int? {
         let formatter = DateFormatter()
@@ -389,89 +382,97 @@ struct LoginService {
         }.resume()
     }
     
-    private func reserveBus(resourceId: Int, date: String, timeId: Int, busTime: String, completion: @escaping (Result<String, Error>) -> Void) {
+    private func reserveBus(resource: Resource, date: String, timeId: Int, busTime: String, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/launch")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        
-        let bodyData = "resource_id=\(resourceId)&data=[{\"date\": \"\(date)\", \"period\": \(timeId), \"sub_resource_id\": 0}]"
+
+        let bodyData = "resource_id=\(resource.id)&data=[{\"date\": \"\(date)\", \"period\": \(timeId), \"sub_resource_id\": 0}]"
         request.httpBody = bodyData.data(using: .utf8)
-        
+
         LogManager.shared.addLog("预约班车 - URL: \(url.absoluteString)")
         LogManager.shared.addLog("预约班车 - 请求体: \(bodyData)")
-        
+
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 LogManager.shared.addLog("预约班车失败: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
-            
+
             if let httpResponse = response as? HTTPURLResponse {
                 LogManager.shared.addLog("预约班车 - 状态码: \(httpResponse.statusCode)")
             }
-            
+
             if let data = data, let responseString = String(data: data, encoding: .utf8) {
                 LogManager.shared.addLog("预约班车 - 响应内容: \(responseString)")
             }
-            
-            LogManager.shared.addLog("预约班车成功,开始获取预约二维码")
-            self.getReservationQRCode(resourceId: resourceId, date: date, busTime: busTime) { result in
+
+            LogManager.shared.addLog("预约班车成功, 开始获取预约二维码")
+            self.getReservationQRCode(resource: resource, date: date, busTime: busTime) { result in
                 completion(result)
             }
         }.resume()
     }
+
     
-    private func getReservationQRCode(resourceId: Int, date: String, busTime: String, completion: @escaping (Result<String, Error>) -> Void) {
+    private func getReservationQRCode(resource: Resource, date: String, busTime: String, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=10&status=2&sort_time=true&sort=asc")!
-        
+
         LogManager.shared.addLog("获取预约二维码 - URL: \(url.absoluteString)")
-        
+
         session.dataTask(with: url) { data, response, error in
             if let error = error {
                 LogManager.shared.addLog("获取预约二维码失败: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
-            
+
             if let httpResponse = response as? HTTPURLResponse {
                 LogManager.shared.addLog("获取预约二维码 - 状态码: \(httpResponse.statusCode)")
             }
-            
+
             guard let data = data else {
                 LogManager.shared.addLog("获取预约二维码 - 未收到数据")
                 completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data received"])))
                 return
             }
-            
+
             do {
                 if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
                     LogManager.shared.addLog("尝试获取预约二维码")
                     if let d = json["d"] as? [String: Any],
                        let apps = d["data"] as? [[String: Any]] {
-                        
+
                         let dateFormatter = DateFormatter()
                         dateFormatter.dateFormat = "yyyy-MM-dd"
                         let today = dateFormatter.string(from: Date())
-                        LogManager.shared.addLog("正在寻找具有 ID = \(resourceId), yaxis = \(today) \(busTime) 的预约信息")
-                        
+                        LogManager.shared.addLog("正在寻找具有 ID = \(resource.id), yaxis = \(today) \(busTime) 的预约信息")
+
                         for app in apps {
                             if let appResourceId = app["resource_id"] as? Int,
                                let appTime = (app["appointment_tim"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
                                let appId = app["id"] as? Int,
                                let appAppointmentId = app["hall_appointment_data_id"] as? Int,
-                               appResourceId == resourceId,
-                               appTime.starts(with: "\(today) \(busTime)") {
-                                
-                                LogManager.shared.addLog("找到匹配的预约: ID = \(appId), AppointmentID = \(appAppointmentId)")
+                               appResourceId == resource.id,
+                               appTime.starts(with: "\(today) \(busTime)"),
+                               let username = app["creator_name"] as? String {
+
+                                LogManager.shared.addLog("找到匹配的预约: ID = \(appId), AppointmentID = \(appAppointmentId), Username = \(username)")
                                 self.getQRCode(appId: appId, appAppointmentId: appAppointmentId) { result in
-                                    completion(result)
+                                    switch result {
+                                    case .success(let qrCode):
+                                        let reservationResult = ReservationResult(isPastBus: false, name: resource.name, yaxis: busTime, qrCode: qrCode, username: username)
+                                        completion(.success(reservationResult))
+                                    case .failure(let error):
+                                        completion(.failure(error))
+                                    }
                                 }
                                 return
                             }
                         }
-                        
+
                         LogManager.shared.addLog("未找到匹配的预约")
                         completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No matching reservation found"])))
                     } else {
@@ -485,6 +486,7 @@ struct LoginService {
             }
         }.resume()
     }
+
     
     private func getQRCode(appId: Int, appAppointmentId: Int, completion: @escaping (Result<String, Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?id=\(appId)&type=0&hall_appointment_data_id=\(appAppointmentId)")!

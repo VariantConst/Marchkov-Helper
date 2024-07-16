@@ -10,6 +10,7 @@ struct ReservationResult {
     let name: String
     let yaxis: String
     let qrCode: String
+    let username: String
 }
 
 struct DatedBusInfo: Codable {

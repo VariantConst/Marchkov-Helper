@@ -16,8 +16,15 @@
 		F5D8A70B2C454064001E0280 /* LoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A70A2C454064001E0280 /* LoginService.swift */; };
 		F5D8A70F2C454F84001E0280 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A70E2C454F84001E0280 /* Item.swift */; };
 		F5D8A7132C4566B5001E0280 /* UserDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7122C4566B5001E0280 /* UserDataManager.swift */; };
-		F5D8A7152C457D83001E0280 /* BusReservationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7142C457D83001E0280 /* BusReservationService.swift */; };
+		F5D8A7152C457D83001E0280 /* BusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7142C457D83001E0280 /* BusModels.swift */; };
 		F5D8A7172C4585D4001E0280 /* LogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7162C4585D4001E0280 /* LogManager.swift */; };
+		F5D8A71A2C463AD4001E0280 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7192C463AD4001E0280 /* LogView.swift */; };
+		F5D8A71C2C463C7C001E0280 /* QRCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A71B2C463C7C001E0280 /* QRCode.swift */; };
+		F5D8A71E2C463CB7001E0280 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A71D2C463CB7001E0280 /* SettingsView.swift */; };
+		F5D8A7232C463ED0001E0280 /* Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7222C463ED0001E0280 /* Error.swift */; };
+		F5D8A7262C463F20001E0280 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7252C463F20001E0280 /* MainTabView.swift */; };
+		F5D8A7282C46407C001E0280 /* InfoRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7272C46407C001E0280 /* InfoRow.swift */; };
+		F5D8A72A2C464178001E0280 /* LoginForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7292C464178001E0280 /* LoginForm.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,8 +57,15 @@
 		F5D8A70A2C454064001E0280 /* LoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginService.swift; sourceTree = "<group>"; };
 		F5D8A70E2C454F84001E0280 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
 		F5D8A7122C4566B5001E0280 /* UserDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDataManager.swift; sourceTree = "<group>"; };
-		F5D8A7142C457D83001E0280 /* BusReservationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusReservationService.swift; sourceTree = "<group>"; };
+		F5D8A7142C457D83001E0280 /* BusModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusModels.swift; sourceTree = "<group>"; };
 		F5D8A7162C4585D4001E0280 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogManager.swift; sourceTree = "<group>"; };
+		F5D8A7192C463AD4001E0280 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
+		F5D8A71B2C463C7C001E0280 /* QRCode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCode.swift; sourceTree = "<group>"; };
+		F5D8A71D2C463CB7001E0280 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F5D8A7222C463ED0001E0280 /* Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
+		F5D8A7252C463F20001E0280 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		F5D8A7272C46407C001E0280 /* InfoRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoRow.swift; sourceTree = "<group>"; };
+		F5D8A7292C464178001E0280 /* LoginForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginForm.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,13 +116,11 @@
 		F5D8A6D82C451C6D001E0280 /* marchkov-ios */ = {
 			isa = PBXGroup;
 			children = (
+				F5D8A7212C463E73001E0280 /* views */,
+				F5D8A7202C463DA9001E0280 /* utils */,
+				F5D8A71F2C463D4F001E0280 /* models */,
+				F5D8A7182C463AB3001E0280 /* components */,
 				F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */,
-				F5D8A7082C452F09001E0280 /* LoginView.swift */,
-				F5D8A70E2C454F84001E0280 /* Item.swift */,
-				F5D8A70A2C454064001E0280 /* LoginService.swift */,
-				F5D8A7122C4566B5001E0280 /* UserDataManager.swift */,
-				F5D8A7162C4585D4001E0280 /* LogManager.swift */,
-				F5D8A7142C457D83001E0280 /* BusReservationService.swift */,
 				F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */,
 			);
 			path = "marchkov-ios";
@@ -137,6 +149,47 @@
 			children = (
 			);
 			path = "New Group";
+			sourceTree = "<group>";
+		};
+		F5D8A7182C463AB3001E0280 /* components */ = {
+			isa = PBXGroup;
+			children = (
+				F5D8A71B2C463C7C001E0280 /* QRCode.swift */,
+				F5D8A7222C463ED0001E0280 /* Error.swift */,
+				F5D8A7272C46407C001E0280 /* InfoRow.swift */,
+				F5D8A7292C464178001E0280 /* LoginForm.swift */,
+			);
+			path = components;
+			sourceTree = "<group>";
+		};
+		F5D8A71F2C463D4F001E0280 /* models */ = {
+			isa = PBXGroup;
+			children = (
+				F5D8A70E2C454F84001E0280 /* Item.swift */,
+				F5D8A7142C457D83001E0280 /* BusModels.swift */,
+			);
+			path = models;
+			sourceTree = "<group>";
+		};
+		F5D8A7202C463DA9001E0280 /* utils */ = {
+			isa = PBXGroup;
+			children = (
+				F5D8A70A2C454064001E0280 /* LoginService.swift */,
+				F5D8A7122C4566B5001E0280 /* UserDataManager.swift */,
+				F5D8A7162C4585D4001E0280 /* LogManager.swift */,
+			);
+			path = utils;
+			sourceTree = "<group>";
+		};
+		F5D8A7212C463E73001E0280 /* views */ = {
+			isa = PBXGroup;
+			children = (
+				F5D8A7082C452F09001E0280 /* LoginView.swift */,
+				F5D8A71D2C463CB7001E0280 /* SettingsView.swift */,
+				F5D8A7252C463F20001E0280 /* MainTabView.swift */,
+				F5D8A7192C463AD4001E0280 /* LogView.swift */,
+			);
+			path = views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -268,13 +321,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F5D8A7282C46407C001E0280 /* InfoRow.swift in Sources */,
+				F5D8A71C2C463C7C001E0280 /* QRCode.swift in Sources */,
 				F5D8A70F2C454F84001E0280 /* Item.swift in Sources */,
-				F5D8A7152C457D83001E0280 /* BusReservationService.swift in Sources */,
+				F5D8A7152C457D83001E0280 /* BusModels.swift in Sources */,
+				F5D8A7232C463ED0001E0280 /* Error.swift in Sources */,
 				F5D8A7132C4566B5001E0280 /* UserDataManager.swift in Sources */,
 				F5D8A7172C4585D4001E0280 /* LogManager.swift in Sources */,
+				F5D8A71E2C463CB7001E0280 /* SettingsView.swift in Sources */,
 				F5D8A70B2C454064001E0280 /* LoginService.swift in Sources */,
+				F5D8A71A2C463AD4001E0280 /* LogView.swift in Sources */,
 				F5D8A7092C452F09001E0280 /* LoginView.swift in Sources */,
+				F5D8A72A2C464178001E0280 /* LoginForm.swift in Sources */,
 				F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */,
+				F5D8A7262C463F20001E0280 /* MainTabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
