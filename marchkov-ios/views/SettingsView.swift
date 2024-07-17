@@ -14,7 +14,8 @@ struct SettingsView: View {
     @AppStorage("commuteDirection") private var commuteDirection: CommuteDirection = .morningToYanyuan
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
     
-    @State private var isResetAlertPresented = false
+    @State private var showLogoutConfirmation = false
+    @State private var showResetConfirmation = false
     @Environment(\.colorScheme) private var colorScheme
     
     private var accentColor: Color {
@@ -35,6 +36,11 @@ struct SettingsView: View {
             
             ScrollView {
                 VStack(spacing: 30) {
+                    UserInfoCard(
+                        userInfo: getUserInfo(),
+                        logout: logout,
+                        showLogoutConfirmation: $showLogoutConfirmation
+                    )
                     busSettingsSection
                     generalSettingsSection
                     actionButtonsSection
@@ -43,16 +49,29 @@ struct SettingsView: View {
                 .padding(.vertical, 30)
             }
         }
-        .alert(isPresented: $isResetAlertPresented) {
-            Alert(
-                title: Text("确认重置"),
-                message: Text("您确定要恢复默认设置吗？这将重置所有设置项。"),
-                primaryButton: .destructive(Text("重置")) {
-                    resetToDefaultSettings()
-                },
-                secondaryButton: .cancel(Text("取消"))
-            )
+        .confirmationDialog("确认退出登录", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
+            Button("退出登录", role: .destructive, action: logout)
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("您的班车设置将被保留。")
         }
+        .confirmationDialog("确认重置设置", isPresented: $showResetConfirmation, titleVisibility: .visible) {
+            Button("重置", role: .destructive) {
+                resetToDefaultSettings()
+            }
+            Button("取消", role: .cancel) { }
+        } message: {
+            Text("您确定要恢复默认设置吗？这将重置所有设置项。")
+        }
+    }
+    
+    private func getUserInfo() -> UserInfo {
+        let userInfo = UserDataManager.shared.getUserInfo()
+        return UserInfo(
+            fullName: userInfo.fullName.isEmpty ? "马池口🐮🐴" : userInfo.fullName,
+            studentId: userInfo.studentId.isEmpty ? (UserDefaults.standard.string(forKey: "username") ?? "未知学号") : userInfo.studentId,
+            department: userInfo.department.isEmpty ? "这个需要你自己衡量！" : userInfo.department
+        )
     }
     
     private var busSettingsSection: some View {
@@ -99,7 +118,7 @@ struct SettingsView: View {
                 .frame(width: 200)
             }
             
-            ElegantToggle(isOn: $isDeveloperMode, title: "开发者模式")
+            ElegantToggle(isOn: $isDeveloperMode, title: "显示日志")
         }
         .padding(25)
         .background(cardBackgroundColor)
@@ -108,30 +127,18 @@ struct SettingsView: View {
     }
     
     private var actionButtonsSection: some View {
-        VStack(spacing: 20) {
-            Button(action: { isResetAlertPresented = true }) {
-                Text("恢复默认设置")
-                    .font(.headline)
-                    .foregroundColor(accentColor)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(cardBackgroundColor)
-                    .cornerRadius(15)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 15)
-                            .stroke(accentColor, lineWidth: 1)
-                    )
-            }
-            
-            Button(action: logout) {
-                Text("退出登录")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red.opacity(0.8))
-                    .cornerRadius(15)
-            }
+        Button(action: { showResetConfirmation = true }) {
+            Text("恢复默认设置")
+                .font(.headline)
+                .foregroundColor(accentColor)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(cardBackgroundColor)
+                .cornerRadius(15)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 15)
+                        .stroke(accentColor, lineWidth: 1)
+                )
         }
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
     }

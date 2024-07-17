@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55F58122C482AED002E65F0 /* UserInfoCard.swift */; };
 		F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */; };
 		F5D8A6E02C451C6E001E0280 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */; };
 		F5D8A6ED2C451C6F001E0280 /* marchkov_iosTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6EC2C451C6F001E0280 /* marchkov_iosTests.swift */; };
@@ -45,6 +46,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F55F58122C482AED002E65F0 /* UserInfoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoCard.swift; sourceTree = "<group>"; };
 		F5D8A6D62C451C6D001E0280 /* marchkov-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "marchkov-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = marchkov_iosApp.swift; sourceTree = "<group>"; };
 		F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 				F5D8A7272C46407C001E0280 /* InfoRow.swift */,
 				F5D8A7292C464178001E0280 /* LoginForm.swift */,
 				F5D8A72B2C468EEA001E0280 /* LogButton.swift */,
+				F55F58122C482AED002E65F0 /* UserInfoCard.swift */,
 			);
 			path = components;
 			sourceTree = "<group>";
@@ -321,6 +324,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */,
 				F5D8A7282C46407C001E0280 /* InfoRow.swift in Sources */,
 				F5D8A71C2C463C7C001E0280 /* QRCode.swift in Sources */,
 				F5D8A72C2C468EEA001E0280 /* LogButton.swift in Sources */,

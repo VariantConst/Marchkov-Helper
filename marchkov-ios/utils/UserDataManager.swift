@@ -7,6 +7,9 @@ class UserDataManager {
     
     private let userDefaultsUsernameKey = "username"
     private let userDefaultsPasswordKey = "password"
+    private let userDefaultsFullNameKey = "fullName"
+    private let userDefaultsStudentIdKey = "studentId"
+    private let userDefaultsDepartmentKey = "department"
     
     func saveUserCredentials(username: String, password: String) {
         UserDefaults.standard.set(username, forKey: userDefaultsUsernameKey)
@@ -24,13 +27,31 @@ class UserDataManager {
     func clearUserCredentials() {
         UserDefaults.standard.removeObject(forKey: userDefaultsUsernameKey)
         UserDefaults.standard.removeObject(forKey: userDefaultsPasswordKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsFullNameKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsStudentIdKey)
+        UserDefaults.standard.removeObject(forKey: userDefaultsDepartmentKey)
     }
     
     func isUserLoggedIn() -> Bool {
         return getUserCredentials() != nil
     }
     
-    // Default settings
+    // 新增方法：保存用户信息
+    func saveUserInfo(fullName: String, studentId: String, department: String) {
+        UserDefaults.standard.set(fullName, forKey: userDefaultsFullNameKey)
+        UserDefaults.standard.set(studentId, forKey: userDefaultsStudentIdKey)
+        UserDefaults.standard.set(department, forKey: userDefaultsDepartmentKey)
+    }
+    
+    // 新增方法：获取用户信息
+    func getUserInfo() -> (fullName: String, studentId: String, department: String) {
+        let fullName = UserDefaults.standard.string(forKey: userDefaultsFullNameKey) ?? ""
+        let studentId = UserDefaults.standard.string(forKey: userDefaultsStudentIdKey) ?? ""
+        let department = UserDefaults.standard.string(forKey: userDefaultsDepartmentKey) ?? ""
+        return (fullName, studentId, department)
+    }
+    
+    // 默认设置（保持不变）
     private let defaultPrevInterval = 10
     private let defaultNextInterval = 60
     private let defaultCriticalTime = 840

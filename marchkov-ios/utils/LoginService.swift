@@ -389,8 +389,23 @@ struct LoginService {
                     if let d = json["d"] as? [String: Any],
                        let code = d["code"] as? String,
                        let rawName = d["name"] as? String {
-                       // 处理 name 字段，提取第一个非空的子字符串
-                       let nameComponents = rawName.split { $0.isWhitespace }
+                        let components = rawName.components(separatedBy: .newlines)
+                            
+                        // 提取姓名、学号和学院
+                        let name = components.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let studentId = components.count > 1 ? components[1].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+                        let department = components.count > 2 ? components[2].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+                        
+                        // 处理姓名字段，提取第一个非空的子字符串
+                        let nameComponents = name.split { $0.isWhitespace }
+                        let processedName = nameComponents.first.map(String.init) ?? ""
+                        
+                        // 更新用户信息
+                        UserDataManager.shared.saveUserInfo(fullName: processedName, studentId: studentId, department: department)
+                        
+                        // 打印日志（可选）
+                        LogManager.shared.addLog("更新用户信息：姓名 = \(processedName), 学号 = \(studentId), 学院 = \(department)")
+                        
                        if let firstNonEmptyName = nameComponents.first {
                            let name = String(firstNonEmptyName)
                            LogManager.shared.addLog("获取临时码成功: \(code)")
@@ -577,9 +592,15 @@ struct LoginService {
                                let appAppointmentId = app["hall_appointment_data_id"] as? Int,
                                appResourceId == resource.id,
                                appTime.starts(with: "\(today) \(busTime)"),
-                               let username = app["creator_name"] as? String {
+                               let username = app["creator_name"] as? String,
+                               let studentId = app["number"] as? String,
+                               let department = app["creator_depart"] as? String {
 
                                 LogManager.shared.addLog("找到匹配的预约: ID = \(appId), AppointmentID = \(appAppointmentId), Username = \(username)")
+                                
+                                // 更新用户信息
+                                UserDataManager.shared.saveUserInfo(fullName: username, studentId: studentId, department: department)
+                                
                                 self.getQRCode(appId: appId, appAppointmentId: appAppointmentId) { result in
                                     switch result {
                                     case .success(let qrCode):
@@ -601,7 +622,7 @@ struct LoginService {
                                 return
                             }
                         }
-
+                        
                         LogManager.shared.addLog("未找到匹配的预约")
                         completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No matching reservation found"])))
                     } else {

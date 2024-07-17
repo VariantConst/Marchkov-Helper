@@ -20,3 +20,9 @@ struct DatedBusInfo: Codable {
     let date: Date
     let resources: [LoginService.Resource]
 }
+
+struct UserInfo {
+    let fullName: String
+    let studentId: String
+    let department: String
+}

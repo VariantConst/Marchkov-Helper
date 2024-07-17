@@ -2,25 +2,39 @@ import SwiftUI
 
 struct LogView: View {
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.colorScheme) private var colorScheme
     @State private var logs: [LogEntry] = []
     @State private var searchText = ""
     @State private var showCopiedAlert = false
     
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
+    }
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                SearchBar(text: $searchText)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-                    .background(Color(.systemBackground))
+            ZStack {
+                backgroundColor.edgesIgnoringSafeArea(.all)
                 
-                List {
-                    ForEach(filteredLogs) { log in
-                        LogEntryView(log: log)
+                VStack(spacing: 0) {
+                    SearchBar(text: $searchText, accentColor: accentColor)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+                    
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(filteredLogs) { log in
+                                LogEntryView(log: log, accentColor: accentColor)
+                            }
+                        }
+                        .padding()
                     }
                 }
-                .listStyle(PlainListStyle())
             }
             .navigationTitle("日志")
             .navigationBarTitleDisplayMode(.inline)
@@ -29,6 +43,7 @@ struct LogView: View {
                     Button("关闭") {
                         presentationMode.wrappedValue.dismiss()
                     }
+                    .foregroundColor(accentColor)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
@@ -37,6 +52,7 @@ struct LogView: View {
                     }) {
                         Image(systemName: "doc.on.doc")
                     }
+                    .foregroundColor(accentColor)
                 }
             }
             .alert(isPresented: $showCopiedAlert) {
@@ -68,11 +84,12 @@ struct LogView: View {
 
 struct SearchBar: View {
     @Binding var text: String
+    let accentColor: Color
     
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
+                .foregroundColor(accentColor)
             
             TextField("搜索日志", text: $text)
                 .textFieldStyle(PlainTextFieldStyle())
@@ -82,13 +99,14 @@ struct SearchBar: View {
                     text = ""
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(accentColor)
                 }
             }
         }
-        .padding(8)
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 
@@ -115,21 +133,29 @@ struct LogEntry: Identifiable {
 
 struct LogEntryView: View {
     let log: LogEntry
+    let accentColor: Color
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             if !log.timestamp.isEmpty {
                 Text(log.timestamp)
                     .font(.caption)
-                    .foregroundColor(.secondary)
-                Text(log.message)
-                    .font(.body)
-            } else {
-                Text(log.fullText)
-                    .font(.body)
+                    .foregroundColor(accentColor)
             }
+            Text(log.message)
+                .font(.system(.body, design: .rounded))
+                .foregroundColor(.primary)
         }
-        .padding(.vertical, 4)
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackgroundColor)
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 5)
     }
 }
 
