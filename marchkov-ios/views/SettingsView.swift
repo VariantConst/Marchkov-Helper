@@ -140,7 +140,7 @@ struct SettingsView: View {
         UserDataManager.shared.resetToDefaultSettings()
         prevInterval = UserDataManager.shared.getPrevInterval()
         nextInterval = UserDataManager.shared.getNextInterval()
-        criticalTime = UserDataManager.shared.getCriticalTime() * 60
+        criticalTime = UserDataManager.shared.getCriticalTime()
         commuteDirection = .morningToYanyuan
         isDeveloperMode = false
         themeMode = .system

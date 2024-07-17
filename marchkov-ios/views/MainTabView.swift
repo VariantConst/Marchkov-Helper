@@ -29,8 +29,8 @@ struct MainTabView: View {
                 }
                 .tag(1)
         }
-        .accentColor(.blue)
-        .background(Color(.systemBackground))
+        .accentColor(Color.accentColor)
+        .background(Color.backgroundColor)
     }
     
     private func refresh() async {
@@ -63,7 +63,6 @@ struct MainTabView: View {
                 }
             }
             
-            // 更新主视图的状态
             await MainActor.run {
                 self.resources = newResources
                 self.reservationResult = newReservationResult
@@ -90,37 +89,29 @@ struct ReservationResultView: View {
         NavigationView {
             GeometryReader { geometry in
                 ZStack {
+                    Color.backgroundColor.edgesIgnoringSafeArea(.all)
+                    
                     if isLoading {
                         ProgressView("加载中...")
-                            .progressViewStyle(CircularProgressViewStyle(tint: .blue))
-                            .scaleEffect(1.5)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
+                            .scaleEffect(1.2)
                     } else {
                         ScrollView {
-                            VStack {
-                                Spacer(minLength: 0)
+                            VStack(spacing: 20) {
+                                Spacer(minLength: 20)
                                 
                                 if !errorMessage.isEmpty {
                                     ErrorView(errorMessage: errorMessage, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
                                 } else if let result = reservationResult {
                                     SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult)
                                 } else {
-                                    VStack {
-                                        Image(systemName: "ticket.slash")
-                                            .font(.system(size: 60))
-                                            .foregroundColor(.secondary)
-                                        Text("暂无预约结果")
-                                            .font(.headline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding()
-                                    .background(Color(.secondarySystemBackground))
-                                    .cornerRadius(12)
+                                    NoResultView()
                                 }
                                 
-                                Spacer(minLength: 0)
+                                Spacer(minLength: 20)
                             }
                             .frame(minHeight: geometry.size.height)
-                            .padding(.horizontal, 20) // 添加水平边距
+                            .padding(.horizontal)
                         }
                         .refreshable {
                             await refresh()
@@ -155,64 +146,66 @@ struct SuccessView: View {
     @Binding var reservationResult: ReservationResult?
     @Environment(\.colorScheme) var colorScheme
     
-    private let primaryGreen = Color(hex: "6B8E73")
-    private let primaryOrange = Color(hex: "C1864F")
-    
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
+            // 顶部窄条
+            HStack {
                 Text(result.isPastBus ? "临时码" : "乘车码")
-                    .font(.caption)
-                    .fontWeight(.bold)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
                     .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 5)
-                    .background(result.isPastBus ? primaryOrange : primaryGreen)
-                
-                VStack(spacing: 35) {
-                    Text("欢迎，\(result.username)")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color(hex: colorScheme == .dark ? "E0E0E0" : "2C3E50"))
-                        .padding(.top, 15)
-                    
-                    VStack(alignment: .leading, spacing: 15) {
-                        InfoRow(title: "班车名称", value: result.name)
-                        InfoRow(title: "发车时间", value: result.yaxis)
-                    }
-                    .padding()
-                    .background(Color(hex: colorScheme == .dark ? "2C3E50" : "ECF0F1"))
-                    .cornerRadius(12)
-                    
-                    QRCodeView(qrCode: result.qrCode)
-                        .frame(width: 200, height: 200)
-                        .padding()
-                    
-                    Button(action: {
-                        reverseReservation()
-                    }) {
-                        HStack {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                            Text(isReverseReserving ? "预约中..." : "预约反向班车")
-                        }
-                        .frame(minWidth: 0, maxWidth: .infinity)
-                        .padding()
-                        .background(isReverseReserving ? Color(hex: "95A5A6") : (result.isPastBus ? primaryOrange : primaryGreen))
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                    }
-                    .disabled(isReverseReserving)
-                }
-                .padding(20)
+                Spacer()
+                Text(result.name) // 添加班车名称
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
             }
-            .background(Color(hex: colorScheme == .dark ? "1E272E" : "F5F7FA"))
-            .cornerRadius(20)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(result.isPastBus ? primaryOrange : primaryGreen, lineWidth: 2)
-            )
-            .shadow(radius: 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(result.isPastBus ? Color.warningColor : Color.primaryColor)
+            
+            // 主要内容
+            VStack(spacing: 25) {
+                Text("欢迎，\(result.username)")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primaryText)
+                    .padding(.top, 20)
+                
+                VStack(alignment: .leading, spacing: 15) {
+                    InfoRow(title: "发车时间", value: result.yaxis)
+                }
+                .padding()
+                .background(Color.secondaryBackground)
+                .cornerRadius(12)
+                
+                QRCodeView(qrCode: result.qrCode)
+                    .frame(width: 200, height: 200)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(15)
+                    .shadow(color: Color.shadowColor, radius: 10, x: 0, y: 5)
+                
+                Button(action: {
+                    reverseReservation()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text(isReverseReserving ? "预约中..." : "预约反向班车")
+                    }
+                    .frame(minWidth: 0, maxWidth: .infinity)
+                    .padding()
+                    .background(isReverseReserving ? Color.disabledColor : (result.isPastBus ? Color.warningColor : Color.primaryColor))
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .disabled(isReverseReserving)
+            }
+            .padding(20)
         }
+        .background(Color.cardBackground)
+        .cornerRadius(20)
+        .shadow(color: Color.shadowColor, radius: 15, x: 0, y: 10)
         .alert(isPresented: $showReverseReservationError) {
             Alert(title: Text("反向预约失败"), message: Text("反向无车可坐"), dismissButton: .default(Text("确定")))
         }
@@ -234,30 +227,32 @@ struct SuccessView: View {
     }
 }
 
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (1, 1, 1, 0)
+struct NoResultView: View {
+    var body: some View {
+        VStack {
+            Image(systemName: "ticket.slash")
+                .font(.system(size: 60))
+                .foregroundColor(.secondaryText)
+            Text("暂无预约结果")
+                .font(.headline)
+                .foregroundColor(.secondaryText)
         }
-
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
+        .padding()
+        .background(Color.cardBackground)
+        .cornerRadius(12)
     }
 }
 
+
+extension Color {
+    static let backgroundColor = Color(UIColor.systemBackground)
+    static let cardBackground = Color(UIColor.secondarySystemBackground)
+    static let primaryText = Color(UIColor.label)
+    static let secondaryText = Color(UIColor.secondaryLabel)
+    static let accentColor = Color.blue
+    static let primaryColor = Color.green
+    static let warningColor = Color.orange
+    static let disabledColor = Color.gray
+    static let shadowColor = Color.black.opacity(0.1)
+    static let secondaryBackground = Color(UIColor.tertiarySystemBackground)
+}

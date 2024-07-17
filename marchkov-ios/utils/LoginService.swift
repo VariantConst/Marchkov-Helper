@@ -260,17 +260,20 @@ struct LoginService {
         let currentDate = Date()
         let calendar = Calendar.current
         let currentHour = calendar.component(.hour, from: currentDate)
+        let currentMinute = calendar.component(.minute, from: currentDate)
+        let minutesSinceMidnight = currentHour * 60 + currentMinute
         
         let direction: BusDirection
         if let forcedDirection = forceDirection {
             direction = forcedDirection
-        } else if currentHour < criticalTime {
+        } else if minutesSinceMidnight < criticalTime {
             direction = flagMorningToYanyuan ? .toYanyuan : .toChangping
         } else {
             direction = flagMorningToYanyuan ? .toChangping : .toYanyuan
         }
         
-        LogManager.shared.addLog("当前时间: \(currentHour):00, 班车方向: \(direction == .toYanyuan ? "去燕园" : "去昌平")")
+        let formattedTime = String(format: "%02d:%02d", currentHour, currentMinute)
+        LogManager.shared.addLog("当前时间: \(formattedTime), 班车方向: \(direction == .toYanyuan ? "去燕园" : "去昌平")")
         
         let filteredResources = resources.filter { resource in
             let resourceId = resource.id

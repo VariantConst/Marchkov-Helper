@@ -33,7 +33,7 @@ class UserDataManager {
     // Default settings
     private let defaultPrevInterval = 10
     private let defaultNextInterval = 60
-    private let defaultCriticalTime = 14
+    private let defaultCriticalTime = 840
     private let defaultFlagMorningToYanyuan = true
     
     func getPrevInterval() -> Int {
