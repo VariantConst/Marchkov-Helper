@@ -7,11 +7,12 @@ struct InfoRow: View {
     var body: some View {
         HStack {
             Text(title)
-                .foregroundColor(.secondaryText)
+                .font(.subheadline)
+                .foregroundColor(Color(.secondaryLabel))
             Spacer()
             Text(value)
-                .foregroundColor(.primaryText)
-                .fontWeight(.medium)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(Color(.label))
         }
     }
 }

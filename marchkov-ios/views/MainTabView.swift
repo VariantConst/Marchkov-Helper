@@ -8,6 +8,15 @@ struct MainTabView: View {
     let logout: () -> Void
     @Binding var themeMode: ThemeMode
     @State private var resources: [LoginService.Resource] = []
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
+    }
     
     var body: some View {
         TabView(selection: $currentTab) {
@@ -29,8 +38,8 @@ struct MainTabView: View {
                 }
                 .tag(1)
         }
-        .accentColor(Color.accentColor)
-        .background(Color.backgroundColor)
+        .accentColor(accentColor)
+        .background(backgroundColor)
     }
     
     private func refresh() async {
@@ -84,12 +93,21 @@ struct ReservationResultView: View {
     @State private var showLogs: Bool = false
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
     let refresh: () async -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
+    }
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+    }
     
     var body: some View {
         NavigationView {
             GeometryReader { geometry in
                 ZStack {
-                    Color.backgroundColor.edgesIgnoringSafeArea(.all)
+                    backgroundColor.edgesIgnoringSafeArea(.all)
                     
                     if isLoading {
                         ProgressView("加载中...")
@@ -146,6 +164,14 @@ struct SuccessView: View {
     @Binding var reservationResult: ReservationResult?
     @Environment(\.colorScheme) var colorScheme
     
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // 顶部窄条
@@ -162,21 +188,21 @@ struct SuccessView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(result.isPastBus ? Color.warningColor : Color.primaryColor)
+            .background(result.isPastBus ? Color.orange : accentColor)
             
             // 主要内容
             VStack(spacing: 25) {
                 Text("欢迎，\(result.username)")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.primaryText)
+                    .foregroundColor(Color(.label))
                     .padding(.top, 20)
                 
                 VStack(alignment: .leading, spacing: 15) {
                     InfoRow(title: "发车时间", value: result.yaxis)
                 }
                 .padding()
-                .background(Color.secondaryBackground)
+                .background(Color(UIColor.tertiarySystemBackground))
                 .cornerRadius(12)
                 
                 QRCodeView(qrCode: result.qrCode)
@@ -184,7 +210,7 @@ struct SuccessView: View {
                     .padding()
                     .background(Color.white)
                     .cornerRadius(15)
-                    .shadow(color: Color.shadowColor, radius: 10, x: 0, y: 5)
+                    .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
                 
                 Button(action: {
                     reverseReservation()
@@ -195,7 +221,7 @@ struct SuccessView: View {
                     }
                     .frame(minWidth: 0, maxWidth: .infinity)
                     .padding()
-                    .background(isReverseReserving ? Color.disabledColor : (result.isPastBus ? Color.warningColor : Color.primaryColor))
+                    .background(isReverseReserving ? Color.gray : (result.isPastBus ? Color.orange : accentColor))
                     .foregroundColor(.white)
                     .cornerRadius(10)
                 }
@@ -203,9 +229,9 @@ struct SuccessView: View {
             }
             .padding(20)
         }
-        .background(Color.cardBackground)
+        .background(cardBackgroundColor)
         .cornerRadius(20)
-        .shadow(color: Color.shadowColor, radius: 15, x: 0, y: 10)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 10)
         .alert(isPresented: $showReverseReservationError) {
             Alert(title: Text("反向预约失败"), message: Text("反向无车可坐"), dismissButton: .default(Text("确定")))
         }
@@ -228,31 +254,24 @@ struct SuccessView: View {
 }
 
 struct NoResultView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+    }
+    
     var body: some View {
         VStack {
             Image(systemName: "ticket.slash")
                 .font(.system(size: 60))
-                .foregroundColor(.secondaryText)
+                .foregroundColor(Color(.secondaryLabel))
             Text("暂无预约结果")
                 .font(.headline)
-                .foregroundColor(.secondaryText)
+                .foregroundColor(Color(.secondaryLabel))
         }
         .padding()
-        .background(Color.cardBackground)
+        .background(cardBackgroundColor)
         .cornerRadius(12)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
     }
-}
-
-
-extension Color {
-    static let backgroundColor = Color(UIColor.systemBackground)
-    static let cardBackground = Color(UIColor.secondarySystemBackground)
-    static let primaryText = Color(UIColor.label)
-    static let secondaryText = Color(UIColor.secondaryLabel)
-    static let accentColor = Color.blue
-    static let primaryColor = Color.green
-    static let warningColor = Color.orange
-    static let disabledColor = Color.gray
-    static let shadowColor = Color.black.opacity(0.1)
-    static let secondaryBackground = Color(UIColor.tertiarySystemBackground)
 }
