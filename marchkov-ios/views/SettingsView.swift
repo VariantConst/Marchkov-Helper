@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum CommuteDirection: String, CaseIterable {
+    case morningToYanyuan = "上午去燕园"
+    case morningToChangping = "上午去昌平"
+}
 
 struct SettingsView: View {
     let logout: () -> Void
@@ -7,122 +11,214 @@ struct SettingsView: View {
     @AppStorage("prevInterval") private var prevInterval: Int = UserDataManager.shared.getPrevInterval()
     @AppStorage("nextInterval") private var nextInterval: Int = UserDataManager.shared.getNextInterval()
     @AppStorage("criticalTime") private var criticalTime: Int = UserDataManager.shared.getCriticalTime()
-    @AppStorage("flagMorningToYanyuan") private var flagMorningToYanyuan: Bool = UserDataManager.shared.getFlagMorningToYanyuan()
+    @AppStorage("commuteDirection") private var commuteDirection: CommuteDirection = .morningToYanyuan
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
-    @State private var criticalHour: Int = 6
-    @State private var criticalMinute: Int = 30
-            
+    
+    @State private var isResetAlertPresented = false
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
+    }
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+    }
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("时间设置").textCase(.uppercase)) {
-                    TimeSettingView(value: $prevInterval, title: "过期班车追溯", range: 0...999)
-                    TimeSettingView(value: $nextInterval, title: "未来班车预约", range: 0...999)
-                    CriticalTimeSettingView(hour: $criticalHour, minute: $criticalMinute)
+        ZStack {
+            backgroundColor.edgesIgnoringSafeArea(.all)
+            
+            ScrollView {
+                VStack(spacing: 30) {
+                    busSettingsSection
+                    generalSettingsSection
+                    actionButtonsSection
                 }
-                
-                Section(header: Text("方向设置")) {
-                    Toggle("上午去燕园", isOn: $flagMorningToYanyuan)
-                }
-                
-                
-                Section(header: Text("开发者选项")) {
-                    Toggle("开发者模式", isOn: $isDeveloperMode)
-                }
-                
-                Section(header: Text("外观")) {
-                    Picker("主题模式", selection: $themeMode) {
-                        ForEach(ThemeMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
-                        }
-                    }
-                }
-                
-                Section {
-                    Button(action: logout) {
-                        Text("退出登录")
-                            .foregroundColor(.red)
-                    }
-                }
-                
-                Section {
-                    Button(action: resetToDefaultSettings) {
-                        Text("恢复默认设置")
-                    }
-                }
+                .padding(.horizontal)
+                .padding(.vertical, 30)
             }
-            .navigationTitle("设置")
         }
+        .alert(isPresented: $isResetAlertPresented) {
+            Alert(
+                title: Text("确认重置"),
+                message: Text("您确定要恢复默认设置吗？这将重置所有设置项。"),
+                primaryButton: .destructive(Text("重置")) {
+                    resetToDefaultSettings()
+                },
+                secondaryButton: .cancel(Text("取消"))
+            )
+        }
+    }
+    
+    private var busSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 25) {
+            SectionHeader(title: "班车设置")
+            
+            VStack(alignment: .leading, spacing: 15) {
+                Text("通勤方向")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(Color(.secondaryLabel))
+                
+                Picker("通勤方向", selection: $commuteDirection) {
+                    ForEach(CommuteDirection.allCases, id: \.self) { direction in
+                        Text(direction.rawValue).tag(direction)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+            }
+            
+            ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 0...114, unit: "分钟")
+            ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 0...514, unit: "分钟")
+            ElegantSlider(value: $criticalTime, title: "临界时刻", range: 0...1439, unit: "", formatter: minutesToTimeString)
+        }
+        .padding(25)
+        .background(cardBackgroundColor)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+    }
+    
+    private var generalSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 25) {
+            SectionHeader(title: "通用设置")
+            
+            HStack {
+                Text("主题模式")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Picker("", selection: $themeMode) {
+                    ForEach(ThemeMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .frame(width: 200)
+            }
+            
+            ElegantToggle(isOn: $isDeveloperMode, title: "开发者模式")
+        }
+        .padding(25)
+        .background(cardBackgroundColor)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+    }
+    
+    private var actionButtonsSection: some View {
+        VStack(spacing: 20) {
+            Button(action: { isResetAlertPresented = true }) {
+                Text("恢复默认设置")
+                    .font(.headline)
+                    .foregroundColor(accentColor)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(cardBackgroundColor)
+                    .cornerRadius(15)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 15)
+                            .stroke(accentColor, lineWidth: 1)
+                    )
+            }
+            
+            Button(action: logout) {
+                Text("退出登录")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red.opacity(0.8))
+                    .cornerRadius(15)
+            }
+        }
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
     }
     
     private func resetToDefaultSettings() {
         UserDataManager.shared.resetToDefaultSettings()
         prevInterval = UserDataManager.shared.getPrevInterval()
         nextInterval = UserDataManager.shared.getNextInterval()
-        criticalTime = UserDataManager.shared.getCriticalTime()
-        flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
+        criticalTime = UserDataManager.shared.getCriticalTime() * 60
+        commuteDirection = .morningToYanyuan
+        isDeveloperMode = false
+        themeMode = .system
+    }
+    
+    private func minutesToTimeString(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let mins = minutes % 60
+        return String(format: "%02d:%02d", hours, mins)
     }
 }
 
-struct TimeSettingView: View {
+struct SectionHeader: View {
+    let title: String
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var textColor: Color {
+        colorScheme == .dark ? Color(red: 220/255, green: 220/255, blue: 230/255) : Color(red: 60/255, green: 60/255, blue: 70/255)
+    }
+    
+    var body: some View {
+        Text(title)
+            .font(.title3.weight(.semibold))
+            .foregroundColor(textColor)
+    }
+}
+
+struct ElegantSlider: View {
     @Binding var value: Int
     let title: String
     let range: ClosedRange<Int>
+    let unit: String
+    var formatter: ((Int) -> String)? = nil
+    
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(Color(.secondaryLabel))
             
             HStack {
-                Slider(value: Binding(get: {
-                    Double(value)
-                }, set: { newValue in
-                    value = Int(newValue)
-                }), in: Double(range.lowerBound)...Double(range.upperBound), step: 1)
-                .accentColor(.blue)
+                Slider(value: Binding(
+                    get: { Double(value) },
+                    set: { value = Int($0) }
+                ), in: Double(range.lowerBound)...Double(range.upperBound), step: 1)
+                .accentColor(accentColor)
                 
-                Text("\(value) 分钟")
-                    .frame(minWidth: 70, alignment: .trailing)
-                    .foregroundColor(.secondary)
+                Text(formatter != nil ? formatter!(value) : "\(value)\(unit)")
+                    .font(.system(.body, design: .rounded).weight(.medium))
+                    .foregroundColor(accentColor)
+                    .frame(width: 80, alignment: .trailing)
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(15)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 
-struct CriticalTimeSettingView: View {
-    @Binding var hour: Int
-    @Binding var minute: Int
+struct ElegantToggle: View {
+    @Binding var isOn: Bool
+    let title: String
+    
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("临界时刻")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            HStack {
-                Slider(value: Binding(get: {
-                    Double(hour) + Double(minute) / 60
-                }, set: { newValue in
-                    hour = Int(newValue)
-                    minute = Int((newValue.truncatingRemainder(dividingBy: 1) * 6).rounded()) * 10
-                }), in: 6.5...22, step: 1/6)
-                .accentColor(.blue)
-                
-                Text(String(format: "%02d:%02d", hour, minute))
-                    .frame(minWidth: 70, alignment: .trailing)
-                    .foregroundColor(.secondary)
-            }
+        Toggle(isOn: $isOn) {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(Color(.label))
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(15)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .toggleStyle(SwitchToggleStyle(tint: accentColor))
     }
 }
