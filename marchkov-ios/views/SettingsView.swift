@@ -9,40 +9,17 @@ struct SettingsView: View {
     @AppStorage("criticalTime") private var criticalTime: Int = UserDataManager.shared.getCriticalTime()
     @AppStorage("flagMorningToYanyuan") private var flagMorningToYanyuan: Bool = UserDataManager.shared.getFlagMorningToYanyuan()
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
+    @State private var criticalHour: Int = 6
+    @State private var criticalMinute: Int = 30
             
     
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("时间设置")) {
-                    HStack {
-                        Text("过期班车追溯")
-                        Spacer()
-                        TextField("分钟", value: $prevInterval, formatter: NumberFormatter())
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                        Text("分钟")
-                    }
-                    
-                    HStack {
-                        Text("未来班车预约")
-                        Spacer()
-                        TextField("分钟", value: $nextInterval, formatter: NumberFormatter())
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                        Text("分钟")
-                    }
-                    
-                    HStack {
-                        Text("临界时刻")
-                        Spacer()
-                        Picker("", selection: $criticalTime) {
-                            ForEach(6...22, id: \.self) { hour in
-                                Text("\(hour):00").tag(hour)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                    }
+                Section(header: Text("时间设置").textCase(.uppercase)) {
+                    TimeSettingView(value: $prevInterval, title: "过期班车追溯", range: 0...999)
+                    TimeSettingView(value: $nextInterval, title: "未来班车预约", range: 0...999)
+                    CriticalTimeSettingView(hour: $criticalHour, minute: $criticalMinute)
                 }
                 
                 Section(header: Text("方向设置")) {
@@ -88,3 +65,64 @@ struct SettingsView: View {
     }
 }
 
+struct TimeSettingView: View {
+    @Binding var value: Int
+    let title: String
+    let range: ClosedRange<Int>
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            HStack {
+                Slider(value: Binding(get: {
+                    Double(value)
+                }, set: { newValue in
+                    value = Int(newValue)
+                }), in: Double(range.lowerBound)...Double(range.upperBound), step: 1)
+                .accentColor(.blue)
+                
+                Text("\(value) 分钟")
+                    .frame(minWidth: 70, alignment: .trailing)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    }
+}
+
+struct CriticalTimeSettingView: View {
+    @Binding var hour: Int
+    @Binding var minute: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("临界时刻")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            HStack {
+                Slider(value: Binding(get: {
+                    Double(hour) + Double(minute) / 60
+                }, set: { newValue in
+                    hour = Int(newValue)
+                    minute = Int((newValue.truncatingRemainder(dividingBy: 1) * 6).rounded()) * 10
+                }), in: 6.5...22, step: 1/6)
+                .accentColor(.blue)
+                
+                Text(String(format: "%02d:%02d", hour, minute))
+                    .frame(minWidth: 70, alignment: .trailing)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    }
+}

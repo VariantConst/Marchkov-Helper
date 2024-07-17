@@ -7,14 +7,21 @@ struct MainTabView: View {
     @Binding var reservationResult: ReservationResult?
     let logout: () -> Void
     @Binding var themeMode: ThemeMode
+    @State private var resources: [LoginService.Resource] = []
     
     var body: some View {
         TabView(selection: $currentTab) {
-            ReservationResultView(isLoading: $isLoading, errorMessage: $errorMessage, reservationResult: $reservationResult)
-                .tabItem {
-                    Label("乘车", systemImage: "car.fill")
-                }
-                .tag(0)
+            ReservationResultView(
+                isLoading: $isLoading,
+                errorMessage: $errorMessage,
+                reservationResult: $reservationResult,
+                resources: $resources,
+                refresh: refresh
+            )
+            .tabItem {
+                Label("乘车", systemImage: "car.fill")
+            }
+            .tag(0)
 
             SettingsView(logout: logout, themeMode: $themeMode)
                 .tabItem {
@@ -25,71 +32,115 @@ struct MainTabView: View {
         .accentColor(.blue)
         .background(Color(.systemBackground))
     }
+    
+    private func refresh() async {
+        do {
+            guard let credentials = UserDataManager.shared.getUserCredentials() else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到用户凭证"])
+            }
+            
+            let loginResponse = try await withCheckedThrowingContinuation { continuation in
+                LoginService.shared.login(username: credentials.username, password: credentials.password) { result in
+                    continuation.resume(with: result)
+                }
+            }
+            
+            guard loginResponse.success, let token = loginResponse.token else {
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "登录失败：用户名或密码无效"])
+            }
+            
+            LogManager.shared.addLog("重新登录成功，开始获取资源")
+            
+            let newResources = try await withCheckedThrowingContinuation { continuation in
+                LoginService.shared.getResources(token: token) { result in
+                    continuation.resume(with: result)
+                }
+            }
+            
+            let newReservationResult = try await withCheckedThrowingContinuation { continuation in
+                LoginService.shared.getReservationResult(resources: newResources) { result in
+                    continuation.resume(with: result)
+                }
+            }
+            
+            // 更新主视图的状态
+            await MainActor.run {
+                self.resources = newResources
+                self.reservationResult = newReservationResult
+                self.errorMessage = ""
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "刷新失败: \(error.localizedDescription)"
+            }
+        }
+    }
 }
 
 struct ReservationResultView: View {
     @Binding var isLoading: Bool
     @Binding var errorMessage: String
     @Binding var reservationResult: ReservationResult?
+    @Binding var resources: [LoginService.Resource]
     @State private var showLogs: Bool = false
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
+    let refresh: () async -> Void
     
     var body: some View {
         NavigationView {
             GeometryReader { geometry in
                 ZStack {
-                    Color(.systemGroupedBackground)
-                        .edgesIgnoringSafeArea(.all)
-                    
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            ZStack(alignment: .bottomTrailing) {
-                                VStack(spacing: 20) {
-                                    if isLoading {
-                                        ProgressView("加载中...")
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .blue))
-                                            .scaleEffect(1.5)
-                                            .frame(height: geometry.size.height * 0.8)
-                                    } else if !errorMessage.isEmpty {
-                                        ErrorView(errorMessage: errorMessage, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
-                                            .frame(height: geometry.size.height * 0.8)
-                                    } else if let result = reservationResult {
-                                        VStack {
-                                            Spacer()
-                                            SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult)
-                                            Spacer()
-                                        }
-                                        .frame(height: geometry.size.height * 0.8)
-                                    } else {
-                                        VStack {
-                                            Image(systemName: "ticket.slash")
-                                                .font(.system(size: 60))
-                                                .foregroundColor(.secondary)
-                                            Text("暂无预约结果")
-                                                .font(.headline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .padding()
-                                        .background(Color(.secondarySystemBackground))
-                                        .cornerRadius(12)
-                                        .frame(height: geometry.size.height * 0.8)
-                                    }
-                                }
-                                .padding()
+                    if isLoading {
+                        ProgressView("加载中...")
+                            .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                            .scaleEffect(1.5)
+                    } else {
+                        ScrollView {
+                            VStack {
+                                Spacer(minLength: 0)
                                 
-                                if isDeveloperMode && !isLoading {
-                                    LogButton(showLogs: $showLogs)
-                                        .offset(x: 20, y: 40)
+                                if !errorMessage.isEmpty {
+                                    ErrorView(errorMessage: errorMessage, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
+                                } else if let result = reservationResult {
+                                    SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult)
+                                } else {
+                                    VStack {
+                                        Image(systemName: "ticket.slash")
+                                            .font(.system(size: 60))
+                                            .foregroundColor(.secondary)
+                                        Text("暂无预约结果")
+                                            .font(.headline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding()
+                                    .background(Color(.secondarySystemBackground))
+                                    .cornerRadius(12)
                                 }
+                                
+                                Spacer(minLength: 0)
+                            }
+                            .frame(minHeight: geometry.size.height)
+                            .padding(.horizontal, 20) // 添加水平边距
+                        }
+                        .refreshable {
+                            await refresh()
+                        }
+                    }
+                    
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            if isDeveloperMode && !isLoading {
+                                LogButton(showLogs: $showLogs)
                             }
                         }
-                        .padding()
-                        .frame(minHeight: geometry.size.height)
                     }
-                    .sheet(isPresented: $showLogs) {
-                        LogView()
-                    }
+                    .padding()
                 }
+            }
+            .sheet(isPresented: $showLogs) {
+                LogView()
             }
         }
     }
