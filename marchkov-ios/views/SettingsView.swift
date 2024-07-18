@@ -13,10 +13,12 @@ struct SettingsView: View {
     @AppStorage("criticalTime") private var criticalTime: Int = UserDataManager.shared.getCriticalTime()
     @State private var flagMorningToYanyuan: Bool = UserDataManager.shared.getFlagMorningToYanyuan()
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
+    @AppStorage("showAdvancedOptions") private var showAdvancedOptions: Bool = false
     
     @State private var showLogoutConfirmation = false
     @State private var showResetConfirmation = false
     @Environment(\.colorScheme) private var colorScheme
+    @State private var animationDuration: Double = 0.3
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
@@ -41,8 +43,8 @@ struct SettingsView: View {
                         logout: logout,
                         showLogoutConfirmation: $showLogoutConfirmation
                     )
-                    busSettingsSection
                     generalSettingsSection
+                    busSettingsSection
                     actionButtonsSection
                 }
                 .padding(.horizontal)
@@ -75,14 +77,15 @@ struct SettingsView: View {
     }
     
     private var busSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 25) {
+        VStack(alignment: .leading, spacing: 0) {
             SectionHeader(title: "班车设置")
-            
-            VStack(alignment: .leading, spacing: 15) {
+                .padding(.bottom, 15)
+
+            HStack {
                 Text("通勤方向")
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(Color(.secondaryLabel))
-                
+                Spacer()
                 Picker("通勤方向", selection: $flagMorningToYanyuan.onChange { newValue in
                     UserDefaults.standard.set(newValue, forKey: "flagMorningToYanyuan")
                 }) {
@@ -90,28 +93,32 @@ struct SettingsView: View {
                     Text("上午去昌平").tag(false)
                 }
                 .pickerStyle(SegmentedPickerStyle())
+                .frame(width: 200)
             }
-            
-            ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 0...114, unit: "分钟")
-            ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 0...514, unit: "分钟")
-            ElegantSlider(value: $criticalTime, title: "临界时刻", range: 0...1439, unit: "", formatter: minutesToTimeString)
+            .padding(.bottom, showAdvancedOptions ? 15 : 0)
+
+            if showAdvancedOptions {
+                VStack(spacing: 15) {
+                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 0...114, unit: "分钟")
+                    ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 0...514, unit: "分钟")
+                    ElegantSlider(value: $criticalTime, title: "临界时刻", range: 0...1439, unit: "", formatter: minutesToTimeString)
+                }
+                .padding(.top, 15)
+                .transition(
+                    .asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.95, anchor: .top)).combined(with: .offset(y: -10)),
+                        removal: .opacity
+                    )
+                )
+            }
         }
         .padding(25)
         .background(cardBackgroundColor)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+        .animation(.easeInOut(duration: animationDuration), value: showAdvancedOptions)
     }
-    
-    private func resetToDefaultSettings() {
-        UserDataManager.shared.resetToDefaultSettings()
-        prevInterval = UserDataManager.shared.getPrevInterval()
-        nextInterval = UserDataManager.shared.getNextInterval()
-        criticalTime = UserDataManager.shared.getCriticalTime()
-        flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
-        isDeveloperMode = false
-        themeMode = .system
-    }
-    
+
     private var generalSettingsSection: some View {
         VStack(alignment: .leading, spacing: 25) {
             SectionHeader(title: "通用设置")
@@ -129,12 +136,34 @@ struct SettingsView: View {
                 .frame(width: 200)
             }
             
+            ElegantToggle(isOn: Binding(
+                get: { showAdvancedOptions },
+                set: { newValue in
+                    withAnimation(newValue ? .spring(response: 0.35, dampingFraction: 0.7) : .none) {
+                        showAdvancedOptions = newValue
+                    }
+                    // Set animation duration for next toggle
+                    animationDuration = newValue ? 0.35 : 0
+                }
+            ), title: "显示高级选项")
+            
             ElegantToggle(isOn: $isDeveloperMode, title: "显示日志")
         }
         .padding(25)
         .background(cardBackgroundColor)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+    }
+    
+    private func resetToDefaultSettings() {
+        UserDataManager.shared.resetToDefaultSettings()
+        prevInterval = UserDataManager.shared.getPrevInterval()
+        nextInterval = UserDataManager.shared.getNextInterval()
+        criticalTime = UserDataManager.shared.getCriticalTime()
+        flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
+        isDeveloperMode = false
+        showAdvancedOptions = false
+        themeMode = .system
     }
     
     private var actionButtonsSection: some View {
