@@ -99,9 +99,18 @@ struct SettingsView: View {
 
             if showAdvancedOptions {
                 VStack(spacing: 15) {
-                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 0...114, unit: "分钟")
-                    ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 0...514, unit: "分钟")
-                    ElegantSlider(value: $criticalTime, title: "临界时刻", range: 0...1439, unit: "", formatter: minutesToTimeString)
+                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
+                    ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
+                    ElegantSlider(
+                        value: $criticalTime,
+                        title: "临界时刻",
+                        range: 390...1320,
+                        unit: "",
+                        step: 10,
+                        formatter: minutesToTimeString,
+                        valueConverter: { Double($0 - 390) },
+                        valueReverter: { Int($0) + 390 }
+                    )
                 }
                 .padding(.top, 15)
                 .transition(
@@ -136,6 +145,8 @@ struct SettingsView: View {
                 .frame(width: 200)
             }
             
+            ElegantToggle(isOn: $isDeveloperMode, title: "显示日志")
+            
             ElegantToggle(isOn: Binding(
                 get: { showAdvancedOptions },
                 set: { newValue in
@@ -146,8 +157,6 @@ struct SettingsView: View {
                     animationDuration = newValue ? 0.35 : 0
                 }
             ), title: "显示高级选项")
-            
-            ElegantToggle(isOn: $isDeveloperMode, title: "显示日志")
         }
         .padding(25)
         .background(cardBackgroundColor)
@@ -162,7 +171,6 @@ struct SettingsView: View {
         criticalTime = UserDataManager.shared.getCriticalTime()
         flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
         isDeveloperMode = false
-        showAdvancedOptions = false
         themeMode = .system
     }
     
@@ -190,6 +198,87 @@ struct SettingsView: View {
     }
 }
 
+struct ElegantSlider: View {
+    @Binding var value: Int
+    let title: String
+    let range: ClosedRange<Int>
+    let unit: String
+    let step: Int
+    var specialValues: [Int] = []
+    var formatter: ((Int) -> String)? = nil
+    var valueConverter: ((Int) -> Double)? = nil
+    var valueReverter: ((Double) -> Int)? = nil
+    
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            titleView
+            sliderWithValueView
+        }
+    }
+    
+    private var titleView: some View {
+        Text(title)
+            .font(.subheadline.weight(.medium))
+            .foregroundColor(Color(.secondaryLabel))
+    }
+    
+    private var sliderWithValueView: some View {
+        HStack {
+            sliderView
+            valueLabel
+        }
+    }
+    
+    private var sliderView: some View {
+        Slider(value: sliderBinding, in: sliderRange, step: Double(step))
+            .accentColor(accentColor)
+    }
+    
+    private var valueLabel: some View {
+        Text(formattedValue)
+            .font(.system(.body, design: .rounded).weight(.medium))
+            .foregroundColor(accentColor)
+            .frame(width: 80, alignment: .trailing)
+    }
+    
+    private var sliderBinding: Binding<Double> {
+        Binding(
+            get: { valueConverter?(value) ?? Double(value) },
+            set: { newValue in
+                let convertedValue = valueReverter?(newValue) ?? Int(newValue)
+                let lowerBound = range.lowerBound
+                let upperBound = range.upperBound
+                
+                // 处理最小值、最大值和10的倍数
+                if convertedValue <= lowerBound + step / 2 {
+                    value = lowerBound
+                } else if convertedValue >= upperBound - step / 2 {
+                    value = upperBound
+                } else {
+                    let roundedValue = round(Double(convertedValue) / Double(step)) * Double(step)
+                    value = Int(roundedValue)
+                }
+            }
+        )
+    }
+    
+    private var sliderRange: ClosedRange<Double> {
+        let lowerBound = valueConverter?(range.lowerBound) ?? Double(range.lowerBound)
+        let upperBound = valueConverter?(range.upperBound) ?? Double(range.upperBound)
+        return lowerBound...upperBound
+    }
+    
+    private var formattedValue: String {
+        formatter?(value) ?? "\(value)\(unit)"
+    }
+}
+
 struct SectionHeader: View {
     let title: String
     @Environment(\.colorScheme) private var colorScheme
@@ -202,41 +291,6 @@ struct SectionHeader: View {
         Text(title)
             .font(.title3.weight(.semibold))
             .foregroundColor(textColor)
-    }
-}
-
-struct ElegantSlider: View {
-    @Binding var value: Int
-    let title: String
-    let range: ClosedRange<Int>
-    let unit: String
-    var formatter: ((Int) -> String)? = nil
-    
-    @Environment(\.colorScheme) private var colorScheme
-    
-    private var accentColor: Color {
-        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .foregroundColor(Color(.secondaryLabel))
-            
-            HStack {
-                Slider(value: Binding(
-                    get: { Double(value) },
-                    set: { value = Int($0) }
-                ), in: Double(range.lowerBound)...Double(range.upperBound), step: 1)
-                .accentColor(accentColor)
-                
-                Text(formatter != nil ? formatter!(value) : "\(value)\(unit)")
-                    .font(.system(.body, design: .rounded).weight(.medium))
-                    .foregroundColor(accentColor)
-                    .frame(width: 80, alignment: .trailing)
-            }
-        }
     }
 }
 
