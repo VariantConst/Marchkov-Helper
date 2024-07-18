@@ -391,11 +391,11 @@ struct LoginService {
             
             do {
                 if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                    LogManager.shared.addLog("尝试获取临时码")
                     if let d = json["d"] as? [String: Any],
                        let code = d["code"] as? String,
                        let rawName = d["name"] as? String {
-                        let components = rawName.components(separatedBy: .newlines)
+                        let cleanedName = rawName.replacingOccurrences(of: "\r\n", with: "\n")
+                        let components = cleanedName.components(separatedBy: "\n")
                             
                         // 提取姓名、学号和学院
                         let name = components.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

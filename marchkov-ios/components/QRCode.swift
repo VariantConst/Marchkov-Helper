@@ -9,8 +9,8 @@ struct QRCodeView: View {
                 .interpolation(.none)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 220, height: 220)
-                .padding(20)
+                .frame(width: 200, height: 200)
+                .padding(10)
                 .background(Color.white)
                 .cornerRadius(15)
                 .overlay(

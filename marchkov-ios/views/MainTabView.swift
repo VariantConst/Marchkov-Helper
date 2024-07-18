@@ -319,6 +319,7 @@ struct SuccessView: View {
         .alert(isPresented: $showReverseReservationError) {
             Alert(title: Text("反向预约失败"), message: Text("反向无车可坐"), dismissButton: .default(Text("确定")))
         }
+        .padding(.horizontal, 20)
     }
     
     private func reverseReservation() {
