@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct MainTabView: View {
     @Binding var currentTab: Int
@@ -9,6 +10,9 @@ struct MainTabView: View {
     @Binding var themeMode: ThemeMode
     @State private var resources: [LoginService.Resource] = []
     @Environment(\.colorScheme) private var colorScheme
+    
+    @State private var refreshTimer: AnyCancellable?
+    @State private var lastNetworkActivityTime = Date()
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
@@ -40,6 +44,49 @@ struct MainTabView: View {
         }
         .accentColor(accentColor)
         .background(backgroundColor)
+        .onAppear(perform: startRefreshTimer)
+        .onDisappear(perform: stopRefreshTimer)
+    }
+    
+    private func startRefreshTimer() {
+        refreshTimer = Timer.publish(every: 1, on: .main, in: .common)
+            .autoconnect()
+            .sink { _ in
+                if Date().timeIntervalSince(lastNetworkActivityTime) >= 60 * 10 {
+                    Task {
+                        await performAutoRefresh()
+                    }
+                }
+            }
+    }
+    
+    private func stopRefreshTimer() {
+        refreshTimer?.cancel()
+    }
+    
+    private func updateLastNetworkActivityTime() {
+        lastNetworkActivityTime = Date()
+    }
+    
+    private func performAutoRefresh() async {
+        // 避免重复刷新
+        if isLoading {
+            return
+        }
+        
+        // 模拟应用重启
+        await MainActor.run {
+            isLoading = true
+            errorMessage = ""
+            reservationResult = nil
+            resources = []
+        }
+        
+        // 重新登录并刷新数据
+        await refresh()
+        
+        // 更新最后网络活动时间
+        updateLastNetworkActivityTime()
     }
     
     private func refresh() async {
@@ -76,10 +123,15 @@ struct MainTabView: View {
                 self.resources = newResources
                 self.reservationResult = newReservationResult
                 self.errorMessage = ""
+                self.isLoading = false
             }
+            
+            // 更新最后网络活动时间
+            updateLastNetworkActivityTime()
         } catch {
             await MainActor.run {
                 self.errorMessage = "刷新失败: \(error.localizedDescription)"
+                self.isLoading = false
             }
         }
     }

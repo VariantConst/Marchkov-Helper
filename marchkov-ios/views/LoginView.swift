@@ -20,6 +20,7 @@ struct LoginView: View {
     @AppStorage("themeMode") private var themeMode: ThemeMode = .system
     @Environment(\.colorScheme) var systemColorScheme
     @State private var token: String?
+    @State private var lastNetworkActivityTime = Date()
     
     var body: some View {
         Group {
@@ -74,7 +75,7 @@ struct LoginView: View {
         isLoading = true
         LogManager.shared.clearLogs()
         LogManager.shared.addLog("开始登录流程")
-        LoginService.shared.login(username: username, password: password) { result in
+        LoginService.shared.login(username: username, password: password) { [self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let loginResponse):
@@ -94,12 +95,13 @@ struct LoginView: View {
                     self.loginResult = "登录失败: \(error.localizedDescription)"
                     LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
                 }
+                self.updateLastNetworkActivityTime()
             }
         }
     }
     
     private func getResources(token: String) {
-        LoginService.shared.getResources(token: token) { result in
+        LoginService.shared.getResources(token: token) { [self] result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let resources):
@@ -110,12 +112,13 @@ struct LoginView: View {
                     self.isLoading = false
                     self.errorMessage = "获取班车信息失败: \(error.localizedDescription)"
                 }
+                self.updateLastNetworkActivityTime()
             }
         }
     }
     
     private func getReservationResult() {
-        LoginService.shared.getReservationResult(resources: resources) { result in
+        LoginService.shared.getReservationResult(resources: resources) { [self] result in
             DispatchQueue.main.async {
                 self.isLoading = false
                 switch result {
@@ -124,6 +127,7 @@ struct LoginView: View {
                 case .failure(let error):
                     self.errorMessage = "获取预约结果失败: \(error.localizedDescription)"
                 }
+                self.updateLastNetworkActivityTime()
             }
         }
     }
@@ -139,6 +143,10 @@ struct LoginView: View {
         errorMessage = ""
         reservationResult = nil
         token = nil
+    }
+    
+    private func updateLastNetworkActivityTime() {
+        lastNetworkActivityTime = Date()
     }
 }
 
