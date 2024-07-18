@@ -11,7 +11,7 @@ struct SettingsView: View {
     @AppStorage("prevInterval") private var prevInterval: Int = UserDataManager.shared.getPrevInterval()
     @AppStorage("nextInterval") private var nextInterval: Int = UserDataManager.shared.getNextInterval()
     @AppStorage("criticalTime") private var criticalTime: Int = UserDataManager.shared.getCriticalTime()
-    @AppStorage("commuteDirection") private var commuteDirection: CommuteDirection = .morningToYanyuan
+    @State private var flagMorningToYanyuan: Bool = UserDataManager.shared.getFlagMorningToYanyuan()
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
     
     @State private var showLogoutConfirmation = false
@@ -83,10 +83,11 @@ struct SettingsView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(Color(.secondaryLabel))
                 
-                Picker("通勤方向", selection: $commuteDirection) {
-                    ForEach(CommuteDirection.allCases, id: \.self) { direction in
-                        Text(direction.rawValue).tag(direction)
-                    }
+                Picker("通勤方向", selection: $flagMorningToYanyuan.onChange { newValue in
+                    UserDefaults.standard.set(newValue, forKey: "flagMorningToYanyuan")
+                }) {
+                    Text("上午去燕园").tag(true)
+                    Text("上午去昌平").tag(false)
                 }
                 .pickerStyle(SegmentedPickerStyle())
             }
@@ -99,6 +100,16 @@ struct SettingsView: View {
         .background(cardBackgroundColor)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+    }
+    
+    private func resetToDefaultSettings() {
+        UserDataManager.shared.resetToDefaultSettings()
+        prevInterval = UserDataManager.shared.getPrevInterval()
+        nextInterval = UserDataManager.shared.getNextInterval()
+        criticalTime = UserDataManager.shared.getCriticalTime()
+        flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
+        isDeveloperMode = false
+        themeMode = .system
     }
     
     private var generalSettingsSection: some View {
@@ -141,16 +152,6 @@ struct SettingsView: View {
                 )
         }
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
-    }
-    
-    private func resetToDefaultSettings() {
-        UserDataManager.shared.resetToDefaultSettings()
-        prevInterval = UserDataManager.shared.getPrevInterval()
-        nextInterval = UserDataManager.shared.getNextInterval()
-        criticalTime = UserDataManager.shared.getCriticalTime()
-        commuteDirection = .morningToYanyuan
-        isDeveloperMode = false
-        themeMode = .system
     }
     
     private func minutesToTimeString(_ minutes: Int) -> String {
@@ -227,5 +228,17 @@ struct ElegantToggle: View {
                 .foregroundColor(Color(.label))
         }
         .toggleStyle(SwitchToggleStyle(tint: accentColor))
+    }
+}
+
+extension Binding {
+    func onChange(_ handler: @escaping (Value) -> Void) -> Binding<Value> {
+        Binding(
+            get: { self.wrappedValue },
+            set: { newValue in
+                self.wrappedValue = newValue
+                handler(newValue)
+            }
+        )
     }
 }

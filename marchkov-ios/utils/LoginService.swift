@@ -266,10 +266,14 @@ struct LoginService {
         let direction: BusDirection
         if let forcedDirection = forceDirection {
             direction = forcedDirection
+            LogManager.shared.addLog("强制设置班车方向为 \(direction)")
         } else if minutesSinceMidnight < criticalTime {
+            LogManager.shared.addLog("flagMorningToYanyuan \(flagMorningToYanyuan), minutesSinceMidnight \(minutesSinceMidnight), criticalTime \(criticalTime)")
             direction = flagMorningToYanyuan ? .toYanyuan : .toChangping
+            LogManager.shared.addLog("自动设置班车方向为 \(direction)")
         } else {
             direction = flagMorningToYanyuan ? .toChangping : .toYanyuan
+            LogManager.shared.addLog("自动设置班车方向为 \(direction)")
         }
         
         let formattedTime = String(format: "%02d:%02d", currentHour, currentMinute)
@@ -298,7 +302,9 @@ struct LoginService {
             for busInfo in resource.busInfos {
                 if busInfo.date == today && busInfo.margin > 0 {
                     let busTime = busInfo.yaxis
+                    LogManager.shared.addLog("正在检查班车：busTime \(busTime), currentTime \(currentTime)")
                     if let timeDifference = getTimeDifference(currentTime: currentTime, busTime: busTime) {
+                        LogManager.shared.addLog("时间差 \(timeDifference), prevInterval \(prevInterval), nextInterval \(nextInterval)")
                         if timeDifference >= -prevInterval && timeDifference <= nextInterval {
                             if timeDifference < 0 {
                                 // Past bus
