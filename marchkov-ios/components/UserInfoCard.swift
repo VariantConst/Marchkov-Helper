@@ -7,11 +7,11 @@ struct UserInfoCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var accentColor: Color {
-        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+        colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)
     }
 
     private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+        colorScheme == .dark ? Color(red: 0.15, green: 0.15, blue: 0.17) : .white
     }
 
     var body: some View {
@@ -22,7 +22,7 @@ struct UserInfoCard: View {
         }
         .background(cardBackgroundColor)
         .cornerRadius(20)
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
     }
 
     private var topSection: some View {
@@ -67,7 +67,6 @@ struct UserInfoCard: View {
                 Image(systemName: "number")
                     .foregroundColor(accentColor)
                     .font(.system(size: 18))
-//                Text("2301234567")
                 Text(userInfo.studentId)
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundColor(.secondary)

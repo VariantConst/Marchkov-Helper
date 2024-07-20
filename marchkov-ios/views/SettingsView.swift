@@ -188,48 +188,67 @@ struct SettingsView: View {
     private var actionButtonsSection: some View {
         VStack(spacing: 20) {
             Button(action: { showResetConfirmation = true }) {
-                HStack {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.headline)
-                    Text("恢复默认设置")
-                        .font(.headline)
-                }
-                .foregroundColor(accentColor)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(cardBackgroundColor)
-                .cornerRadius(15)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 15)
-                        .stroke(accentColor, lineWidth: 1)
-                )
+                buttonContent(icon: "arrow.counterclockwise", text: "恢复默认设置")
             }
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+            .buttonStyle(FlatButtonStyle(isAccent: false))
             
-            // 添加 GitHub 链接按钮
             Link(destination: URL(string: "https://github.com/VariantConst/3-2-1-Marchkov")!) {
-                HStack {
-                    Image(systemName: "link")
-                        .font(.headline)
-                    Text("审查应用源码")
-                        .font(.headline)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(accentColor)
-                .cornerRadius(15)
+                buttonContent(icon: "link", text: "审查应用源码")
             }
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+            .buttonStyle(FlatButtonStyle(isAccent: true))
         }
     }
 
+    private func buttonContent(icon: String, text: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.headline)
+            Text(text)
+                .font(.headline)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+    }
 
         
     private func minutesToTimeString(_ minutes: Int) -> String {
         let hours = minutes / 60
         let mins = minutes % 60
         return String(format: "%02d:%02d", hours, mins)
+    }
+}
+
+struct FlatButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) var colorScheme
+    var isAccent: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(textColor)
+            .background(backgroundColor)
+            .cornerRadius(15)
+            .shadow(color: shadowColor, radius: 3, x: 0, y: 2)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+    }
+    
+    private var backgroundColor: Color {
+        if isAccent {
+            return colorScheme == .dark ? Color(hex: "#1B263B") : Color(hex: "#4A90E2")
+        } else {
+            return colorScheme == .dark ? Color(hex: "#2C3E50") : Color(hex: "#E0E0E0")
+        }
+    }
+    
+    private var textColor: Color {
+        if isAccent {
+            return .white
+        } else {
+            return colorScheme == .dark ? .white : .black
+        }
+    }
+    
+    private var shadowColor: Color {
+        Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1)
     }
 }
 

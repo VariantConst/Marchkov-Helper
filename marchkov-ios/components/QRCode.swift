@@ -1,7 +1,9 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 
 struct QRCodeView: View {
     let qrCode: String
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack {
@@ -11,7 +13,7 @@ struct QRCodeView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 200, height: 200)
                 .padding(10)
-                .background(Color.white)
+                .background(Color(colorScheme == .light ? UIColor(white: 0.95, alpha: 1.0) :UIColor(white: 0.8, alpha: 1.0)))
                 .cornerRadius(15)
                 .overlay(
                     RoundedRectangle(cornerRadius: 15)
@@ -28,7 +30,16 @@ struct QRCodeView: View {
         filter.correctionLevel = "M"
         
         if let outputImage = filter.outputImage {
-            if let cgimg = context.createCGImage(outputImage, from: outputImage.extent) {
+            let transformedImage = outputImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+            
+            let colorParameters: [String: Any] = [
+                "inputColor0": CIColor(color: colorScheme == .light ? UIColor.darkGray : UIColor.black),
+                "inputColor1": CIColor(color: colorScheme == .light ? UIColor(white: 0.95, alpha: 1.0) : UIColor(white: 0.8, alpha: 1.0))
+            ]
+            
+            let coloredQRCode = transformedImage.applyingFilter("CIFalseColor", parameters: colorParameters)
+            
+            if let cgimg = context.createCGImage(coloredQRCode, from: coloredQRCode.extent) {
                 return UIImage(cgImage: cgimg)
             }
         }
