@@ -46,6 +46,10 @@ struct MainTabView: View {
         .background(backgroundColor)
         .onAppear(perform: startRefreshTimer)
         .onDisappear(perform: stopRefreshTimer)
+        .onChange(of: currentTab, initial: false) { _, _ in
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+
     }
     
     private func startRefreshTimer() {
@@ -69,12 +73,10 @@ struct MainTabView: View {
     }
     
     private func performAutoRefresh() async {
-        // 避免重复刷新
         if isLoading {
             return
         }
         
-        // 模拟应用重启
         await MainActor.run {
             isLoading = true
             errorMessage = ""
@@ -82,10 +84,8 @@ struct MainTabView: View {
             resources = []
         }
         
-        // 重新登录并刷新数据
         await refresh()
         
-        // 更新最后网络活动时间
         updateLastNetworkActivityTime()
     }
     
@@ -124,9 +124,9 @@ struct MainTabView: View {
                 self.reservationResult = newReservationResult
                 self.errorMessage = ""
                 self.isLoading = false
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             }
             
-            // 更新最后网络活动时间
             updateLastNetworkActivityTime()
         } catch {
             await MainActor.run {
@@ -184,8 +184,11 @@ struct ReservationResultView: View {
                             .padding(.horizontal)
                         }
                         .refreshable {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             await refresh()
                         }
+                        .scrollIndicators(.hidden)
+
                     }
                     
                     VStack {
@@ -242,7 +245,6 @@ struct SuccessView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 优化的顶部条
             Text(result.isPastBus ? "临时码" : "乘车码")
                 .font(.system(size: 16, weight: .semibold))
                 .frame(maxWidth: .infinity)
@@ -251,9 +253,7 @@ struct SuccessView: View {
                 .background(accentColor)
                 .cornerRadius(12, corners: [.topLeft, .topRight])
             
-            // 主要内容
             VStack(spacing: 30) {
-                // 路线和时间信息
                 VStack(spacing: 12) {
                     Text(result.name)
                         .font(.system(size: result.name.count > 10 ? 16 : 20, weight: .medium))
@@ -276,6 +276,7 @@ struct SuccessView: View {
                 
                 Button(action: {
                     reverseReservation()
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }) {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.triangle.2.circlepath")

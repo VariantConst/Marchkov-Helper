@@ -67,6 +67,7 @@ struct UserInfoCard: View {
                 Image(systemName: "number")
                     .foregroundColor(accentColor)
                     .font(.system(size: 18))
+//                Text("2301234567")
                 Text(userInfo.studentId)
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundColor(.secondary)

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F50AFC762C4BDEB3009BDF31 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */; };
 		F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55F58122C482AED002E65F0 /* UserInfoCard.swift */; };
 		F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */; };
 		F5D8A6E02C451C6E001E0280 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */; };
@@ -75,6 +76,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F50AFC762C4BDEB3009BDF31 /* SFSafeSymbols in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,6 +97,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F50AFC742C4BDEB3009BDF31 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		F5D8A6CD2C451C6D001E0280 = {
 			isa = PBXGroup;
 			children = (
@@ -102,6 +111,7 @@
 				F5D8A6EB2C451C6E001E0280 /* marchkov-iosTests */,
 				F5D8A6F52C451C6F001E0280 /* marchkov-iosUITests */,
 				F5D8A6D72C451C6D001E0280 /* Products */,
+				F50AFC742C4BDEB3009BDF31 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -211,6 +221,9 @@
 			dependencies = (
 			);
 			name = "marchkov-ios";
+			packageProductDependencies = (
+				F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */,
+			);
 			productName = "marchkov-ios";
 			productReference = F5D8A6D62C451C6D001E0280 /* marchkov-ios.app */;
 			productType = "com.apple.product-type.application";
@@ -283,6 +296,9 @@
 				Base,
 			);
 			mainGroup = F5D8A6CD2C451C6D001E0280;
+			packageReferences = (
+				F50AFC732C4BDEAC009BDF31 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */,
+			);
 			productRefGroup = F5D8A6D72C451C6D001E0280 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -505,6 +521,8 @@
 				DEVELOPMENT_TEAM = 3B84D2645W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "马池口班车预约";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -534,6 +552,8 @@
 				DEVELOPMENT_TEAM = 3B84D2645W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "马池口班车预约";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -668,6 +688,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F50AFC732C4BDEAC009BDF31 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SFSafeSymbols/SFSafeSymbols.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F50AFC732C4BDEAC009BDF31 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */;
+			productName = SFSafeSymbols;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F5D8A6CE2C451C6D001E0280 /* Project object */;
 }

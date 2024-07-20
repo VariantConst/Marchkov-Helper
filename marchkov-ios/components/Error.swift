@@ -21,12 +21,6 @@ struct ErrorView: View {
                         .foregroundColor(Color(.label))
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                
-                Text(errorMessage)
-                    .font(.system(size: 17, weight: .regular, design: .rounded))
-                    .foregroundColor(Color(.secondaryLabel))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
             }
             .padding(.vertical, 30)
             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)

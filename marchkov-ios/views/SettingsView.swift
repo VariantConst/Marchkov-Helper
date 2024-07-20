@@ -1,4 +1,10 @@
 import SwiftUI
+import UIKit
+
+func hapticFeedback() {
+    let generator = UIImpactFeedbackGenerator(style: .medium)
+    generator.impactOccurred()
+}
 
 enum CommuteDirection: String, CaseIterable {
     case morningToYanyuan = "上午去燕园"
@@ -87,6 +93,7 @@ struct SettingsView: View {
                     .foregroundColor(Color(.secondaryLabel))
                 Spacer()
                 Picker("通勤方向", selection: $flagMorningToYanyuan.onChange { newValue in
+                    hapticFeedback()  // 添加震动反馈
                     UserDefaults.standard.set(newValue, forKey: "flagMorningToYanyuan")
                 }) {
                     Text("上午去燕园").tag(true)
@@ -136,7 +143,9 @@ struct SettingsView: View {
                 Text("主题模式")
                     .font(.subheadline.weight(.medium))
                 Spacer()
-                Picker("", selection: $themeMode) {
+                Picker("", selection: $themeMode.onChange { newValue in
+                    hapticFeedback()  // 添加震动反馈
+                }) {
                     ForEach(ThemeMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
                     }
@@ -145,15 +154,17 @@ struct SettingsView: View {
                 .frame(width: 200)
             }
             
-            ElegantToggle(isOn: $isDeveloperMode, title: "显示日志")
+            ElegantToggle(isOn: $isDeveloperMode.onChange { newValue in
+                hapticFeedback()  // 添加震动反馈
+            }, title: "显示日志")
             
             ElegantToggle(isOn: Binding(
                 get: { showAdvancedOptions },
                 set: { newValue in
+                    hapticFeedback()  // 添加震动反馈
                     withAnimation(newValue ? .spring(response: 0.35, dampingFraction: 0.7) : .none) {
                         showAdvancedOptions = newValue
                     }
-                    // Set animation duration for next toggle
                     animationDuration = newValue ? 0.35 : 0
                 }
             ), title: "显示高级选项")
@@ -175,9 +186,14 @@ struct SettingsView: View {
     }
     
     private var actionButtonsSection: some View {
-        Button(action: { showResetConfirmation = true }) {
-            Text("恢复默认设置")
-                .font(.headline)
+        VStack(spacing: 20) {
+            Button(action: { showResetConfirmation = true }) {
+                HStack {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.headline)
+                    Text("恢复默认设置")
+                        .font(.headline)
+                }
                 .foregroundColor(accentColor)
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -187,16 +203,36 @@ struct SettingsView: View {
                     RoundedRectangle(cornerRadius: 15)
                         .stroke(accentColor, lineWidth: 1)
                 )
+            }
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+            
+            // 添加 GitHub 链接按钮
+            Link(destination: URL(string: "https://github.com/VariantConst/3-2-1-Marchkov")!) {
+                HStack {
+                    Image(systemName: "link")
+                        .font(.headline)
+                    Text("审查应用源码")
+                        .font(.headline)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(accentColor)
+                .cornerRadius(15)
+            }
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
         }
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
     }
-    
+
+
+        
     private func minutesToTimeString(_ minutes: Int) -> String {
         let hours = minutes / 60
         let mins = minutes % 60
         return String(format: "%02d:%02d", hours, mins)
     }
 }
+
 
 struct ElegantSlider: View {
     @Binding var value: Int
@@ -238,6 +274,11 @@ struct ElegantSlider: View {
     private var sliderView: some View {
         Slider(value: sliderBinding, in: sliderRange, step: Double(step))
             .accentColor(accentColor)
+            .onChange(of: sliderBinding.wrappedValue, initial: true) { oldValue, newValue in
+                if newValue != oldValue {
+                    hapticFeedback()
+                }
+            }
     }
     
     private var valueLabel: some View {
@@ -278,6 +319,7 @@ struct ElegantSlider: View {
         formatter?(value) ?? "\(value)\(unit)"
     }
 }
+
 
 struct SectionHeader: View {
     let title: String
