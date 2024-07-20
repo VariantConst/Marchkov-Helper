@@ -106,7 +106,7 @@ struct SettingsView: View {
 
             if showAdvancedOptions {
                 VStack(spacing: 15) {
-                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
+                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 114])
                     ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
                     ElegantSlider(
                         value: $criticalTime,
