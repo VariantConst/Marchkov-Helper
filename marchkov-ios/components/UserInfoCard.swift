@@ -10,8 +10,20 @@ struct UserInfoCard: View {
         colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)
     }
 
-    private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(red: 0.15, green: 0.15, blue: 0.17) : .white
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 200/255, green: 200/255, blue: 210/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
 
     var body: some View {
@@ -20,8 +32,12 @@ struct UserInfoCard: View {
             Divider().background(Color.gray.opacity(0.2)).padding(.horizontal)
             bottomSection
         }
-        .background(cardBackgroundColor)
+        .background(BlurView(style: .systemMaterial))
         .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(gradientBackground, lineWidth: 1)
+        )
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
     }
 
@@ -58,7 +74,7 @@ struct UserInfoCard: View {
                     .font(.system(size: 18))
                 Text(userInfo.department)
                     .font(.system(.subheadline, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
             }
             
             Spacer()
@@ -69,7 +85,7 @@ struct UserInfoCard: View {
                     .font(.system(size: 18))
                 Text(userInfo.studentId)
                     .font(.system(.subheadline, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
             }
         }
         .padding(.horizontal, 25)

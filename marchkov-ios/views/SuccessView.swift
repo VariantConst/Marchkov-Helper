@@ -11,31 +11,28 @@ struct SuccessView: View {
     
     private var mainColor: Color {
         result.isPastBus ?
-            (colorScheme == .dark ? Color(red: 255/255, green: 170/255, blue: 50/255) : Color(hex: "C2956E")) :
-            (colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(hex: "3A7CA5"))
+            (colorScheme == .dark ? Color(red: 255/255, green: 150/255, blue: 50/255) : Color(hex: "D49A6A")) :
+            (colorScheme == .dark ? Color(red: 80/255, green: 180/255, blue: 255/255) : Color(hex: "519CAB"))
     }
-    
+
     private var accentColor: Color {
-        colorScheme == .dark ? mainColor : mainColor.opacity(0.95)
+        colorScheme == .dark ? mainColor : mainColor.opacity(0.9)
     }
-    
+
     private var secondaryColor: Color {
-        colorScheme == .dark ? mainColor : mainColor.opacity(0.8)
+        colorScheme == .dark ? mainColor : mainColor.opacity(0.75)
     }
     
     private var textColor: Color {
         colorScheme == .dark ? Color.white.opacity(0.95) : Color(hex: "2C3E50")
     }
     
-    private var metallicGradient: LinearGradient {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(hex: colorScheme == .dark ? "2A2A2A" : "F0F0F0"),
-                Color(hex: colorScheme == .dark ? "1A1A1A" : "E0E0E0")
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var shadowColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.1)
+    }
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color(hex: "3f3f3f") : Color(hex: "eeeeee")
     }
     
     var body: some View {
@@ -47,7 +44,7 @@ struct SuccessView: View {
                 .padding(.vertical, 12)
                 .background(
                     ZStack {
-                        metallicGradient
+                        cardBackgroundColor
                         LinearGradient(
                             gradient: Gradient(colors: [accentColor.opacity(0.2), accentColor.opacity(0.05)]),
                             startPoint: .top,
@@ -100,11 +97,10 @@ struct SuccessView: View {
                 .padding(.vertical, 10)
             }
             .padding(25)
-            .background(metallicGradient)
         }
-        .background(metallicGradient)
+        .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: mainColor.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 10)
+        .shadow(color: shadowColor, radius: 10, x: 0, y: 5)
         .alert(isPresented: $showReverseReservationError) {
             Alert(title: Text("反向预约失败"), message: Text("反向无车可坐"), dismissButton: .default(Text("确定")))
         }

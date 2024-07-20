@@ -18,8 +18,20 @@ struct MainTabView: View {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
     }
     
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
     
     var body: some View {
@@ -43,13 +55,12 @@ struct MainTabView: View {
                 .tag(1)
         }
         .accentColor(accentColor)
-        .background(backgroundColor)
+        .background(gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all))
         .onAppear(perform: startRefreshTimer)
         .onDisappear(perform: stopRefreshTimer)
         .onChange(of: currentTab, initial: false) { _, _ in
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
-
     }
     
     private func startRefreshTimer() {
@@ -147,19 +158,11 @@ struct ReservationResultView: View {
     let refresh: () async -> Void
     @Environment(\.colorScheme) private var colorScheme
     
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
-    }
-    
-    private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
-    }
-    
     var body: some View {
         NavigationView {
             GeometryReader { geometry in
                 ZStack {
-                    backgroundColor.edgesIgnoringSafeArea(.all)
+                    gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all)
                     
                     if isLoading {
                         ProgressView("加载中...")
@@ -211,13 +214,8 @@ struct ReservationResultView: View {
 }
 
 
-
 struct NoResultView: View {
     @Environment(\.colorScheme) private var colorScheme
-    
-    private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
-    }
     
     var body: some View {
         VStack {
@@ -229,15 +227,28 @@ struct NoResultView: View {
                 .foregroundColor(Color(.secondaryLabel))
         }
         .padding()
-        .background(cardBackgroundColor)
+        .background(BlurView(style: .systemMaterial))
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+        .background(gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all))
     }
 }
 
 extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
+    func gradientBackground(colorScheme: ColorScheme) -> LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
 }
 

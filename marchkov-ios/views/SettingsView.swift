@@ -30,17 +30,29 @@ struct SettingsView: View {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
     }
     
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(red: 18/255, green: 18/255, blue: 22/255) : Color(red: 245/255, green: 245/255, blue: 250/255)
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
     
     private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
+        colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.5)
     }
     
     var body: some View {
         ZStack {
-            backgroundColor.edgesIgnoringSafeArea(.all)
+            gradientBackground.edgesIgnoringSafeArea(.all)
             
             ScrollView {
                 VStack(spacing: 30) {
@@ -90,7 +102,7 @@ struct SettingsView: View {
             HStack {
                 Text("通勤方向")
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(Color(.secondaryLabel))
+                    .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
                 Spacer()
                 Picker("通勤方向", selection: $flagMorningToYanyuan.onChange { newValue in
                     hapticFeedback()  // 添加震动反馈
@@ -106,7 +118,7 @@ struct SettingsView: View {
 
             if showAdvancedOptions {
                 VStack(spacing: 15) {
-                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 114])
+                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
                     ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
                     ElegantSlider(
                         value: $criticalTime,
@@ -129,9 +141,9 @@ struct SettingsView: View {
             }
         }
         .padding(25)
-        .background(cardBackgroundColor)
+        .background(BlurView(style: .systemMaterial))
         .cornerRadius(20)
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+        .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
         .animation(.easeInOut(duration: animationDuration), value: showAdvancedOptions)
     }
 
@@ -142,6 +154,7 @@ struct SettingsView: View {
             HStack {
                 Text("主题模式")
                     .font(.subheadline.weight(.medium))
+                    .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
                 Spacer()
                 Picker("", selection: $themeMode.onChange { newValue in
                     hapticFeedback()  // 添加震动反馈
@@ -170,10 +183,11 @@ struct SettingsView: View {
             ), title: "显示高级选项")
         }
         .padding(25)
-        .background(cardBackgroundColor)
+        .background(BlurView(style: .systemMaterial))
         .cornerRadius(20)
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 15, x: 0, y: 8)
+        .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
     }
+
     
     private func resetToDefaultSettings() {
         UserDataManager.shared.resetToDefaultSettings()
@@ -187,11 +201,13 @@ struct SettingsView: View {
     
     private var actionButtonsSection: some View {
         VStack(spacing: 20) {
-            Button(action: { showResetConfirmation = true }) {
-                buttonContent(icon: "arrow.counterclockwise", text: "恢复默认设置")
+            if showAdvancedOptions {
+                Button(action: { showResetConfirmation = true }) {
+                    buttonContent(icon: "arrow.counterclockwise", text: "恢复默认设置")
+                }
+                .buttonStyle(FlatButtonStyle(isAccent: false))
             }
-            .buttonStyle(FlatButtonStyle(isAccent: false))
-            
+
             Link(destination: URL(string: "https://github.com/VariantConst/3-2-1-Marchkov")!) {
                 buttonContent(icon: "link", text: "审查应用源码")
             }
@@ -235,7 +251,7 @@ struct FlatButtonStyle: ButtonStyle {
         if isAccent {
             return colorScheme == .dark ? Color(hex: "#1B263B") : Color(hex: "#4A90E2")
         } else {
-            return colorScheme == .dark ? Color(hex: "#2C3E50") : Color(hex: "#E0E0E0")
+            return colorScheme == .dark ? Color(hex: "#2C3E50") : Color(hex: "#D3D3D3") // 调整为高雅浅灰色
         }
     }
     
@@ -339,13 +355,12 @@ struct ElegantSlider: View {
     }
 }
 
-
 struct SectionHeader: View {
     let title: String
     @Environment(\.colorScheme) private var colorScheme
     
     private var textColor: Color {
-        colorScheme == .dark ? Color(red: 220/255, green: 220/255, blue: 230/255) : Color(red: 60/255, green: 60/255, blue: 70/255)
+        colorScheme == .dark ? .white : .black
     }
     
     var body: some View {
@@ -369,7 +384,7 @@ struct ElegantToggle: View {
         Toggle(isOn: $isOn) {
             Text(title)
                 .font(.subheadline.weight(.medium))
-                .foregroundColor(Color(.label))
+                .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
         }
         .toggleStyle(SwitchToggleStyle(tint: accentColor))
     }
@@ -385,4 +400,14 @@ extension Binding {
             }
         )
     }
+}
+
+struct BlurView: UIViewRepresentable {
+    var style: UIBlurEffect.Style
+    
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        return UIVisualEffectView(effect: UIBlurEffect(style: style))
+    }
+    
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
 }
