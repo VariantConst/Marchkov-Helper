@@ -286,6 +286,10 @@ struct ElegantSlider: View {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
     }
     
+    private var textColor: Color {
+        colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             titleView
@@ -296,7 +300,7 @@ struct ElegantSlider: View {
     private var titleView: some View {
         Text(title)
             .font(.subheadline.weight(.medium))
-            .foregroundColor(Color(.secondaryLabel))
+            .foregroundColor(textColor)
     }
     
     private var sliderWithValueView: some View {
@@ -319,7 +323,7 @@ struct ElegantSlider: View {
     private var valueLabel: some View {
         Text(formattedValue)
             .font(.system(.body, design: .rounded).weight(.medium))
-            .foregroundColor(accentColor)
+            .foregroundColor(textColor)
             .frame(width: 80, alignment: .trailing)
     }
     
@@ -354,6 +358,7 @@ struct ElegantSlider: View {
         formatter?(value) ?? "\(value)\(unit)"
     }
 }
+
 
 struct SectionHeader: View {
     let title: String
