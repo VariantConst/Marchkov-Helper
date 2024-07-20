@@ -123,12 +123,12 @@ struct SettingsView: View {
                     ElegantSlider(
                         value: $criticalTime,
                         title: "临界时刻",
-                        range: 390...1320,
+                        range: 360...1320,  // 调整范围
                         unit: "",
-                        step: 10,
+                        step: 60,  // 设置步长为 60 分钟
                         formatter: minutesToTimeString,
-                        valueConverter: { Double($0 - 390) },
-                        valueReverter: { Int($0) + 390 }
+                        valueConverter: { Double($0) },
+                        valueReverter: { Int($0) }
                     )
                 }
                 .padding(.top, 15)
@@ -335,7 +335,7 @@ struct ElegantSlider: View {
                 let lowerBound = range.lowerBound
                 let upperBound = range.upperBound
                 
-                // 处理最小值、最大值和10的倍数
+                // 处理最小值、最大值和步长
                 if convertedValue <= lowerBound + step / 2 {
                     value = lowerBound
                 } else if convertedValue >= upperBound - step / 2 {
@@ -347,7 +347,7 @@ struct ElegantSlider: View {
             }
         )
     }
-    
+
     private var sliderRange: ClosedRange<Double> {
         let lowerBound = valueConverter?(range.lowerBound) ?? Double(range.lowerBound)
         let upperBound = valueConverter?(range.upperBound) ?? Double(range.upperBound)
