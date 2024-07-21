@@ -32,7 +32,7 @@ struct SuccessView: View {
     }
     
     private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color(hex: "3f3f3f") : Color(hex: "eeeeee")
+        colorScheme == .dark ? Color(hex: "2f2f2f") : Color(hex: "eeeeee")
     }
     
     var body: some View {
