@@ -1,4 +1,4 @@
-package com.example.greetingcard.utils
+package com.variantconst.marchkov.utils
 
 import android.content.Context
 

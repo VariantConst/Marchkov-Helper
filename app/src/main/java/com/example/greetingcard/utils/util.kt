@@ -1,10 +1,10 @@
-package com.example.greetingcard.utils
+package com.variantconst.marchkov.utils
 
 import android.graphics.Bitmap
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.example.greetingcard.BusInfo
+import com.variantconst.marchkov.BusInfo
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import java.time.Duration

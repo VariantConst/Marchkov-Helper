@@ -1,4 +1,4 @@
-package com.example.greetingcard.components
+package com.variantconst.marchkov.components
 
 import android.content.Intent
 import android.graphics.Bitmap

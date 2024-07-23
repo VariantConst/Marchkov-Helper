@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.greetingcard"
+    namespace = "com.variantconst.marchkov"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.greetingcard"
+        applicationId = "com.variantconst.marchkov"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

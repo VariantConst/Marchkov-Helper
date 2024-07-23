@@ -1,4 +1,4 @@
-package com.example.greetingcard
+package com.variantconst.marchkov
 
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility

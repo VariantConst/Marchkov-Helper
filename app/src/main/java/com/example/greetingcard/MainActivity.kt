@@ -1,4 +1,4 @@
-package com.example.greetingcard
+package com.variantconst.marchkov
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -25,14 +25,14 @@ import java.util.*
 import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import com.example.greetingcard.components.SettingsDialog
-import com.example.greetingcard.components.LogScreen
-import com.example.greetingcard.components.LoginScreen
-import com.example.greetingcard.components.MainPagerScreen
-import com.example.greetingcard.components.LoadingScreen
-import com.example.greetingcard.utils.*
-import com.example.greetingcard.utils.SimpleCookieJar
-import com.example.greetingcard.utils.Settings
+import com.variantconst.marchkov.components.SettingsDialog
+import com.variantconst.marchkov.components.LogScreen
+import com.variantconst.marchkov.components.LoginScreen
+import com.variantconst.marchkov.components.MainPagerScreen
+import com.variantconst.marchkov.components.LoadingScreen
+import com.variantconst.marchkov.utils.*
+import com.variantconst.marchkov.utils.SimpleCookieJar
+import com.variantconst.marchkov.utils.Settings
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {

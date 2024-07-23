@@ -1,4 +1,4 @@
-package com.example.greetingcard.utils
+package com.variantconst.marchkov.utils
 
 import okhttp3.Cookie
 import okhttp3.CookieJar

@@ -1,4 +1,4 @@
-package com.example.greetingcard.components
+package com.variantconst.marchkov.components
 
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
@@ -35,9 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.greetingcard.ReservationCard
-import com.example.greetingcard.ToggleDirectionButton
-import com.example.greetingcard.WelcomeHeader
+import com.variantconst.marchkov.ReservationCard
+import com.variantconst.marchkov.ToggleDirectionButton
+import com.variantconst.marchkov.WelcomeHeader
 
 @Composable
 fun DetailScreen(

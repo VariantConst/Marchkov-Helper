@@ -1,4 +1,4 @@
-package com.example.greetingcard.components
+package com.variantconst.marchkov.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
