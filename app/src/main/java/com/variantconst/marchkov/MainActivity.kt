@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
         // 加载设置
         Settings.load(this)
 
-        val sharedPreferences = getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
         val savedUsername = sharedPreferences.getString("username", null)
         val savedPassword = sharedPreferences.getString("password", null)
 
@@ -316,6 +316,8 @@ class MainActivity : ComponentActivity() {
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+
                 updateLoadingMessage("正在登录...")
                 // Step 1: GET request and POST login
                 var request: Request
@@ -419,10 +421,12 @@ class MainActivity : ComponentActivity() {
                             val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
                             Log.v("MyTag", "临时码响应是 is $tempQrCodeResponse")
                             val creatorNameFull = (qrCodeJson["d"] as? Map<*, *>)?.get("name") as? String
-                            val creatorName = creatorNameFull?.split("\r\n")?.get(0)
-
+                            val creatorName = creatorNameFull?.split("\r\n")?.get(0) ?: "马池口🐮🐴"
+                            saveRealName(creatorName)
+                            val creatorDepart = creatorNameFull?.split("\r\n")?.get(2) ?: "这个需要你自己衡量！"
+                            saveDepartment(creatorDepart)
                             val reservationDetails = mapOf<String, Any>(
-                                "creator_name" to (creatorName ?: ""),
+                                "creator_name" to (creatorName),
                                 "resource_name" to resourceName,
                                 "start_time" to startTime,
                                 "is_temp" to true
@@ -486,8 +490,12 @@ class MainActivity : ComponentActivity() {
                                 Log.v("MyTag", "reservationDetails is $reservation")
                                 val periodText = (reservation["period_text"] as? Map<*, *>)?.values?.firstOrNull() as? Map<*, *>
                                 val period = (periodText?.get("text") as? List<*>)?.firstOrNull() as? String ?: "未知时间"
+                                val creatorName = reservation["creator_name"] as? String ?: "马池口🐮🐴"
+                                val creatorDepart = reservation["creator_depart"] as? String ?: "这个需要你自己衡量！"
+                                saveRealName(creatorName)
+                                saveDepartment(creatorDepart)
                                 reservationDetails = mapOf<String, Any>(
-                                    "creator_name" to reservation["creator_name"] as String,
+                                    "creator_name" to creatorName,
                                     "resource_name" to reservation["resource_name"] as String,
                                     "start_time" to period,
                                     "is_temp" to false
@@ -583,7 +591,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun saveLoginInfo(username: String, password: String) {
-        val sharedPreferences = getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             putString("username", username)
             putString("password", password)
@@ -591,11 +599,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun saveRealName(realName: String) {
+        val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        val currentRealName = sharedPreferences.getString("realName", null)
+        if (currentRealName == null || realName == "马池口🐮🐴") {
+            with(sharedPreferences.edit()) {
+                putString("realName", realName)
+                apply()
+            }
+        }
+    }
+
+    private fun saveDepartment(department: String) {
+        val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        val currentDepartment = sharedPreferences.getString("department", null)
+        if (currentDepartment == null || department == "这个需要你自己衡量！") {
+            with(sharedPreferences.edit()) {
+                putString("department", department)
+                apply()
+            }
+        }
+    }
+
     private fun clearLoginInfo() {
-        val sharedPreferences = getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
         with(sharedPreferences.edit()) {
             remove("username")
             remove("password")
+            remove("realName")
+            remove("department")
             apply()
         }
     }
