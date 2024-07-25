@@ -50,32 +50,39 @@ fun DetailScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (reservationDetails != null) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp)
-                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 40.dp) // 为ToggleDirectionButton留出空间
             ) {
-                val creatorName = reservationDetails["creator_name"] as? String ?: "访客"
-                var resourceName = reservationDetails["resource_name"] as? String ?: "未知路线"
-                var period = reservationDetails["start_time"] as? String ?: "未知时间"
-                val isTemp = reservationDetails["is_temp"] as? Boolean ?: false
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.Center)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    val creatorName = reservationDetails["creator_name"] as? String ?: "访客"
+                    var resourceName = reservationDetails["resource_name"] as? String ?: "未知路线"
+                    var period = reservationDetails["start_time"] as? String ?: "未知时间"
+                    val isTemp = reservationDetails["is_temp"] as? Boolean ?: false
 
-                resourceName = resourceName.replace("→", "➔")
-                period = period.replace("\n", "")
+                    resourceName = resourceName.replace("→", "➔")
+                    period = period.replace("\n", "")
 
-                WelcomeHeader(creatorName)
+                    WelcomeHeader(creatorName)
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                ReservationCard(
-                    isTemp = isTemp,
-                    resourceName = resourceName,
-                    period = period,
-                    qrCodeBitmap = qrCodeBitmap
-                )
+                    ReservationCard(
+                        isTemp = isTemp,
+                        resourceName = resourceName,
+                        period = period,
+                        qrCodeBitmap = qrCodeBitmap
+                    )
 
-                Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         } else {
             Box(

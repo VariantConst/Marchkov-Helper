@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.tooling.preview.Preview
 import com.google.gson.Gson
@@ -25,9 +24,6 @@ import java.util.*
 import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import com.variantconst.marchkov.AppTheme
-import com.variantconst.marchkov.ErrorScreen
-import com.variantconst.marchkov.components.SettingsDialog
 import com.variantconst.marchkov.components.LogScreen
 import com.variantconst.marchkov.components.LoginScreen
 import com.variantconst.marchkov.components.MainPagerScreen
@@ -58,14 +54,12 @@ class MainActivity : ComponentActivity() {
             var errorMessage by remember { mutableStateOf<String?>(null) }
             var isToYanyuan by remember { mutableStateOf(getInitialDirection()) }
             var showLogs by remember { mutableStateOf(false) }
-            var showSettingsDialog by remember { mutableStateOf(false) }
             var currentPage by remember { mutableIntStateOf(0) }
             var isReservationLoaded by remember { mutableStateOf(false) }
             var isReservationLoading by remember { mutableStateOf(false) }
             var loadingMessage by remember { mutableStateOf("") }
             var isTimeout by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
-            val context = LocalContext.current
             var timeoutJob by remember { mutableStateOf<Job?>(null) }
 
             LaunchedEffect(Unit) {
@@ -155,6 +149,8 @@ class MainActivity : ComponentActivity() {
                                             reservationDetails = null
                                             qrCodeString = null
                                             clearLoginInfo()
+                                            errorMessage = null
+                                            showLoading = false
                                         },
                                         onToggleBusDirection = {
                                             isToYanyuan = !isToYanyuan
@@ -188,7 +184,6 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         onShowLogs = { showLogs = true },
-                                        onEditSettings = { showSettingsDialog = true },
                                         currentPage = currentPage,
                                         setPage = { currentPage = it },
                                         isReservationLoading = isReservationLoading
@@ -256,20 +251,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-
-                        if (showSettingsDialog) {
-                            SettingsDialog(
-                                onDismiss = { showSettingsDialog = false },
-                                onSave = { prevInterval, nextInterval, criticalTime ->
-                                    Settings.updatePrevInterval(context, prevInterval)
-                                    Settings.updateNextInterval(context, nextInterval)
-                                    Settings.updateCriticalTime(context, criticalTime)
-                                },
-                                initialPrevInterval = Settings.PREV_INTERVAL,
-                                initialNextInterval = Settings.NEXT_INTERVAL,
-                                initialCriticalTime = Settings.CRITICAL_TIME
-                            )
-                        }
                     }
                 }
             }
@@ -278,7 +259,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startLoadingTimeout(scope: CoroutineScope, onTimeout: () -> Unit): Job {
         return scope.launch {
-            delay(10000) // 10秒
+            delay(500) // 10秒
             onTimeout()
         }
     }
