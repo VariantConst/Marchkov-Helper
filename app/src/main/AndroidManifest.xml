@@ -15,7 +15,7 @@
         android:theme="@style/Theme.GreetingCard"
         tools:targetApi="31" >
         <activity
-            android:name=".MainActivity"
+            android:name="com.variantconst.marchkov.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.GreetingCard" >
             <intent-filter>

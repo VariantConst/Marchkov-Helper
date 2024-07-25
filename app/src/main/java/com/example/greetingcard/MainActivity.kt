@@ -25,6 +25,8 @@ import java.util.*
 import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import com.variantconst.marchkov.AppTheme
+import com.variantconst.marchkov.ErrorScreen
 import com.variantconst.marchkov.components.SettingsDialog
 import com.variantconst.marchkov.components.LogScreen
 import com.variantconst.marchkov.components.LoginScreen
@@ -64,13 +66,9 @@ class MainActivity : ComponentActivity() {
             var isTimeout by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
             val context = LocalContext.current
+            var timeoutJob by remember { mutableStateOf<Job?>(null) }
 
             LaunchedEffect(Unit) {
-                startLoadingTimeout(scope) {
-                    isTimeout = true
-                    showLoading = false
-                    errorMessage = "加载超时，请重试"
-                }
                 if (savedUsername != null && savedPassword != null) {
                     val firstAttemptSuccess = performLoginAndHandleResult(
                         username = savedUsername,
@@ -88,11 +86,23 @@ class MainActivity : ComponentActivity() {
                                 qrCodeBitmap = bitmap
                                 reservationDetails = details
                                 qrCodeString = qrCode
+
+                                // 开始加载预约信息时启动超时计时器
+                                if (!isReservationLoaded) {
+                                    isReservationLoading = true
+                                    timeoutJob = startLoadingTimeout(scope) {
+                                        isTimeout = true
+                                        showLoading = false
+                                        errorMessage = "加载超时，请重试"
+                                        isReservationLoading = false
+                                    }
+                                }
                             } else {
                                 errorMessage = response
                                 showLoading = false
                             }
-                        }
+                        },
+                        timeoutJob = timeoutJob
                     )
                     Log.v("Mytag", "firstAttemptSuccess is $firstAttemptSuccess")
 
@@ -164,7 +174,7 @@ class MainActivity : ComponentActivity() {
                                                         loadingMessage = message
                                                     },
                                                     callback = { success, response, bitmap, details, qrCode ->
-                                                        cancelLoadingTimeout(scope)
+                                                        cancelLoadingTimeout(timeoutJob)
                                                         responseTexts = responseTexts + response
                                                         if (success) {
                                                             qrCodeBitmap = bitmap
@@ -172,7 +182,8 @@ class MainActivity : ComponentActivity() {
                                                             qrCodeString = qrCode
                                                         }
                                                         isReservationLoading = false
-                                                    }
+                                                    },
+                                                    timeoutJob = timeoutJob
                                                 )
                                             }
                                         },
@@ -209,7 +220,8 @@ class MainActivity : ComponentActivity() {
                                                         errorMessage = response
                                                         showLoading = false
                                                     }
-                                                }
+                                                },
+                                                timeoutJob = timeoutJob
                                             )
                                         }
                                     })
@@ -237,7 +249,8 @@ class MainActivity : ComponentActivity() {
                                                     errorMessage = response
                                                     showLoading = false
                                                 }
-                                            }
+                                            },
+                                            timeoutJob = timeoutJob
                                         )
                                     }
                                 )
@@ -263,15 +276,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun startLoadingTimeout(scope: CoroutineScope, onTimeout: () -> Unit) {
-        scope.launch {
+    private fun startLoadingTimeout(scope: CoroutineScope, onTimeout: () -> Unit): Job {
+        return scope.launch {
             delay(10000) // 10秒
             onTimeout()
         }
     }
 
-    private fun cancelLoadingTimeout(scope: CoroutineScope) {
-        scope.coroutineContext.cancelChildren()
+    private fun cancelLoadingTimeout(job: Job?) {
+        job?.cancel()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -280,14 +293,15 @@ class MainActivity : ComponentActivity() {
         password: String,
         isToYanyuan: Boolean,
         updateLoadingMessage: (String) -> Unit,
-        handleResult: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit
+        handleResult: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit,
+        timeoutJob: Job?
     ): Boolean {
         val deferredResult = CompletableDeferred<Boolean>()
 
-        performLogin(username, password, isToYanyuan, updateLoadingMessage) { success, response, bitmap, details, qrCode ->
+        performLogin(username, password, isToYanyuan, updateLoadingMessage, { success, response, bitmap, details, qrCode ->
             handleResult(success, response, bitmap, details, qrCode)
             deferredResult.complete(success)
-        }
+        }, timeoutJob)
 
         return deferredResult.await()
     }
@@ -298,14 +312,15 @@ class MainActivity : ComponentActivity() {
         password: String,
         isToYanyuan: Boolean,
         updateLoadingMessage: (String) -> Unit,
-        callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit
+        callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit,
+        timeoutJob: Job?
     ) {
         val sessionCookieJar = SimpleCookieJar()
         val client = OkHttpClient.Builder()
             .cookieJar(sessionCookieJar)
             .build()
 
-        performLoginWithClient(username, password, isToYanyuan, client, updateLoadingMessage, callback)
+        performLoginWithClient(username, password, isToYanyuan, client, updateLoadingMessage, callback, timeoutJob)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -315,7 +330,8 @@ class MainActivity : ComponentActivity() {
         isToYanyuan: Boolean,
         client: OkHttpClient,
         updateLoadingMessage: (String) -> Unit,
-        callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit
+        callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit,
+        timeoutJob: Job?
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -576,6 +592,10 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     callback(false, "无法执行请求: ${e.message}", null, null, null)
                     callback(false, "Stack trace: ${e.stackTraceToString()}", null, null, null)
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    cancelLoadingTimeout(timeoutJob)
                 }
             }
         }
