@@ -101,7 +101,10 @@ fun AnimatedLogo() {
     ) {
         Text(
             text = "MARCHKOV",
-            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.displayLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = MaterialTheme.typography.displayLarge.fontSize * 0.85
+            ),
             color = MaterialTheme.colorScheme.primary
         )
     }
