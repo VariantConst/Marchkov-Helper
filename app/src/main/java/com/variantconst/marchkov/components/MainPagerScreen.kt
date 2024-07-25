@@ -4,7 +4,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -206,9 +205,9 @@ fun UserInfoCard(
             }
 
             // 分隔线
-            Divider(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                thickness = 1.dp
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
 
             // 第二行

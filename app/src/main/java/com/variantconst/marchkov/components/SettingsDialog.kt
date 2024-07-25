@@ -21,9 +21,9 @@ fun SettingsScreen(
     initialCriticalTime: Int,
     onSettingsChanged: (Int, Int, Int) -> Unit
 ) {
-    var prevInterval by remember { mutableStateOf(initialPrevInterval) }
-    var nextInterval by remember { mutableStateOf(initialNextInterval) }
-    var criticalTime by remember { mutableStateOf(initialCriticalTime) }
+    var prevInterval by remember { mutableIntStateOf(initialPrevInterval) }
+    var nextInterval by remember { mutableIntStateOf(initialNextInterval) }
+    var criticalTime by remember { mutableIntStateOf(initialCriticalTime) }
 
     Column(
         modifier = Modifier
@@ -119,7 +119,7 @@ private fun SettingSlider(
     snapValues: Set<Float>,
     valueRepresentation: (Float) -> String
 ) {
-    var sliderPosition by remember { mutableStateOf(value.toFloat()) }
+    var sliderPosition by remember { mutableFloatStateOf(value.toFloat()) }
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         Row(

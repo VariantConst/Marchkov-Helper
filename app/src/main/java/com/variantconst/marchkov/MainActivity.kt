@@ -316,8 +316,6 @@ class MainActivity : ComponentActivity() {
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val sharedPreferences = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-
                 updateLoadingMessage("正在登录...")
                 // Step 1: GET request and POST login
                 var request: Request
