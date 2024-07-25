@@ -8,7 +8,8 @@ struct SuccessView: View {
     @State private var showReverseReservationError: Bool = false
     @Binding var reservationResult: ReservationResult?
     @Environment(\.colorScheme) var colorScheme
-    
+    @EnvironmentObject var brightnessManager: BrightnessManager
+
     private var mainColor: Color {
         result.isPastBus ?
             (colorScheme == .dark ? Color(red: 255/255, green: 150/255, blue: 50/255) : Color(hex: "D49A6A")) :
@@ -105,6 +106,18 @@ struct SuccessView: View {
             Alert(title: Text("反向预约失败"), message: Text("反向无车可坐"), dismissButton: .default(Text("确定")))
         }
         .padding(.horizontal, 20)
+        .onAppear {
+            brightnessManager.enterQRCodeView()
+        }
+        .onDisappear {
+            brightnessManager.leaveQRCodeView()
+        }
+    }
+    
+    private func setBrightness(to value: CGFloat) {
+        DispatchQueue.main.async {
+            UIScreen.main.brightness = value
+        }
     }
     
     private func reverseReservation() {

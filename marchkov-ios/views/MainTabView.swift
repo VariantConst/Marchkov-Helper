@@ -10,6 +10,8 @@ struct MainTabView: View {
     @Binding var themeMode: ThemeMode
     @State private var resources: [LoginService.Resource] = []
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var brightnessManager = BrightnessManager()
+    @State private var selectedTab: Int = 0
     
     @State private var refreshTimer: AnyCancellable?
     @State private var lastNetworkActivityTime = Date()
@@ -60,6 +62,22 @@ struct MainTabView: View {
         .onDisappear(perform: stopRefreshTimer)
         .onChange(of: currentTab, initial: false) { _, _ in
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+        .environmentObject(brightnessManager)
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue != 0 { // 假设 ReservationResultView 在 index 0
+                brightnessManager.restoreOriginalBrightness()
+            } else {
+                brightnessManager.updateOriginalBrightness()
+            }
+        }
+        .onAppear {
+            brightnessManager.updateOriginalBrightness()
+        }
+        .onChange(of: brightnessManager.isInForeground) { oldValue, newValue in
+            if newValue {
+                brightnessManager.updateOriginalBrightness()
+            }
         }
     }
     

@@ -28,6 +28,7 @@
 		F5D8A7282C46407C001E0280 /* InfoRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7272C46407C001E0280 /* InfoRow.swift */; };
 		F5D8A72A2C464178001E0280 /* LoginForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A7292C464178001E0280 /* LoginForm.swift */; };
 		F5D8A72C2C468EEA001E0280 /* LogButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A72B2C468EEA001E0280 /* LogButton.swift */; };
+		F5FD0D852C522E47006BF85E /* BrightnessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5FD0D842C522E47006BF85E /* BrightnessManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,6 +72,7 @@
 		F5D8A7272C46407C001E0280 /* InfoRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoRow.swift; sourceTree = "<group>"; };
 		F5D8A7292C464178001E0280 /* LoginForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginForm.swift; sourceTree = "<group>"; };
 		F5D8A72B2C468EEA001E0280 /* LogButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogButton.swift; sourceTree = "<group>"; };
+		F5FD0D842C522E47006BF85E /* BrightnessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -192,6 +194,7 @@
 				F5D8A70A2C454064001E0280 /* LoginService.swift */,
 				F5D8A7122C4566B5001E0280 /* UserDataManager.swift */,
 				F5D8A7162C4585D4001E0280 /* LogManager.swift */,
+				F5FD0D842C522E47006BF85E /* BrightnessManager.swift */,
 			);
 			path = utils;
 			sourceTree = "<group>";
@@ -345,6 +348,7 @@
 			files = (
 				F50AFC782C4BEC3D009BDF31 /* SuccessView.swift in Sources */,
 				F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */,
+				F5FD0D852C522E47006BF85E /* BrightnessManager.swift in Sources */,
 				F5D8A7282C46407C001E0280 /* InfoRow.swift in Sources */,
 				F5D8A71C2C463C7C001E0280 /* QRCode.swift in Sources */,
 				F5D8A72C2C468EEA001E0280 /* LogButton.swift in Sources */,
@@ -526,7 +530,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "马池口班车预约";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -557,7 +561,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "马池口班车预约";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

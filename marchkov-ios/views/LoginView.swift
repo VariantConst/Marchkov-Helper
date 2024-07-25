@@ -21,6 +21,7 @@ struct LoginView: View {
     @Environment(\.colorScheme) var systemColorScheme
     @State private var token: String?
     @State private var lastNetworkActivityTime = Date()
+    @StateObject private var brightnessManager = BrightnessManager()
     
     var body: some View {
         Group {
