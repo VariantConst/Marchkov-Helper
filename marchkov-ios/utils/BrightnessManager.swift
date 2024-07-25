@@ -5,12 +5,11 @@ class BrightnessManager: ObservableObject {
     @Published var isInForeground: Bool = true
     @Published var isShowingQRCode: Bool = false
     private var originalBrightness: CGFloat = UIScreen.main.brightness
+    private var lastCapturedBrightness: CGFloat = UIScreen.main.brightness
     private var cancellables: Set<AnyCancellable> = []
-    private var brightnessObserver: NSKeyValueObservation?
     
     init() {
         setupNotifications()
-        setupBrightnessObserver()
     }
     
     private func setupNotifications() {
@@ -27,29 +26,19 @@ class BrightnessManager: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func setupBrightnessObserver() {
-        brightnessObserver = UIScreen.main.observe(\.brightness) { [weak self] screen, change in
-            self?.handleBrightnessChange()
-        }
-    }
-    
-    private func handleBrightnessChange() {
-        if !isShowingQRCode {
-            originalBrightness = UIScreen.main.brightness
-        }
-    }
-    
     private func handleEnterForeground() {
         isInForeground = true
         if isShowingQRCode {
             setMaxBrightness()
+        } else {
+            updateOriginalBrightness()
         }
     }
     
     private func handleEnterBackground() {
         isInForeground = false
         if !isShowingQRCode {
-            updateOriginalBrightness()
+            restoreOriginalBrightness()
         }
     }
     
@@ -59,28 +48,19 @@ class BrightnessManager: ObservableObject {
         }
     }
     
+    func captureCurrentBrightness() {
+        lastCapturedBrightness = UIScreen.main.brightness
+    }
+    
     func setMaxBrightness() {
         if isInForeground {
-            DispatchQueue.main.async {
-                UIScreen.main.brightness = 1.0
-            }
+            isShowingQRCode = true
+            UIScreen.main.brightness = 1.0
         }
     }
     
     func restoreOriginalBrightness() {
-        DispatchQueue.main.async {
-            UIScreen.main.brightness = self.originalBrightness
-        }
-    }
-    
-    func enterQRCodeView() {
-        updateOriginalBrightness()
-        isShowingQRCode = true
-        setMaxBrightness()
-    }
-    
-    func leaveQRCodeView() {
+        UIScreen.main.brightness = isShowingQRCode ? lastCapturedBrightness : originalBrightness
         isShowingQRCode = false
-        restoreOriginalBrightness()
     }
 }

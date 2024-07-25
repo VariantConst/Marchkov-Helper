@@ -65,19 +65,15 @@ struct MainTabView: View {
         }
         .environmentObject(brightnessManager)
         .onChange(of: selectedTab) { oldValue, newValue in
-            if newValue != 0 { // 假设 ReservationResultView 在 index 0
-                brightnessManager.restoreOriginalBrightness()
+            if newValue == 0 { // 切换到显示二维码的视图
+                brightnessManager.captureCurrentBrightness()
+                brightnessManager.setMaxBrightness()
             } else {
-                brightnessManager.updateOriginalBrightness()
+                brightnessManager.restoreOriginalBrightness()
             }
         }
         .onAppear {
             brightnessManager.updateOriginalBrightness()
-        }
-        .onChange(of: brightnessManager.isInForeground) { oldValue, newValue in
-            if newValue {
-                brightnessManager.updateOriginalBrightness()
-            }
         }
     }
     

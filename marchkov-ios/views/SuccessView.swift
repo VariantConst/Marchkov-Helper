@@ -107,10 +107,13 @@ struct SuccessView: View {
         }
         .padding(.horizontal, 20)
         .onAppear {
-            brightnessManager.enterQRCodeView()
+            brightnessManager.captureCurrentBrightness()
+            brightnessManager.isShowingQRCode = true
+            brightnessManager.setMaxBrightness()
         }
         .onDisappear {
-            brightnessManager.leaveQRCodeView()
+            brightnessManager.isShowingQRCode = false
+            brightnessManager.restoreOriginalBrightness()
         }
     }
     
