@@ -48,7 +48,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
             StyledTextField(
                 value = username,
                 onValueChange = { username = it; showError = false },
-                label = "用户名",
+                label = "校园网账号",
                 icon = Icons.Outlined.Person,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
@@ -80,7 +80,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Text(
-                    "请输入用户名和密码",
+                    "请输入校园网账号和密码",
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 8.dp),
                     style = MaterialTheme.typography.bodyMedium
