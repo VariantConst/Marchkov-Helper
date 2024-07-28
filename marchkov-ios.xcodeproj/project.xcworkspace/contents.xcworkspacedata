@@ -2,6 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "self:/Users/variantconst/code/marchkov/marchkov-ios/marchkov-ios.xcodeproj">
+      location = "self:">
    </FileRef>
 </Workspace>

@@ -306,7 +306,7 @@ struct LoginService {
                     if let timeDifference = getTimeDifference(currentTime: currentTime, busTime: busTime) {
                         LogManager.shared.addLog("时间差 \(timeDifference), prevInterval \(prevInterval), nextInterval \(nextInterval)")
                         if timeDifference >= -prevInterval && timeDifference <= nextInterval {
-                            if timeDifference < 0 {
+                            if timeDifference <= 0 {
                                 // Past bus
                                 LogManager.shared.addLog("找到过期班车, 获取临时码")
                                 getTempCode(resourceId: resource.id, startTime: busTime) { (result: Result<(code: String, name: String), Error>) in
