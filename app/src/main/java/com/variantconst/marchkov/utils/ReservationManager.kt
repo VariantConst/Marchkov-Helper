@@ -11,7 +11,6 @@ import kotlinx.coroutines.*
 import okhttp3.*
 import java.text.SimpleDateFormat
 import java.util.*
-import com.variantconst.marchkov.utils.*
 
 class ReservationManager(private val context: Context) {
     private val client = OkHttpClient.Builder()
@@ -204,8 +203,6 @@ class ReservationManager(private val context: Context) {
                             if ((reservationResourceId in listOf(2, 4) && isToYanyuan) ||
                                 (reservationResourceId in listOf(5, 6, 7) && !isToYanyuan)) {
                                 Log.v("MyTag", "reservationDetails is $reservation")
-                                val periodText = (reservation["period_text"] as? Map<*, *>)?.values?.firstOrNull() as? Map<*, *>
-                                val period = (periodText?.get("text") as? List<*>)?.firstOrNull() as? String ?: "未知时间"
                                 val creatorName = reservation["creator_name"] as? String ?: "马池口🐮🐴"
                                 val creatorDepart = reservation["creator_depart"] as? String ?: "这个需要你自己衡量！"
                                 saveRealName(creatorName)
@@ -213,7 +210,7 @@ class ReservationManager(private val context: Context) {
                                 reservationDetails = mapOf<String, Any>(
                                     "creator_name" to creatorName,
                                     "resource_name" to reservation["resource_name"] as String,
-                                    "start_time" to period,
+                                    "start_time" to startTime,
                                     "is_temp" to false
                                 )
                                 break
@@ -238,47 +235,62 @@ class ReservationManager(private val context: Context) {
                     }
                     if (appData?.isNotEmpty() == true) {
                         appData.forEachIndexed { index, app ->
-                            val appId = app["id"]?.toString()?.substringBefore(".") ?: throw IllegalArgumentException("Invalid appId")
-                            val appAppointmentId = app["hall_appointment_data_id"]?.toString()?.substringBefore(".") ?: throw IllegalArgumentException("Invalid appAppointmentId")
+                            try {
+                                val appId = app["id"]?.toString()?.substringBefore(".") ?: throw IllegalArgumentException("Invalid appId")
+                                val appAppointmentId = app["hall_appointment_data_id"]?.toString()?.substringBefore(".") ?: throw IllegalArgumentException("Invalid appAppointmentId")
 
-                            withContext(Dispatchers.Main) {
-                                callback(true, "正在处理第 ${index + 1} 个预约:", null, null, null)
-                                callback(true, "  App ID: $appId", null, null, null)
-                                callback(true, "  Appointment ID: $appAppointmentId", null, null, null)
-                            }
+                                // 添加合法性检查
+                                val appResourceId = (app["resource_id"] as? Double)?.toInt() ?: throw IllegalArgumentException("Invalid resourceId")
+                                val appTime = (app["appointment_tim"] as? String)?.trim() ?: throw IllegalArgumentException("Invalid appointment_time")
 
-                            val qrCodeUrl = "https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=0&id=$appId&hall_appointment_data_id=$appAppointmentId"
-                            request = Request.Builder()
-                                .url(qrCodeUrl)
-                                .build()
+                                val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val today = dateFormatter.format(Date())
 
-                            response = client.newCall(request).execute()
-                            val qrCodeResponse = response.body?.string() ?: "No response body"
-                            withContext(Dispatchers.Main) {
-                                if (response.isSuccessful) {
-                                    callback(true, " 乘车码响应: $qrCodeResponse", null, null, null)
+                                if (appResourceId == chosenResourceId && appTime.startsWith("$today $startTime")) {
+                                    withContext(Dispatchers.Main) {
+                                        callback(true, "正在为 $startTime 处理第 ${index + 1} 个预约:", null, null, null)
+                                        callback(true, "  App ID: $appId", null, null, null)
+                                        callback(true, "  Appointment ID: $appAppointmentId", null, null, null)
+                                    }
 
-                                    val qrCodeJson = gson.fromJson(qrCodeResponse, Map::class.java)
-                                    val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
-                                    if (qrCodeData != null) {
-                                        withContext(Dispatchers.Main) {
-                                            callback(true, "要解码的乘车码字符串: $qrCodeData", null, null, qrCodeData)
-                                        }
-                                        try {
-                                            val qrCodeBitmap = generateQRCode(qrCodeData)
-                                            callback(true, "乘车码解码成功", qrCodeBitmap, reservationDetails, qrCodeData)
-                                        } catch (e: IllegalArgumentException) {
-                                            withContext(Dispatchers.Main) {
-                                                callback(false, "无法解码乘车码字符串: ${e.message}", null, null, qrCodeData)
+                                    val qrCodeUrl = "https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=0&id=$appId&hall_appointment_data_id=$appAppointmentId"
+                                    val request = Request.Builder()
+                                        .url(qrCodeUrl)
+                                        .build()
+
+                                    val response = client.newCall(request).execute()
+                                    val qrCodeResponse = response.body?.string() ?: "No response body"
+                                    withContext(Dispatchers.Main) {
+                                        if (response.isSuccessful) {
+                                            callback(true, " 乘车码响应: $qrCodeResponse", null, null, null)
+
+                                            val qrCodeJson = gson.fromJson(qrCodeResponse, Map::class.java)
+                                            val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
+                                            if (qrCodeData != null) {
+                                                withContext(Dispatchers.Main) {
+                                                    callback(true, "要解码的乘车码字符串: $qrCodeData", null, null, qrCodeData)
+                                                }
+                                                try {
+                                                    val qrCodeBitmap = generateQRCode(qrCodeData)
+                                                    callback(true, "乘车码解码成功", qrCodeBitmap, reservationDetails, qrCodeData)
+                                                } catch (e: IllegalArgumentException) {
+                                                    withContext(Dispatchers.Main) {
+                                                        callback(false, "无法解码乘车码字符串: ${e.message}", null, null, qrCodeData)
+                                                    }
+                                                }
+                                            } else {
+                                                withContext(Dispatchers.Main) {
+                                                    callback(false, "找不到乘车码", null, null, null)
+                                                }
                                             }
-                                        }
-                                    } else {
-                                        withContext(Dispatchers.Main) {
-                                            callback(false, "找不到乘车码", null, null, null)
+                                        } else {
+                                            callback(false, "乘车码请求响应: $qrCodeResponse", null, null, null)
                                         }
                                     }
-                                } else {
-                                    callback(false, "乘车码请求响应: $qrCodeResponse", null, null, null)
+                                }
+                            } catch (e: IllegalArgumentException) {
+                                withContext(Dispatchers.Main) {
+                                    callback(false, "预约信息无效: ${e.message}", null, null, null)
                                 }
                             }
                         }

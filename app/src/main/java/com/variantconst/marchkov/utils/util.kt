@@ -86,7 +86,8 @@ fun chooseBus(resourceList: List<*>?, isToYanyuan: Boolean): BusInfo {
                         "$date $startTime",
                         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
                     )
-                    val timeDiffWithSign = Duration.between(currentTime, awareDateTime).toMinutes()
+                    val duration = Duration.between(currentTime, awareDateTime)
+                    val timeDiffWithSign = duration.seconds.toDouble() / 60.0
                     val hasExpiredBus = -Settings.PREV_INTERVAL < timeDiffWithSign && timeDiffWithSign <= 0
                     val hasFutureBus = 0 < timeDiffWithSign && timeDiffWithSign < Settings.NEXT_INTERVAL
 

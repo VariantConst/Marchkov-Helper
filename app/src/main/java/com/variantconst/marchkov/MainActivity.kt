@@ -250,7 +250,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startLoadingTimeout(scope: CoroutineScope, onTimeout: () -> Unit): Job {
         return scope.launch {
-            delay(10000)
+            delay(1000)
             onTimeout()
         }
     }
