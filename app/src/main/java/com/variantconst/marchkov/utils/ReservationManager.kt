@@ -13,10 +13,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class ReservationManager(private val context: Context) {
-    private val client = OkHttpClient.Builder()
-        .cookieJar(SimpleCookieJar())
-        .build()
-
     private val gson = Gson()
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -28,6 +24,10 @@ class ReservationManager(private val context: Context) {
         callback: (Boolean, String, Bitmap?, Map<String, Any>?, String?) -> Unit,
         timeoutJob: Job?
     ) {
+        val client = OkHttpClient.Builder()
+            .cookieJar(SimpleCookieJar())
+            .build()
+
         performLoginWithClient(username, password, isToYanyuan, client, updateLoadingMessage, callback, timeoutJob)
     }
 

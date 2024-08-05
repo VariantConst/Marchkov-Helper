@@ -39,28 +39,65 @@ import com.variantconst.marchkov.ReservationCard
 import com.variantconst.marchkov.ToggleDirectionButton
 import com.variantconst.marchkov.WelcomeHeader
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun DetailScreen(
     qrCodeBitmap: Bitmap?,
     reservationDetails: Map<String, Any>?,
     onToggleBusDirection: () -> Unit,
+    onRefresh: suspend () -> Unit
 ) {
-    val showSnackbar by remember { mutableStateOf(false) }
-    val snackbarMessage by remember { mutableStateOf("") }
+    var showSnackbar by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf("") }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (reservationDetails != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-                    .padding(bottom = 40.dp) // 为ToggleDirectionButton留出空间
-            ) {
+    val scope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
+
+    val pullRefreshState = rememberPullRefreshState(refreshing, {
+        scope.launch {
+            refreshing = true
+            try {
+                onRefresh()
+                snackbarMessage = "刷新成功"
+            } catch (e: Exception) {
+                snackbarMessage = "刷新失败: ${e.message}"
+            } finally {
+                refreshing = false
+                showSnackbar = true
+            }
+        }
+    })
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 80.dp) // 为底部按钮留出空间
+        ) {
+            if (reservationDetails != null) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.Center)
                         .verticalScroll(rememberScrollState())
+                        .padding(24.dp)
+                        .align(Alignment.Center) // 使内容垂直居中
                 ) {
                     val creatorName = reservationDetails["creator_name"] as? String ?: "访客"
                     var resourceName = reservationDetails["resource_name"] as? String ?: "未知路线"
@@ -83,13 +120,13 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-            }
-        } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                NoBusAvailableMessage()
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    NoBusAvailableMessage()
+                }
             }
         }
 
@@ -105,7 +142,13 @@ fun DetailScreen(
             )
         }
 
+        PullRefreshIndicator(refreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
+
         if (showSnackbar) {
+            LaunchedEffect(showSnackbar) {
+                delay(2000)
+                showSnackbar = false
+            }
             Snackbar(
                 modifier = Modifier
                     .padding(16.dp)

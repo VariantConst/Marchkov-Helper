@@ -153,22 +153,36 @@ class MainActivity : ComponentActivity() {
                                             isToYanyuan = !isToYanyuan
                                             isReservationLoading = true
                                             scope.launch {
-                                                reservationManager.performLogin(
+                                                performLoginAndHandleResult(
                                                     username = savedUsername ?: "",
                                                     password = savedPassword ?: "",
                                                     isToYanyuan = isToYanyuan,
-                                                    updateLoadingMessage = { message ->
-                                                        loadingMessage = message
-                                                    },
-                                                    callback = { success, response, bitmap, details, qrCode ->
-                                                        cancelLoadingTimeout(timeoutJob)
+                                                    updateLoadingMessage = { message -> loadingMessage = message },
+                                                    handleResult = { success, response, bitmap, details, qrCode ->
                                                         responseTexts = responseTexts + response
+                                                        Log.v("Mytag", "response is $response and success is $success")
                                                         if (success) {
+                                                            isLoggedIn = true
+                                                            showLoading = details == null
+                                                            isReservationLoaded = details != null
+                                                            currentPage = 0
                                                             qrCodeBitmap = bitmap
                                                             reservationDetails = details
                                                             qrCodeString = qrCode
+
+                                                            if (!isReservationLoaded) {
+                                                                isReservationLoading = true
+                                                                timeoutJob = startLoadingTimeout(scope) {
+                                                                    isTimeout = true
+                                                                    showLoading = false
+                                                                    errorMessage = "加载超时，请重试"
+                                                                    isReservationLoading = false
+                                                                }
+                                                            }
+                                                        } else {
+                                                            errorMessage = response
+                                                            showLoading = false
                                                         }
-                                                        isReservationLoading = false
                                                     },
                                                     timeoutJob = timeoutJob
                                                 )
@@ -177,7 +191,42 @@ class MainActivity : ComponentActivity() {
                                         onShowLogs = { showLogs = true },
                                         currentPage = currentPage,
                                         setPage = { currentPage = it },
-                                        isReservationLoading = isReservationLoading
+                                        isReservationLoading = isReservationLoading,
+                                        onRefresh = {
+                                            performLoginAndHandleResult(
+                                                username = savedUsername ?: "",
+                                                password = savedPassword ?: "",
+                                                isToYanyuan = isToYanyuan,
+                                                updateLoadingMessage = { message -> loadingMessage = message },
+                                                handleResult = { success, response, bitmap, details, qrCode ->
+                                                    responseTexts = responseTexts + response
+                                                    Log.v("Mytag", "response is $response and success is $success")
+                                                    if (success) {
+                                                        isLoggedIn = true
+                                                        showLoading = details == null
+                                                        isReservationLoaded = details != null
+                                                        currentPage = 0
+                                                        qrCodeBitmap = bitmap
+                                                        reservationDetails = details
+                                                        qrCodeString = qrCode
+
+                                                        if (!isReservationLoaded) {
+                                                            isReservationLoading = true
+                                                            timeoutJob = startLoadingTimeout(scope) {
+                                                                isTimeout = true
+                                                                showLoading = false
+                                                                errorMessage = "加载超时，请重试"
+                                                                isReservationLoading = false
+                                                            }
+                                                        }
+                                                    } else {
+                                                        errorMessage = response
+                                                        showLoading = false
+                                                    }
+                                                },
+                                                timeoutJob = timeoutJob
+                                            )
+                                        }
                                     )
                                 }
                             } else {

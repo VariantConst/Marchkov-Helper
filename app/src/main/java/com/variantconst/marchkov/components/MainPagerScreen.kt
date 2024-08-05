@@ -40,7 +40,8 @@ fun MainPagerScreen(
     onShowLogs: () -> Unit,
     currentPage: Int = 0,
     setPage: (Int) -> Unit,
-    isReservationLoading: Boolean
+    isReservationLoading: Boolean,
+    onRefresh: suspend () -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = currentPage)
 
@@ -61,6 +62,7 @@ fun MainPagerScreen(
                             qrCodeBitmap = qrCodeBitmap,
                             reservationDetails = reservationDetails,
                             onToggleBusDirection = onToggleBusDirection,
+                            onRefresh = onRefresh
                         )
                     }
                 }
