@@ -48,6 +48,7 @@ struct UserInfoCard: View {
                 .font(.system(size: 40))
 
             Text(userInfo.fullName)
+//            Text("马池口🐮🐴")
                 .font(.title2.weight(.bold))
                 .foregroundColor(.primary)
 
@@ -73,6 +74,7 @@ struct UserInfoCard: View {
                     .foregroundColor(accentColor)
                     .font(.system(size: 18))
                 Text(userInfo.department)
+//                Text("这个需要你自己衡量")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
             }
@@ -84,6 +86,7 @@ struct UserInfoCard: View {
                     .foregroundColor(accentColor)
                     .font(.system(size: 18))
                 Text(userInfo.studentId)
+//                Text("2301234567")
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
             }

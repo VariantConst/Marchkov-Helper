@@ -102,7 +102,10 @@ struct LoginService {
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         
-        let bodyData = "appid=wproc&userName=\(username)&password=\(password)&redirUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/"
+        let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedPassword = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let bodyData = "appid=wproc&userName=\(encodedUsername)&password=\(encodedPassword)&redirUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/"
+
         request.httpBody = bodyData.data(using: .utf8)
         
         let task = session.dataTask(with: request) { data, response, error in

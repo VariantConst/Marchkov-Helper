@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 @main
 struct marchkov_iosApp: App {
@@ -9,6 +8,7 @@ struct marchkov_iosApp: App {
         WindowGroup {
             LoginView()
                 .environmentObject(brightnessManager)
+                .navigationViewStyle(StackNavigationViewStyle()) // 禁用分屏模式
         }
     }
 }
