@@ -1,8 +1,19 @@
 # 三、二、一，马池口！
 
-![demo](public/demo.gif)
-
 一键部署你的私有班车预约服务，出示乘车码从未如此优雅。
+
+除了 Web 版本外，现已推出适用于以下平台的移动应用，点击下载：
+
+- **[Android 版本](https://bin.variantconst.com/marchkov-v0.3.0-alpha-android.apk)**
+- **[iOS 版本](https://apps.apple.com/cn/app/%E9%A9%AC%E6%B1%A0%E5%8F%A3%E7%8F%AD%E8%BD%A6%E9%A2%84%E7%BA%A6/id6560109356)**
+
+## 画廊
+
+<div style="display: flex; align-items: center;">
+  <img src="public/demo.gif" alt="demo" style="height: 512px; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/9ad04c0c-ef7e-4b58-b1d5-a176da739cc0" alt="App Store Connect" style="height: 512px; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/1b252df4-7e41-4ece-a188-1b8899d7dfa4" alt="0x0ss1" style="height: 512px;">
+</div>
 
 ## 动机
 
@@ -21,7 +32,7 @@
 
 默认上午约去燕园的车，下午晚上约回昌平的车。即便预约的方向不符合要求，也可以简单地点击“乘坐反向班车”按钮一键切换，切换同时，原有预约会被自动取消。
 
-## 部署
+## Web 版部署
 
 ### Vercel 托管（推荐）
 
