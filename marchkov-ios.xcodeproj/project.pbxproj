@@ -10,6 +10,7 @@
 		F50AFC762C4BDEB3009BDF31 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */; };
 		F50AFC782C4BEC3D009BDF31 /* SuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */; };
 		F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55F58122C482AED002E65F0 /* UserInfoCard.swift */; };
+		F5AAEB882C8A0998008F4A26 /* RideHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AAEB872C8A0998008F4A26 /* RideHistoryView.swift */; };
 		F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */; };
 		F5D8A6E02C451C6E001E0280 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F5D8A6DF2C451C6E001E0280 /* Assets.xcassets */; };
 		F5D8A6ED2C451C6F001E0280 /* marchkov_iosTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D8A6EC2C451C6F001E0280 /* marchkov_iosTests.swift */; };
@@ -51,6 +52,7 @@
 /* Begin PBXFileReference section */
 		F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessView.swift; sourceTree = "<group>"; };
 		F55F58122C482AED002E65F0 /* UserInfoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoCard.swift; sourceTree = "<group>"; };
+		F5AAEB872C8A0998008F4A26 /* RideHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideHistoryView.swift; sourceTree = "<group>"; };
 		F5B86B012C606DB90095431A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F5D8A6D62C451C6D001E0280 /* marchkov-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "marchkov-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F5D8A6D92C451C6D001E0280 /* marchkov_iosApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = marchkov_iosApp.swift; sourceTree = "<group>"; };
@@ -209,6 +211,7 @@
 				F5D8A7252C463F20001E0280 /* MainTabView.swift */,
 				F5D8A7192C463AD4001E0280 /* LogView.swift */,
 				F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */,
+				F5AAEB872C8A0998008F4A26 /* RideHistoryView.swift */,
 			);
 			path = views;
 			sourceTree = "<group>";
@@ -363,6 +366,7 @@
 				F5D8A71A2C463AD4001E0280 /* LogView.swift in Sources */,
 				F5D8A7092C452F09001E0280 /* LoginView.swift in Sources */,
 				F5D8A72A2C464178001E0280 /* LoginForm.swift in Sources */,
+				F5AAEB882C8A0998008F4A26 /* RideHistoryView.swift in Sources */,
 				F5D8A6DA2C451C6D001E0280 /* marchkov_iosApp.swift in Sources */,
 				F5D8A7262C463F20001E0280 /* MainTabView.swift in Sources */,
 			);

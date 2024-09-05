@@ -688,7 +688,7 @@ struct LoginService {
         }.resume()
     }
 
-    func getRideHistory(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    func getRideHistory(completion: @escaping (Result<[RideInfo], Error>) -> Void) {
         guard let credentials = UserDataManager.shared.getUserCredentials() else {
             completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到用户凭证"])))
             return
@@ -717,9 +717,21 @@ struct LoginService {
                     }
                     
                     do {
-                        if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                        if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                           let d = json["d"] as? [String: Any],
+                           let rides = d["data"] as? [[String: Any]] {
+                            
+                            let rideInfos = rides.compactMap { ride -> RideInfo? in
+                                guard let statusName = ride["status_name"] as? String,
+                                      let resourceName = ride["resource_name"] as? String,
+                                      let appointmentTime = ride["appointment_tim"] as? String else {
+                                    return nil
+                                }
+                                return RideInfo(statusName: statusName, resourceName: resourceName, appointmentTime: appointmentTime)
+                            }
+                            
                             LogManager.shared.addLog("获取乘车历史成功")
-                            completion(.success(json))
+                            completion(.success(rideInfos))
                         } else {
                             LogManager.shared.addLog("获取乘车历史 - 无效的响应格式")
                             completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的响应格式"])))
