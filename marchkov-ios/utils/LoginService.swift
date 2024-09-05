@@ -527,7 +527,7 @@ struct LoginService {
         let bodyData = "appointment_id=\(appointmentId)&data_id[0]=\(appAppointmentId)"
         request.httpBody = bodyData.data(using: .utf8)
 
-        LogManager.shared.addLog("取消预约 - URL: \(url.absoluteString)")
+        LogManager.shared.addLog("取消预�� - URL: \(url.absoluteString)")
         LogManager.shared.addLog("取消预约 - 请求体: \(bodyData)")
 
         session.dataTask(with: request) { data, response, error in
@@ -688,9 +688,40 @@ struct LoginService {
         }.resume()
     }
 
+    struct RideInfo: Codable, Identifiable {
+        let id: Int
+        let statusName: String
+        let resourceName: String
+        let appointmentTime: String
+    }
+
+    struct CachedRideHistory: Codable {
+        var lastFetchDate: Date
+        var rides: [RideInfo]
+    }
+
     func getRideHistory(completion: @escaping (Result<[RideInfo], Error>) -> Void) {
         guard let credentials = UserDataManager.shared.getUserCredentials() else {
             completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到用户凭证"])))
+            return
+        }
+        
+        // 获取缓存的乘车历史
+        let cachedHistory = getCachedRideHistory()
+        let lastFetchDate = cachedHistory?.lastFetchDate ?? Date.distantPast
+        let cachedRides = cachedHistory?.rides ?? []
+        
+        // 计算需要获取的日期范围
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let today = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: 1, to: lastFetchDate) ?? lastFetchDate
+        let endDate = today
+        
+        // 构建URL
+        let urlString = "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc&date_sta=\(dateFormatter.string(from: startDate))&date_end=\(dateFormatter.string(from: endDate))"
+        guard let url = URL(string: urlString) else {
+            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的URL"])))
             return
         }
         
@@ -699,8 +730,6 @@ struct LoginService {
             switch loginResult {
             case .success(_):
                 // 登录成功后，获取乘车历史
-                let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc")!
-                
                 LogManager.shared.addLog("获取乘车历史 - URL: \(url.absoluteString)")
                 
                 self.session.dataTask(with: url) { data, response, error in
@@ -721,17 +750,24 @@ struct LoginService {
                            let d = json["d"] as? [String: Any],
                            let rides = d["data"] as? [[String: Any]] {
                             
-                            let rideInfos = rides.compactMap { ride -> RideInfo? in
-                                guard let statusName = ride["status_name"] as? String,
+                            let newRideInfos = rides.compactMap { ride -> RideInfo? in
+                                guard let id = ride["id"] as? Int,
+                                      let statusName = ride["status_name"] as? String,
                                       let resourceName = ride["resource_name"] as? String,
                                       let appointmentTime = ride["appointment_tim"] as? String else {
                                     return nil
                                 }
-                                return RideInfo(statusName: statusName, resourceName: resourceName, appointmentTime: appointmentTime)
+                                return RideInfo(id: id, statusName: statusName, resourceName: resourceName, appointmentTime: appointmentTime)
                             }
                             
+                            // 合并新旧记录
+                            let mergedRides = self.mergeRides(cachedRides: cachedRides, newRides: newRideInfos)
+                            
+                            // 更新缓存
+                            self.updateCachedRideHistory(rides: mergedRides, lastFetchDate: today)
+                            
                             LogManager.shared.addLog("获取乘车历史成功")
-                            completion(.success(rideInfos))
+                            completion(.success(mergedRides))
                         } else {
                             LogManager.shared.addLog("获取乘车历史 - 无效的响应格式")
                             completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的响应格式"])))
@@ -747,5 +783,29 @@ struct LoginService {
                 completion(.failure(error))
             }
         }
+    }
+    
+    private func getCachedRideHistory() -> CachedRideHistory? {
+        if let data = UserDefaults.standard.data(forKey: "cachedRideHistory") {
+            return try? JSONDecoder().decode(CachedRideHistory.self, from: data)
+        }
+        return nil
+    }
+    
+    private func updateCachedRideHistory(rides: [RideInfo], lastFetchDate: Date) {
+        let cachedHistory = CachedRideHistory(lastFetchDate: lastFetchDate, rides: rides)
+        if let encoded = try? JSONEncoder().encode(cachedHistory) {
+            UserDefaults.standard.set(encoded, forKey: "cachedRideHistory")
+        }
+    }
+    
+    private func mergeRides(cachedRides: [RideInfo], newRides: [RideInfo]) -> [RideInfo] {
+        var mergedRides = cachedRides
+        for newRide in newRides {
+            if !mergedRides.contains(where: { $0.id == newRide.id }) {
+                mergedRides.append(newRide)
+            }
+        }
+        return mergedRides.sorted { $0.appointmentTime > $1.appointmentTime }
     }
 }

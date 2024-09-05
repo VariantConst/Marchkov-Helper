@@ -3,7 +3,7 @@ import SwiftUI
 import Charts
 
 struct RideHistoryView: View {
-    @Binding var rideHistory: [RideInfo]?
+    @Binding var rideHistory: [LoginService.RideInfo]?
     @State private var validRideCount: Int = 0
     @State private var resourceNameStats: [RouteStats] = []
     @State private var timeStats: [TimeStats] = []
@@ -107,12 +107,6 @@ struct RideHistoryView: View {
         
         statusStats = statusDict.map { StatusStats(status: $0.key, count: $0.value) }
     }
-}
-
-struct RideInfo: Codable {
-    let statusName: String
-    let resourceName: String
-    let appointmentTime: String
 }
 
 struct RouteStats: Identifiable {

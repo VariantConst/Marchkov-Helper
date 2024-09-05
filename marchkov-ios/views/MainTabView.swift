@@ -13,7 +13,7 @@ struct MainTabView: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var brightnessManager = BrightnessManager()
     @State private var selectedTab: Int = 0
-    @State private var rideHistory: [RideInfo]?
+    @State private var rideHistory: [LoginService.RideInfo]?
     
     @State private var refreshTimer: AnyCancellable?
     @State private var lastNetworkActivityTime = Date()
