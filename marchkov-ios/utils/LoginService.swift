@@ -216,7 +216,7 @@ struct LoginService {
                 }
                 
                 if let httpResponse = response as? HTTPURLResponse {
-                    LogManager.shared.addLog("Step 2 成功: 状态码 \(httpResponse.statusCode)")
+                    LogManager.shared.addLog("Step 2 成功: 状态 \(httpResponse.statusCode)")
                 }
                 
                 do {
@@ -383,7 +383,7 @@ struct LoginService {
             }
             
             if let httpResponse = response as? HTTPURLResponse {
-                LogManager.shared.addLog("获取临时码 - 状态码: \(httpResponse.statusCode)")
+                LogManager.shared.addLog("获临时码 - 状态码: \(httpResponse.statusCode)")
             }
             
             guard let data = data else {
@@ -605,7 +605,7 @@ struct LoginService {
                                let studentId = app["number"] as? String,
                                let department = app["creator_depart"] as? String {
 
-                                LogManager.shared.addLog("找到匹配的预约: ID = \(appId), AppointmentID = \(appAppointmentId), Username = \(username)")
+                                LogManager.shared.addLog("到匹配的预约: ID = \(appId), AppointmentID = \(appAppointmentId), Username = \(username)")
                                 
                                 // 更新用户信息
                                 UserDataManager.shared.saveUserInfo(fullName: username, studentId: studentId, department: department)
@@ -686,5 +686,54 @@ struct LoginService {
                 completion(.failure(error))
             }
         }.resume()
+    }
+
+    func getRideHistory(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        guard let credentials = UserDataManager.shared.getUserCredentials() else {
+            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到用户凭证"])))
+            return
+        }
+        
+        // 首先进行登录
+        login(username: credentials.username, password: credentials.password) { loginResult in
+            switch loginResult {
+            case .success(_):
+                // 登录成功后，获取乘车历史
+                let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc")!
+                
+                LogManager.shared.addLog("获取乘车历史 - URL: \(url.absoluteString)")
+                
+                self.session.dataTask(with: url) { data, response, error in
+                    if let error = error {
+                        LogManager.shared.addLog("获取乘车历史失败: \(error.localizedDescription)")
+                        completion(.failure(error))
+                        return
+                    }
+                    
+                    guard let data = data else {
+                        LogManager.shared.addLog("获取乘车历史 - 未收到数据")
+                        completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未收到数据"])))
+                        return
+                    }
+                    
+                    do {
+                        if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                            LogManager.shared.addLog("获取乘车历史成功")
+                            completion(.success(json))
+                        } else {
+                            LogManager.shared.addLog("获取乘车历史 - 无效的响应格式")
+                            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的响应格式"])))
+                        }
+                    } catch {
+                        LogManager.shared.addLog("获取乘车历史 - JSON解析失败: \(error.localizedDescription)")
+                        completion(.failure(error))
+                    }
+                }.resume()
+                
+            case .failure(let error):
+                LogManager.shared.addLog("获取乘车历史前登录失败: \(error.localizedDescription)")
+                completion(.failure(error))
+            }
+        }
     }
 }
