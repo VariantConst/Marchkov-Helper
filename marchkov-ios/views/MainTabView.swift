@@ -15,6 +15,7 @@ struct MainTabView: View {
     @State private var selectedTab: Int = 0
     @State private var rideHistory: [LoginService.RideInfo]?
     @State private var isRideHistoryLoading: Bool = true
+    @State private var isRideHistoryDataReady: Bool = false
 
     @State private var refreshTimer: AnyCancellable?
     @State private var lastNetworkActivityTime = Date()
@@ -58,6 +59,11 @@ struct MainTabView: View {
                     Label("历史", systemImage: "clock.fill")
                 }
                 .tag(1)
+                .onChange(of: isRideHistoryDataReady) { _, newValue in
+                    if newValue {
+                        isRideHistoryLoading = false
+                    }
+                }
 
             SettingsView(logout: logout, themeMode: $themeMode)
                 .tabItem {
@@ -83,7 +89,9 @@ struct MainTabView: View {
         }
         .onAppear {
             brightnessManager.updateOriginalBrightness()
-            fetchRideHistory()
+            if rideHistory == nil {
+                fetchRideHistory()
+            }
         }
     }
     
@@ -173,15 +181,19 @@ struct MainTabView: View {
     
     private func fetchRideHistory() {
         isRideHistoryLoading = true
+        isRideHistoryDataReady = false
         LoginService.shared.getRideHistory { result in
             DispatchQueue.main.async {
-                self.isRideHistoryLoading = false
                 switch result {
                 case .success(let history):
                     self.rideHistory = history
+                    // 使用 DispatchQueue.main.asyncAfter 来确保数据在后台完全处理后再更新 UI
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.isRideHistoryDataReady = true
+                    }
                 case .failure(let error):
                     print("获取乘车历史失败: \(error.localizedDescription)")
-                    // 可以考虑在这里设置一个错误状态，以便在UI中显示
+                    self.isRideHistoryLoading = false
                 }
             }
         }

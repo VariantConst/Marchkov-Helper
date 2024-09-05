@@ -12,6 +12,8 @@ struct RideHistoryView: View {
     @State private var highlightedSlice: String?
     @State private var errorMessage: String = ""
     @State private var showLongLoadingMessage: Bool = false
+    @State private var isDataReady: Bool = false // 新增状态变量
+    @State private var loadingTimer: Timer?
     @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
@@ -24,13 +26,13 @@ struct RideHistoryView: View {
                             .scaleEffect(1.2)
                         
                         if showLongLoadingMessage {
-                            Text("首次加载可能需要较长时间")
+                            Text("首次加载可能需要稍长时间")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.top)
                         }
                     }
-                } else if let rides = rideHistory, !rides.isEmpty {
+                } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
                             Text("有效乘车次数：\(validRideCount)")
@@ -99,6 +101,9 @@ struct RideHistoryView: View {
                     processRideHistory()
                 }
             }
+            .onChange(of: rideHistory) { _, _ in
+                processRideHistory()
+            }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .active && oldPhase == .background {
                     silentRefresh()
@@ -116,15 +121,22 @@ struct RideHistoryView: View {
     private func fetchRideHistory() {
         isLoading = true
         showLongLoadingMessage = false
+        isDataReady = false // 重置数据准备状态
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            if self.isLoading {
-                self.showLongLoadingMessage = true
+        // 设置一个3秒后显示长时间加载消息的计时器
+        loadingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            DispatchQueue.main.async {
+                if self.isLoading {
+                    self.showLongLoadingMessage = true
+                }
             }
         }
         
         LoginService.shared.getRideHistory { result in
             DispatchQueue.main.async {
+                // 取消计时器
+                self.loadingTimer?.invalidate()
+                
                 switch result {
                 case .success(let history):
                     self.rideHistory = history
@@ -183,6 +195,8 @@ struct RideHistoryView: View {
             .sorted { $0.time < $1.time }
         
         statusStats = statusDict.map { StatusStats(status: $0.key, count: $0.value) }
+        
+        isDataReady = true // 数据处理完成，标记为准备就绪
     }
     
     private func refreshRideHistory() async {
