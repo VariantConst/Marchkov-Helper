@@ -81,7 +81,7 @@ struct SettingsView: View {
             }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("您确定要恢复默认设置吗？这将重置所有设置项。")
+            Text("您确定要恢复默认设置吗？这将重置所有设置项并清空历史缓存。")
         }
     }
     
@@ -197,6 +197,13 @@ struct SettingsView: View {
         flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
         isDeveloperMode = false
         themeMode = .system
+        
+        // 清空历史缓存
+        UserDefaults.standard.removeObject(forKey: "cachedBusInfo")
+        UserDefaults.standard.removeObject(forKey: "cachedRideHistory")
+        
+        // 可选：添加日志
+        LogManager.shared.addLog("已重置所有设置并清空历史缓存")
     }
     
     private var actionButtonsSection: some View {

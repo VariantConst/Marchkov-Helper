@@ -9,6 +9,8 @@ struct RideHistoryView: View {
     @State private var timeStats: [TimeStats] = []
     @State private var statusStats: [StatusStats] = []
     @State private var highlightedSlice: String?
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String = ""
     
     var body: some View {
         NavigationView {
@@ -63,13 +65,25 @@ struct RideHistoryView: View {
                         .frame(maxWidth: .infinity)
                     }
                     .padding()
+                } else if isLoading {
+                    ProgressView("加载中...")
+                        .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
+                        .scaleEffect(1.2)
+                } else if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
                 } else {
-                    Text("加载中...")
+                    Text("暂无数据")
+                        .padding()
                 }
             }
             .navigationTitle("乘车历史")
             .onAppear {
                 processRideHistory()
+            }
+            .refreshable {
+                await refreshRideHistory()
             }
             .onTapGesture {
                 highlightedSlice = nil
@@ -106,6 +120,31 @@ struct RideHistoryView: View {
             .sorted { $0.time < $1.time }
         
         statusStats = statusDict.map { StatusStats(status: $0.key, count: $0.value) }
+    }
+    
+    private func refreshRideHistory() async {
+        isLoading = true
+        errorMessage = ""
+        
+        do {
+            let result = try await withCheckedThrowingContinuation { continuation in
+                LoginService.shared.getRideHistory { result in
+                    continuation.resume(with: result)
+                }
+            }
+            
+            await MainActor.run {
+                self.rideHistory = result
+                self.isLoading = false
+                processRideHistory()
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "刷新失败: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+        }
     }
 }
 
