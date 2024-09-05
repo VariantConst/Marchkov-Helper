@@ -4,71 +4,84 @@ import Charts
 
 struct RideHistoryView: View {
     @Binding var rideHistory: [LoginService.RideInfo]?
+    @Binding var isLoading: Bool
     @State private var validRideCount: Int = 0
     @State private var resourceNameStats: [RouteStats] = []
     @State private var timeStats: [TimeStats] = []
     @State private var statusStats: [StatusStats] = []
     @State private var highlightedSlice: String?
-    @State private var isLoading: Bool = false
     @State private var errorMessage: String = ""
+    @State private var showLongLoadingMessage: Bool = false
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                if let _ = rideHistory {
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text("有效乘车次数：\(validRideCount)")
-                            .font(.title)
-                            .fontWeight(.bold)
+            ZStack {
+                if isLoading {
+                    VStack {
+                        ProgressView("加载中...")
+                            .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
+                            .scaleEffect(1.2)
                         
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("按路线统计：")
-                                .font(.headline)
-                            Chart(resourceNameStats) {
-                                BarMark(
-                                    x: .value("次数", $0.count),
-                                    y: .value("路线", $0.route)
-                                )
-                                .foregroundStyle(Color.blue.gradient)
-                            }
-                            .frame(height: CGFloat(resourceNameStats.count * 30))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("按时间统计：")
-                                .font(.headline)
-                            Chart(timeStats) {
-                                BarMark(
-                                    x: .value("次数", $0.count),
-                                    y: .value("时间", $0.time)
-                                )
-                                .foregroundStyle(Color.green.gradient)
-                            }
-                            .frame(height: CGFloat(timeStats.count * 25))
-                            .chartXAxis {
-                                AxisMarks(position: .bottom)
-                            }
-                            .chartYAxis {
-                                AxisMarks(position: .leading)
-                            }
-                        }
-                        
-                        VStack(alignment: .center, spacing: 10) {
-                            Text("预约状态统计")
-                                .font(.headline)
-                            Text("已预约和已签到的比例")
-                                .font(.subheadline)
+                        if showLongLoadingMessage {
+                            Text("首次加载可能需要较长时间")
+                                .font(.caption)
                                 .foregroundColor(.secondary)
-                            PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
-                                .frame(height: 250)
+                                .padding(.top)
                         }
-                        .frame(maxWidth: .infinity)
                     }
-                    .padding()
-                } else if isLoading {
-                    ProgressView("加载中...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
-                        .scaleEffect(1.2)
+                } else if let rides = rideHistory, !rides.isEmpty {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            Text("有效乘车次数：\(validRideCount)")
+                                .font(.title)
+                                .fontWeight(.bold)
+                            
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("按路线统计：")
+                                    .font(.headline)
+                                Chart(resourceNameStats) {
+                                    BarMark(
+                                        x: .value("次数", $0.count),
+                                        y: .value("路线", $0.route)
+                                    )
+                                    .foregroundStyle(Color.blue.gradient)
+                                }
+                                .frame(height: CGFloat(resourceNameStats.count * 30))
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("按时间统计：")
+                                    .font(.headline)
+                                Chart(timeStats) {
+                                    BarMark(
+                                        x: .value("次数", $0.count),
+                                        y: .value("时间", $0.time)
+                                    )
+                                    .foregroundStyle(Color.green.gradient)
+                                }
+                                .frame(height: CGFloat(timeStats.count * 25))
+                                .chartXAxis {
+                                    AxisMarks(position: .bottom)
+                                }
+                                .chartYAxis {
+                                    AxisMarks(position: .leading)
+                                }
+                            }
+                            
+                            VStack(alignment: .center, spacing: 10) {
+                                Text("预约状态统计")
+                                    .font(.headline)
+                                Text("已预约和已签到的比例")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
+                                    .frame(height: 250)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .padding()
+                    }
                 } else if !errorMessage.isEmpty {
                     Text(errorMessage)
                         .foregroundColor(.red)
@@ -80,13 +93,63 @@ struct RideHistoryView: View {
             }
             .navigationTitle("乘车历史")
             .onAppear {
-                processRideHistory()
+                if !isLoading && (rideHistory == nil || rideHistory!.isEmpty) {
+                    fetchRideHistory()
+                } else {
+                    processRideHistory()
+                }
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .active && oldPhase == .background {
+                    silentRefresh()
+                }
             }
             .refreshable {
                 await refreshRideHistory()
             }
             .onTapGesture {
                 highlightedSlice = nil
+            }
+        }
+    }
+    
+    private func fetchRideHistory() {
+        isLoading = true
+        showLongLoadingMessage = false
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            if self.isLoading {
+                self.showLongLoadingMessage = true
+            }
+        }
+        
+        LoginService.shared.getRideHistory { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let history):
+                    self.rideHistory = history
+                    self.processRideHistory()
+                case .failure(let error):
+                    self.errorMessage = "加载失败: \(error.localizedDescription)"
+                }
+                self.isLoading = false
+                self.showLongLoadingMessage = false
+            }
+        }
+    }
+    
+    private func silentRefresh() {
+        LoginService.shared.getRideHistory { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let history):
+                    self.rideHistory = history
+                    self.processRideHistory()
+                case .failure:
+                    // 静默失败，不更新 errorMessage
+                    break
+                }
+                self.isLoading = false
             }
         }
     }
@@ -123,9 +186,6 @@ struct RideHistoryView: View {
     }
     
     private func refreshRideHistory() async {
-        isLoading = true
-        errorMessage = ""
-        
         do {
             let result = try await withCheckedThrowingContinuation { continuation in
                 LoginService.shared.getRideHistory { result in
@@ -135,14 +195,13 @@ struct RideHistoryView: View {
             
             await MainActor.run {
                 self.rideHistory = result
-                self.isLoading = false
-                processRideHistory()
+                self.processRideHistory()
+                self.errorMessage = ""
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = "刷新失败: \(error.localizedDescription)"
-                self.isLoading = false
             }
         }
     }

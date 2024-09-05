@@ -688,11 +688,18 @@ struct LoginService {
         }.resume()
     }
 
-    struct RideInfo: Codable, Identifiable {
+    struct RideInfo: Codable, Identifiable, Equatable {
         let id: Int
         let statusName: String
         let resourceName: String
         let appointmentTime: String
+        
+        static func == (lhs: RideInfo, rhs: RideInfo) -> Bool {
+            return lhs.id == rhs.id &&
+                   lhs.statusName == rhs.statusName &&
+                   lhs.resourceName == rhs.resourceName &&
+                   lhs.appointmentTime == rhs.appointmentTime
+        }
     }
 
     struct CachedRideHistory: Codable {
@@ -736,63 +743,64 @@ struct LoginService {
             case .success(_):
                 LogManager.shared.addLog("登录成功，开始获取乘车历史")
                 
-                self.session.dataTask(with: url) { data, response, error in
-                    if let error = error {
-                        LogManager.shared.addLog("获取乘车历史网络请求失败: \(error.localizedDescription)")
-                        completion(.failure(error))
-                        return
-                    }
-                    
-                    guard let data = data else {
-                        LogManager.shared.addLog("获取乘车历史失败：未收到数据")
-                        completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未收到数据"])))
-                        return
-                    }
-                    
-                    // 记录完整的响应文本
-                    if let responseText = String(data: data, encoding: .utf8) {
-                        LogManager.shared.addLog("乘车历史响应：\(responseText)")
-                    }
-                    
-                    do {
-                        if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                           let d = json["d"] as? [String: Any],
-                           let rides = d["data"] as? [[String: Any]] {
-                            
-                            let newRideInfos = rides.compactMap { ride -> RideInfo? in
-                                guard let id = ride["id"] as? Int,
-                                      let statusName = ride["status_name"] as? String,
-                                      let resourceName = ride["resource_name"] as? String,
-                                      let appointmentTime = ride["appointment_tim"] as? String else {
-                                    return nil
-                                }
-                                let trimmedAppointmentTime = appointmentTime.trimmingCharacters(in: .whitespaces)
-                                return RideInfo(id: id, statusName: statusName, resourceName: resourceName, appointmentTime: trimmedAppointmentTime)
-                            }
-                            
-                            // 合并新旧记录，覆盖最后一次请求日期及之后的记录
-                            let mergedRides = self.mergeRides(cachedRides: cachedRides, newRides: newRideInfos, lastFetchDate: startDate)
-                            
-                            // 更新缓存
-                            self.updateCachedRideHistory(rides: mergedRides, lastFetchDate: today)
-                            
-                            LogManager.shared.addLog("获取乘车历史成功：共 \(mergedRides.count) 条记录，新增或更新 \(newRideInfos.count) 条")
-                            completion(.success(mergedRides))
-                        } else {
-                            LogManager.shared.addLog("获取乘车历史失败：无效的响应格式")
-                            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "无效的响应格式"])))
+                // 立即尝试获取历史信息
+                self.fetchRideHistory(url: url, cachedRides: cachedRides, startDate: startDate, today: today) { result in
+                    switch result {
+                    case .success(let rides):
+                        completion(.success(rides))
+                        // 在后台更新应用本地存储信息
+                        DispatchQueue.global(qos: .background).async {
+                            self.updateCachedRideHistory(rides: rides, lastFetchDate: today)
                         }
-                    } catch {
-                        LogManager.shared.addLog("获取乘车历史JSON解析失败: \(error.localizedDescription)")
+                    case .failure(let error):
                         completion(.failure(error))
                     }
-                }.resume()
+                }
                 
             case .failure(let error):
                 LogManager.shared.addLog("获取乘车历史前登录失败: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
+    }
+    
+    private func fetchRideHistory(url: URL, cachedRides: [RideInfo], startDate: Date, today: Date, completion: @escaping (Result<[RideInfo], Error>) -> Void) {
+        session.dataTask(with: url) { data, response, error in
+            if let error = error {
+                LogManager.shared.addLog("获取乘车历史网络请求失败: \(error.localizedDescription)")
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = data else {
+                LogManager.shared.addLog("获取乘车历史失败：未收到数据")
+                completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未收到数据"])))
+                return
+            }
+            
+            // 记录完整的响应文本
+            if let responseText = String(data: data, encoding: .utf8) {
+                LogManager.shared.addLog("乘车历史响应：\(responseText)")
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                let jsonResponse = try decoder.decode(RideHistoryResponse.self, from: data)
+                
+                let newRideInfos = jsonResponse.d.data.map { ride in
+                    RideInfo(id: ride.id, statusName: ride.statusName, resourceName: ride.resourceName, appointmentTime: ride.appointmentTime.trimmingCharacters(in: .whitespaces))
+                }
+                
+                // 合并新旧记录，覆盖最后一次请求日期及之后的记录
+                let mergedRides = self.mergeRides(cachedRides: cachedRides, newRides: newRideInfos, lastFetchDate: startDate)
+                
+                LogManager.shared.addLog("获取乘车历史成功：共 \(mergedRides.count) 条记录，新增或更新 \(newRideInfos.count) 条")
+                completion(.success(mergedRides))
+            } catch {
+                LogManager.shared.addLog("获取乘车历史JSON解析失败: \(error.localizedDescription)")
+                completion(.failure(error))
+            }
+        }.resume()
     }
     
     private func getCachedRideHistory() -> CachedRideHistory? {
@@ -831,5 +839,28 @@ struct LoginService {
         // 将字典转换回数组并排序
         let mergedRides = Array(mergedRidesDict.values)
         return mergedRides.sorted { $0.appointmentTime > $1.appointmentTime }
+    }
+}
+
+// 其他相关结构体
+struct RideHistoryResponse: Codable {
+    let d: RideHistoryData
+}
+
+struct RideHistoryData: Codable {
+    let data: [RideInfoData]
+}
+
+struct RideInfoData: Codable {
+    let id: Int
+    let statusName: String
+    let resourceName: String
+    let appointmentTime: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case statusName = "status_name"
+        case resourceName = "resource_name"
+        case appointmentTime = "appointment_tim"
     }
 }

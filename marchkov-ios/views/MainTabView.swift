@@ -14,7 +14,8 @@ struct MainTabView: View {
     @StateObject private var brightnessManager = BrightnessManager()
     @State private var selectedTab: Int = 0
     @State private var rideHistory: [LoginService.RideInfo]?
-    
+    @State private var isRideHistoryLoading: Bool = true
+
     @State private var refreshTimer: AnyCancellable?
     @State private var lastNetworkActivityTime = Date()
     
@@ -52,7 +53,7 @@ struct MainTabView: View {
             }
             .tag(0)
 
-            RideHistoryView(rideHistory: $rideHistory)
+            RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading)
                 .tabItem {
                     Label("历史", systemImage: "clock.fill")
                 }
@@ -171,14 +172,17 @@ struct MainTabView: View {
     }
     
     private func fetchRideHistory() {
+        isRideHistoryLoading = true
         LoginService.shared.getRideHistory { result in
-            switch result {
-            case .success(let history):
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                self.isRideHistoryLoading = false
+                switch result {
+                case .success(let history):
                     self.rideHistory = history
+                case .failure(let error):
+                    print("获取乘车历史失败: \(error.localizedDescription)")
+                    // 可以考虑在这里设置一个错误状态，以便在UI中显示
                 }
-            case .failure(let error):
-                print("获取乘车历史失败: \(error.localizedDescription)")
             }
         }
     }
