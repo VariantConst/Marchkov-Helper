@@ -129,8 +129,24 @@ struct RideHistoryView: View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 cardTitle("按时间统计")
+                cardSubtitle(getTimeStatsSubtitle())
                 timeStatsChart
             }
+        }
+    }
+    
+    private func getTimeStatsSubtitle() -> String {
+        let maxToYanyuan = timeStats.max(by: { $0.countToYanyuan < $1.countToYanyuan })
+        let maxToChangping = timeStats.max(by: { $0.countToChangping < $1.countToChangping })
+        
+        if let maxYanyuan = maxToYanyuan, (11...17).contains(maxYanyuan.hour) {
+            return "你习惯日上三竿时再去燕园。年轻人要少熬夜。"
+        } else if let maxChangping = maxToChangping, maxChangping.hour >= 21 {
+            return "你习惯工作到深夜才休息。真是个卷王！"
+        } else if let maxYanyuan = maxToYanyuan, maxYanyuan.hour < 10 {
+            return "你习惯早起去燕园工作。早起的鸟儿有丹炼！"
+        } else {
+            return " " // 空行
         }
     }
     
@@ -196,12 +212,25 @@ struct RideHistoryView: View {
     private var signInTimeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                cardTitle("签到时间差统计")
-                cardSubtitle("负值表示提前签到，正值表示迟到")
+                cardTitle("签到时间差")
+                cardSubtitle(getSignInTimeStatsSubtitle())
                 signInTimeStatsChart
                 signInTimeStatsFooter
             }
         }
+    }
+    
+    private func getSignInTimeStatsSubtitle() -> String {
+        if let maxStat = signInTimeStats.max(by: { $0.count < $1.count }) {
+            if maxStat.timeDiff >= -3 && maxStat.timeDiff <= 0 {
+                return "统计上讲，你可能是一个ddl战士。"
+            } else if maxStat.timeDiff < -3 {
+                return "统计上讲，你喜欢留足提前量。"
+            } else if maxStat.timeDiff > 0 {
+                return "统计上讲，你几乎每次都是最后几个上车的。"
+            }
+        }
+        return " " // 如果没有数据，返回空行
     }
     
     private var signInTimeStatsChart: some View {
