@@ -153,43 +153,51 @@ struct RideHistoryView: View {
         Chart {
             ForEach(timeStats) { stat in
                 BarMark(
-                    x: .value("时间", Double(stat.hour) + 0.5),
-                    y: .value("回昌平", stat.countToChangping),
-                    width: .fixed(12)
-                )
-                .foregroundStyle(Color.blue.gradient)
-                .cornerRadius(5)
-                
-                BarMark(
-                    x: .value("时间", Double(stat.hour) + 0.5),
-                    y: .value("去燕园", stat.countToYanyuan),
-                    width: .fixed(12)
+                    x: .value("时间", stat.hour),
+                    y: .value("去燕园", -stat.countToYanyuan)
                 )
                 .foregroundStyle(Color.green.gradient)
                 .cornerRadius(5)
+                
+                BarMark(
+                    x: .value("时间", stat.hour),
+                    y: .value("回昌平", stat.countToChangping)
+                )
+                .foregroundStyle(Color.blue.gradient)
+                .cornerRadius(5)
             }
         }
-        .frame(height: 200)
-        .padding(.horizontal, 10) // 添加水平内边距
-        .chartXAxis(content: timeStatsXAxis)
-        .chartYAxis(content: yAxisContent)
-        .chartXScale(domain: 5...25)
-        .chartYScale(domain: 0...(maxCount * 1.1))
+        .frame(height: 300)
+        .chartYAxis {
+            AxisMarks(position: .leading) { value in
+                if let count = value.as(Int.self) {
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel {
+                        Text("\(abs(count))")
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: 3)) { value in
+                if let hour = value.as(Int.self) {
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel {
+                        Text("\(hour):00")
+                    }
+                }
+            }
+        }
+        .chartYScale(domain: -maxCount...maxCount)
+        .chartXScale(domain: 5...23)
         .chartLegend(position: .bottom, spacing: 10)
         .chartForegroundStyleScale(timeStatsColorScale)
     }
     
-    private func timeStatsXAxis() -> some AxisContent {
-        AxisMarks(values: [6, 14, 22]) { value in
-            AxisGridLine()
-            AxisTick()
-            AxisValueLabel {
-                if let hour = value.as(Int.self) {
-                    Text("\(hour):00")
-                        .font(.caption) // 使用更小的字体
-                }
-            }
-        }
+    private var maxCount: Int {
+        timeStats.map { max($0.countToChangping, $0.countToYanyuan) }.max() ?? 0
     }
     
     private var timeStatsColorScale: KeyValuePairs<String, Color> {
@@ -197,18 +205,6 @@ struct RideHistoryView: View {
             "回昌平": Color.blue,
             "去燕园": Color.green
         ]
-    }
-    
-    private var maxCount: Double {
-        timeStats.map { Double(max($0.countToChangping, $0.countToYanyuan)) }.max() ?? 0
-    }
-    
-    private func yAxisContent() -> some AxisContent {
-        AxisMarks(position: .leading) { _ in
-            AxisGridLine()
-            AxisTick()
-            AxisValueLabel()
-        }
     }
     
     private var statusStatsView: some View {
@@ -221,11 +217,11 @@ struct RideHistoryView: View {
                 let noShowRate = Double(noShowCount) / Double(validRideCount)
                 
                 if noShowRate > 0.3 {
-                    Text("你爽约了\(validRideCount)预约中的\(noShowCount)次。咕咕咕？")
+                    Text("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 } else {
-                    Text("你在\(validRideCount)预约中只爽约了\(noShowCount)次。很有精神！")
+                    Text("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有���神！")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -362,6 +358,7 @@ struct RideHistoryView: View {
         validRideCount = 0
         var resourceNameDict: [String: Int] = [:]
         var statusDict: [String: Int] = [:]
+        var hourlyDict: [Int: (toChangping: Int, toYanyuan: Int)] = [:]
         
         // 处理日历数据
         var allDates: [Date] = []
@@ -372,12 +369,22 @@ struct RideHistoryView: View {
                 resourceNameDict[ride.resourceName, default: 0] += 1
                 
                 statusDict[ride.statusName, default: 0] += 1
-            }
-            
-            if ride.statusName != "已撤销", let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
-                let startOfDay = Calendar.current.startOfDay(for: date)
-                calendarDates.insert(startOfDay)
-                allDates.append(startOfDay)
+                
+                if let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
+                    let hour = Calendar.current.component(.hour, from: date)
+                    if hour >= 5 && hour <= 23 {
+                        let isToChangping = isRouteToChangping(ride.resourceName)
+                        if isToChangping {
+                            hourlyDict[hour, default: (0, 0)].toChangping += 1
+                        } else {
+                            hourlyDict[hour, default: (0, 0)].toYanyuan += 1
+                        }
+                    }
+                    
+                    let startOfDay = Calendar.current.startOfDay(for: date)
+                    calendarDates.insert(startOfDay)
+                    allDates.append(startOfDay)
+                }
             }
         }
         
@@ -386,22 +393,6 @@ struct RideHistoryView: View {
         
         resourceNameStats = resourceNameDict.map { RouteStats(route: $0.key, count: $0.value) }
             .sorted { $0.count > $1.count }
-        
-        // 处理时间统计
-        var hourlyDict: [Int: (toChangping: Int, toYanyuan: Int)] = [:]
-        for ride in rides {
-            if ride.statusName != "已撤销", let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
-                let hour = Calendar.current.component(.hour, from: date)
-                if hour >= 5 && hour <= 23 {
-                    let isToChangping = isRouteToChangping(ride.resourceName)
-                    if isToChangping {
-                        hourlyDict[hour, default: (0, 0)].toChangping += 1
-                    } else {
-                        hourlyDict[hour, default: (0, 0)].toYanyuan += 1
-                    }
-                }
-            }
-        }
         
         timeStats = (5...23).map { hour in
             let counts = hourlyDict[hour] ?? (0, 0)
