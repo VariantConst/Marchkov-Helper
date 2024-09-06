@@ -159,10 +159,14 @@ struct RideHistoryView: View {
                 }
                 .frame(height: 200)
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: 3)) { value in
+                    AxisMarks(values: .stride(by: 2)) { value in
                         AxisGridLine()
                         AxisTick()
-                        AxisValueLabel(format: IntegerFormatStyle<Int>())
+                        AxisValueLabel {
+                            if let hour = value.as(Int.self) {
+                                Text("\(hour):00")
+                            }
+                        }
                     }
                 }
                 .chartYAxis {
@@ -172,6 +176,7 @@ struct RideHistoryView: View {
                         AxisValueLabel()
                     }
                 }
+                .chartXScale(domain: 6...22)
                 .chartYScale(domain: 0...(maxCount * 1.1))
                 .chartOverlay { proxy in
                     GeometryReader { geometry in
@@ -406,11 +411,13 @@ struct RideHistoryView: View {
         for ride in rides {
             if ride.statusName != "已撤销", let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
                 let hour = Calendar.current.component(.hour, from: date)
-                hourlyDict[hour, default: 0] += 1
+                if hour >= 6 && hour < 22 {
+                    hourlyDict[hour, default: 0] += 1
+                }
             }
         }
         
-        timeStats = (0...23).map { hour in
+        timeStats = (6...21).map { hour in
             HourlyStats(hour: hour, count: hourlyDict[hour] ?? 0)
         }
         
