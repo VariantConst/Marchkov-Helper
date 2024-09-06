@@ -28,6 +28,9 @@ data class RideInfo(
 
 class ReservationManager(private val context: Context) {
     private val gson = Gson()
+    private val dateFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+        timeZone = TimeZone.getTimeZone("Asia/Shanghai")  // 设置为北京时间
+    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun performLogin(
@@ -378,9 +381,18 @@ class ReservationManager(private val context: Context) {
                     return@launch
                 }
 
-                // 获取历史记录
+                val sharedPreferences = context.getSharedPreferences("ride_history", Context.MODE_PRIVATE)
+                val lastQueryDate = sharedPreferences.getString("last_query_date", null)
+                val today = dateFormatter.format(Date())
+
+                val url = if (lastQueryDate != null) {
+                    "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc&date_sta=$lastQueryDate&date_end=$today"
+                } else {
+                    "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc"
+                }
+
                 val request = Request.Builder()
-                    .url("https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc")
+                    .url(url)
                     .build()
 
                 val response = client.newCall(request).execute()
@@ -390,13 +402,13 @@ class ReservationManager(private val context: Context) {
                     if (response.isSuccessful) {
                         val jsonObject = JSONObject(responseBody)
                         val dataArray = jsonObject.getJSONObject("d").getJSONArray("data")
-                        val rideInfoList = mutableListOf<RideInfo>()
+                        val newRideInfoList = mutableListOf<RideInfo>()
 
                         for (i in 0 until dataArray.length()) {
                             val ride = dataArray.getJSONObject(i)
                             val statusName = ride.getString("status_name")
                             if (statusName != "已撤销") {
-                                rideInfoList.add(
+                                newRideInfoList.add(
                                     RideInfo(
                                         id = ride.getInt("id"),
                                         statusName = statusName,
@@ -408,10 +420,15 @@ class ReservationManager(private val context: Context) {
                             }
                         }
 
-                        // 保存到 SharedPreferences
-                        saveRideInfoListToSharedPreferences(rideInfoList)
+                        // 合并新旧数据
+                        val oldRideInfoList = getRideInfoListFromSharedPreferences()
+                        val mergedRideInfoList = mergeRideInfoLists(oldRideInfoList, newRideInfoList, lastQueryDate)
 
-                        callback(true, responseBody, rideInfoList)
+                        // 保存到 SharedPreferences
+                        saveRideInfoListToSharedPreferences(mergedRideInfoList)
+                        sharedPreferences.edit().putString("last_query_date", today).apply()
+
+                        callback(true, responseBody, mergedRideInfoList)
                     } else {
                         callback(false, "获取历史记录失败: $responseBody\n响应码: ${response.code}", null)
                     }
@@ -455,6 +472,32 @@ class ReservationManager(private val context: Context) {
 
         val redirectResponse = client.newCall(redirectRequest).execute()
         return redirectResponse.isSuccessful
+    }
+
+    private fun mergeRideInfoLists(oldList: List<RideInfo>, newList: List<RideInfo>, lastQueryDate: String?): List<RideInfo> {
+        val mergedMap = oldList.associateBy { it.id }.toMutableMap()
+
+        if (lastQueryDate != null) {
+            // 删除最后查询日期的所有原有数据
+            mergedMap.values.removeAll { it.appointmentTime.startsWith(lastQueryDate) }
+
+            // 添加新数据
+            for (newRide in newList) {
+                if (newRide.appointmentTime.startsWith(lastQueryDate)) {
+                    // 对于最后查询日期的数据，直接添加
+                    mergedMap[newRide.id] = newRide
+                } else if (newRide.appointmentTime > lastQueryDate) {
+                    // 对于更新的数据，直接添加
+                    mergedMap[newRide.id] = newRide
+                }
+            }
+        } else {
+            // 如果没有上次查询日期，直接使用新数据
+            mergedMap.clear()
+            mergedMap.putAll(newList.associateBy { it.id })
+        }
+
+        return mergedMap.values.sortedByDescending { it.appointmentTime }
     }
 
     private fun saveRideInfoListToSharedPreferences(rideInfoList: List<RideInfo>) {

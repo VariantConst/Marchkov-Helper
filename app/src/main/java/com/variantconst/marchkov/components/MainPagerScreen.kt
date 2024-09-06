@@ -327,10 +327,18 @@ fun ReservationHistoryScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "预约历史",
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Column {
+                Text(
+                    text = "预约历史",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                reservationHistory?.let {
+                    Text(
+                        text = "共 ${it.size} 条有效预约",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
             Button(
                 onClick = onRefresh,
                 enabled = !isLoading
