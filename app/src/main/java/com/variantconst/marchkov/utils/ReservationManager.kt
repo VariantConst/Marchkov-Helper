@@ -9,8 +9,12 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.*
 import okhttp3.*
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class ReservationManager(private val context: Context) {
     private val gson = Gson()
@@ -272,7 +276,7 @@ class ReservationManager(private val context: Context) {
                                                 }
                                                 try {
                                                     val qrCodeBitmap = generateQRCode(qrCodeData)
-                                                    callback(true, "乘车码解码成功", qrCodeBitmap, reservationDetails, qrCodeData)
+                                                    callback(true, "乘车码码成功", qrCodeBitmap, reservationDetails, qrCodeData)
                                                 } catch (e: IllegalArgumentException) {
                                                     withContext(Dispatchers.Main) {
                                                         callback(false, "无法解码乘车码字符串: ${e.message}", null, null, qrCodeData)
@@ -338,6 +342,86 @@ class ReservationManager(private val context: Context) {
 
     private fun cancelLoadingTimeout(job: Job?) {
         job?.cancel()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun getReservationHistory(
+        username: String,
+        password: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val client = OkHttpClient.Builder()
+                    .cookieJar(SimpleCookieJar())
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS)
+                    .build()
+
+                // 登录
+                val loginSuccess = performLoginForHistory(username, password, client)
+                if (!loginSuccess) {
+                    withContext(Dispatchers.Main) {
+                        callback(false, "登录失败")
+                    }
+                    return@launch
+                }
+
+                // 获取历史记录
+                val request = Request.Builder()
+                    .url("https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: "No response body"
+                
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        callback(true, responseBody)
+                    } else {
+                        callback(false, "获取历史记录失败: $responseBody\n响应码: ${response.code}")
+                    }
+                }
+            } catch (e: Exception) {
+                val errorMessage = when (e) {
+                    is SocketTimeoutException -> "连接超时: ${e.message}"
+                    is ConnectException -> "连接失败: ${e.message}"
+                    is UnknownHostException -> "无法解析主机: ${e.message}"
+                    else -> "发生错误: ${e.message}\n${e.stackTraceToString()}"
+                }
+                withContext(Dispatchers.Main) {
+                    callback(false, errorMessage)
+                }
+            }
+        }
+    }
+
+    private suspend fun performLoginForHistory(username: String, password: String, client: OkHttpClient): Boolean {
+        val formBody = FormBody.Builder()
+            .add("appid", "wproc")
+            .add("userName", username)
+            .add("password", password)
+            .add("redirUrl", "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/")
+            .build()
+
+        val request = Request.Builder()
+            .url("https://iaaa.pku.edu.cn/iaaa/oauthlogin.do")
+            .post(formBody)
+            .build()
+
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string() ?: "No response body"
+        val jsonMap: Map<String, Any> = gson.fromJson(responseBody, object : TypeToken<Map<String, Any>>() {}.type)
+        val token = jsonMap["token"] as? String ?: return false
+
+        val urlWithToken = "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&token=$token"
+        val redirectRequest = Request.Builder()
+            .url(urlWithToken)
+            .build()
+
+        val redirectResponse = client.newCall(redirectRequest).execute()
+        return redirectResponse.isSuccessful
     }
 }
 

@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
+import com.variantconst.marchkov.utils.ReservationManager
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
@@ -41,15 +43,21 @@ fun MainPagerScreen(
     currentPage: Int = 0,
     setPage: (Int) -> Unit,
     isReservationLoading: Boolean,
-    onRefresh: suspend () -> Unit
+    onRefresh: suspend () -> Unit,
+    reservationManager: ReservationManager,
+    username: String,
+    password: String
 ) {
+    var reservationHistory by remember { mutableStateOf<String?>(null) }
+    var isHistoryLoading by remember { mutableStateOf(false) }
+
     val pagerState = rememberPagerState(initialPage = currentPage)
 
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
         HorizontalPager(
-            count = 2,
+            count = 3,  // 增加到3个页面
             state = pagerState,
             modifier = Modifier.weight(1f)
         ) { page ->
@@ -70,6 +78,24 @@ fun MainPagerScreen(
                     onShowLogs = onShowLogs,
                     onLogout = onLogout
                 )
+                2 -> {
+                    ReservationHistoryScreen(
+                        reservationHistory = reservationHistory,
+                        isLoading = isHistoryLoading,
+                        onRefresh = {
+                            isHistoryLoading = true
+                            reservationManager.getReservationHistory(username, password) { success, response ->
+                                isHistoryLoading = false
+                                if (success) {
+                                    reservationHistory = response
+                                } else {
+                                    // 显示错误消息
+                                    reservationHistory = "加载失败: $response"
+                                }
+                            }
+                        }
+                    )
+                }
             }
         }
 
@@ -270,6 +296,64 @@ fun ActionCard(
                 text = text,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun ReservationHistoryScreen(
+    reservationHistory: String?,
+    isLoading: Boolean,
+    onRefresh: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "预约历史",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        } else if (reservationHistory == null) {
+            Button(onClick = onRefresh) {
+                Text("加载历史记录")
+            }
+        } else {
+            Text(
+                text = reservationHistory,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            )
+        }
+    }
+}
+
+@Composable
+fun ReservationHistoryItem(reservation: Map<String, Any>) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = reservation["resource_name"] as? String ?: "未知班车",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = reservation["appointment_tim"] as? String ?: "未知时间",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "状态: ${reservation["status_name"] as? String ?: "未知状态"}",
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }

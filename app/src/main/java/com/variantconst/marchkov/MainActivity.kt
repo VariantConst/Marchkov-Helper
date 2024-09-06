@@ -241,7 +241,10 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     timeoutJob = timeoutJob
                                                 )
-                                            }
+                                            },
+                                            reservationManager = reservationManager,
+                                            username = savedUsername ?: "",
+                                            password = savedPassword ?: ""
                                         )
                                     }
                                 } else {
