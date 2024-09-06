@@ -532,7 +532,7 @@ struct LoginService {
 
         session.dataTask(with: request) { data, response, error in
             if let error = error {
-                LogManager.shared.addLog("取消预约失败: \(error.localizedDescription)")
+                LogManager.shared.addLog("取消���约失败: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
@@ -574,7 +574,7 @@ struct LoginService {
             }
 
             if let httpResponse = response as? HTTPURLResponse {
-                LogManager.shared.addLog("获取预约二维码 - 状态码: \(httpResponse.statusCode)")
+                LogManager.shared.addLog("获取预约二维码 - ��态码: \(httpResponse.statusCode)")
             }
 
             guard let data = data else {
@@ -693,12 +693,14 @@ struct LoginService {
         let statusName: String
         let resourceName: String
         let appointmentTime: String
+        let appointmentSignTime: String?  // 新增字段
         
         static func == (lhs: RideInfo, rhs: RideInfo) -> Bool {
             return lhs.id == rhs.id &&
                    lhs.statusName == rhs.statusName &&
                    lhs.resourceName == rhs.resourceName &&
-                   lhs.appointmentTime == rhs.appointmentTime
+                   lhs.appointmentTime == rhs.appointmentTime &&
+                   lhs.appointmentSignTime == rhs.appointmentSignTime
         }
     }
 
@@ -788,7 +790,7 @@ struct LoginService {
                 let jsonResponse = try decoder.decode(RideHistoryResponse.self, from: data)
                 
                 let newRideInfos = jsonResponse.d.data.map { ride in
-                    RideInfo(id: ride.id, statusName: ride.statusName, resourceName: ride.resourceName, appointmentTime: ride.appointmentTime.trimmingCharacters(in: .whitespaces))
+                    RideInfo(id: ride.id, statusName: ride.statusName, resourceName: ride.resourceName, appointmentTime: ride.appointmentTime.trimmingCharacters(in: .whitespaces), appointmentSignTime: ride.appointmentSignTime?.trimmingCharacters(in: .whitespaces))
                 }
                 
                 // 合并新旧记录，覆盖最后一次请求日期及之后的记录
@@ -856,11 +858,13 @@ struct RideInfoData: Codable {
     let statusName: String
     let resourceName: String
     let appointmentTime: String
+    let appointmentSignTime: String?
     
     enum CodingKeys: String, CodingKey {
         case id
         case statusName = "status_name"
         case resourceName = "resource_name"
         case appointmentTime = "appointment_tim"
+        case appointmentSignTime = "appointment_sign_time"
     }
 }

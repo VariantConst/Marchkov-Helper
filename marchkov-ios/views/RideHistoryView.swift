@@ -19,6 +19,7 @@ struct RideHistoryView: View {
     @State private var calendarDates: Set<Date> = []
     @State private var earliestDate: Date?
     @State private var latestDate: Date = Date()
+    @State private var signInTimeStats: [SignInTimeStats] = []
     
     private static let appointmentDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -28,147 +29,206 @@ struct RideHistoryView: View {
     
     var body: some View {
         NavigationView {
-            ZStack {
-                Color(UIColor.systemGroupedBackground).edgesIgnoringSafeArea(.all)
-                
-                if isLoading {
-                    VStack {
-                        ProgressView("加载中...")
-                            .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
-                            .scaleEffect(1.2)
-                        
-                        if showLongLoadingMessage {
-                            Text("首次加载可能需要稍长时间")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.top)
-                        }
+            content
+        }
+        .navigationTitle("乘车历史")
+        .onAppear(perform: onAppear)
+        .onChange(of: rideHistory) { _, _ in
+            processRideHistory()
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .active && oldPhase == .background {
+                silentRefresh()
+            }
+        }
+        .refreshable {
+            await refreshRideHistory()
+        }
+        .onTapGesture {
+            highlightedSlice = nil
+        }
+    }
+    
+    @ViewBuilder
+    private var content: some View {
+        ZStack {
+            Color(UIColor.systemGroupedBackground).edgesIgnoringSafeArea(.all)
+            
+            if isLoading {
+                loadingView
+            } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        validRideCountView
+                        routeStatsView
+                        timeStatsView
+                        statusStatsView
+                        rideCalendarView
+                        signInTimeStatsView
                     }
-                } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            CardView {
-                                Text("有效乘车次数：\(validRideCount)")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                            }
-                            
-                            CardView {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text("按路线统计")
-                                        .font(.headline)
-                                    Chart(resourceNameStats) {
-                                        BarMark(
-                                            x: .value("次数", $0.count),
-                                            y: .value("路线", $0.route)
-                                        )
-                                        .foregroundStyle(Color.blue.gradient)
-                                        .cornerRadius(5)
-                                    }
-                                    .frame(height: CGFloat(resourceNameStats.count * 30))
-                                    .chartXAxis {
-                                        AxisMarks(position: .bottom) {
-                                            AxisGridLine()
-                                            AxisTick()
-                                            AxisValueLabel()
-                                        }
-                                    }
-                                    .chartYAxis {
-                                        AxisMarks(position: .leading) {
-                                            AxisGridLine()
-                                            AxisTick()
-                                            AxisValueLabel()
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            CardView {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text("按时间统计")
-                                        .font(.headline)
-                                    Chart(timeStats) {
-                                        BarMark(
-                                            x: .value("时间", $0.time),
-                                            y: .value("次数", $0.count)
-                                        )
-                                        .foregroundStyle(Color.green.gradient)
-                                        .cornerRadius(5)
-                                    }
-                                    .frame(height: 200)
-                                    .chartXAxis {
-                                        AxisMarks(position: .bottom) {
-                                            AxisGridLine()
-                                            AxisTick()
-                                            AxisValueLabel()
-                                        }
-                                    }
-                                    .chartYAxis {
-                                        AxisMarks(position: .leading) {
-                                            AxisGridLine()
-                                            AxisTick()
-                                            AxisValueLabel()
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            CardView {
-                                VStack(alignment: .center, spacing: 10) {
-                                    Text("预约状态统计")
-                                        .font(.headline)
-                                    Text("已预约和已签到的比例")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
-                                        .frame(height: 250)
-                                }
-                            }
-                            
-                            CardView {
-                                VStack(alignment: .center, spacing: 10) {
-                                    Text("乘车日历")
-                                        .font(.headline)
-                                    RideCalendarView(selectedDate: $selectedDate, 
-                                                     calendarDates: calendarDates, 
-                                                     earliestDate: earliestDate ?? latestDate, 
-                                                     latestDate: latestDate)
-                                        .frame(height: 300)
-                                }
-                            }
-                        }
-                        .padding()
+                    .padding()
+                }
+            } else if !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .padding()
+            } else {
+                Text("暂无数据")
+                    .padding()
+            }
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack {
+            ProgressView("加载中...")
+                .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
+                .scaleEffect(1.2)
+            
+            if showLongLoadingMessage {
+                Text("首次加载可能需要稍长时间")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.top)
+            }
+        }
+    }
+    
+    private var validRideCountView: some View {
+        CardView {
+            Text("有效乘车次数：\(validRideCount)")
+                .font(.title2)
+                .fontWeight(.bold)
+        }
+    }
+    
+    private var routeStatsView: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("按路线统计")
+                    .font(.headline)
+                Chart(resourceNameStats) {
+                    BarMark(
+                        x: .value("次数", $0.count),
+                        y: .value("路线", $0.route)
+                    )
+                    .foregroundStyle(Color.blue.gradient)
+                    .cornerRadius(5)
+                }
+                .frame(height: CGFloat(resourceNameStats.count * 30))
+                .chartXAxis {
+                    AxisMarks(position: .bottom) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
                     }
-                } else if !errorMessage.isEmpty {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .padding()
-                } else {
-                    Text("暂无数据")
-                        .padding()
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
                 }
             }
-            .navigationTitle("乘车历史")
-            .onAppear {
-                if !isLoading && (rideHistory == nil || rideHistory!.isEmpty) {
-                    fetchRideHistory()
-                } else {
-                    processRideHistory()
+        }
+    }
+    
+    private var timeStatsView: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("按时间统计")
+                    .font(.headline)
+                Chart(timeStats) {
+                    BarMark(
+                        x: .value("时间", $0.time),
+                        y: .value("次数", $0.count)
+                    )
+                    .foregroundStyle(Color.green.gradient)
+                    .cornerRadius(5)
+                }
+                .frame(height: 200)
+                .chartXAxis {
+                    AxisMarks(position: .bottom) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
                 }
             }
-            .onChange(of: rideHistory) { _, _ in
-                processRideHistory()
+        }
+    }
+    
+    private var statusStatsView: some View {
+        CardView {
+            VStack(alignment: .center, spacing: 10) {
+                Text("预约状态统计")
+                    .font(.headline)
+                Text("已预约和已签到的比例")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
+                    .frame(height: 250)
             }
-            .onChange(of: scenePhase) { oldPhase, newPhase in
-                if newPhase == .active && oldPhase == .background {
-                    silentRefresh()
+        }
+    }
+    
+    private var rideCalendarView: some View {
+        CardView {
+            VStack(alignment: .center, spacing: 10) {
+                Text("乘车日历")
+                    .font(.headline)
+                RideCalendarView(selectedDate: $selectedDate, 
+                                 calendarDates: calendarDates, 
+                                 earliestDate: earliestDate ?? latestDate, 
+                                 latestDate: latestDate)
+                    .frame(height: 300)
+            }
+        }
+    }
+    
+    private var signInTimeStatsView: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("签到时间差统计")
+                    .font(.headline)
+                Text("负值表示提前签到，正值表示迟到")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Chart(signInTimeStats) {
+                    BarMark(
+                        x: .value("时间差", $0.timeDiff),
+                        y: .value("次数", $0.count)
+                    )
+                    .foregroundStyle(Color.purple.gradient)
+                    .cornerRadius(5)
                 }
-            }
-            .refreshable {
-                await refreshRideHistory()
-            }
-            .onTapGesture {
-                highlightedSlice = nil
+                .frame(height: 200)
+                .chartXAxis {
+                    AxisMarks(position: .bottom) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel(format: IntegerFormatStyle<Int>())
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
+                }
+                .chartXScale(domain: -30...30)
+                Text("时间差（分钟）")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
     }
@@ -262,6 +322,28 @@ struct RideHistoryView: View {
         
         statusStats = statusDict.map { StatusStats(status: $0.key, count: $0.value) }
         
+        // 处理签到时间差
+        var signInTimeDiffs: [Int] = []
+        let appointmentFormatter = DateFormatter()
+        appointmentFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+        
+        let signFormatter = DateFormatter()
+        signFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
+        for ride in rides {
+            if let signTime = ride.appointmentSignTime, !signTime.isEmpty,
+               let appointmentDate = appointmentFormatter.date(from: ride.appointmentTime.trimmingCharacters(in: .whitespaces)),
+               let signDate = signFormatter.date(from: signTime) {
+                let diff = Int(signDate.timeIntervalSince(appointmentDate) / 60)
+                signInTimeDiffs.append(diff)
+            }
+        }
+        
+        // 统计签到时间差
+        let groupedDiffs = Dictionary(grouping: signInTimeDiffs, by: { $0 })
+        signInTimeStats = groupedDiffs.map { SignInTimeStats(timeDiff: $0.key, count: $0.value.count) }
+            .sorted { $0.timeDiff < $1.timeDiff }
+        
         isDataReady = true // 数据处理完成，标记为准备就绪
     }
     
@@ -285,6 +367,14 @@ struct RideHistoryView: View {
             }
         }
     }
+    
+    private func onAppear() {
+        if !isLoading && (rideHistory == nil || rideHistory!.isEmpty) {
+            fetchRideHistory()
+        } else {
+            processRideHistory()
+        }
+    }
 }
 
 struct RouteStats: Identifiable {
@@ -302,6 +392,12 @@ struct TimeStats: Identifiable {
 struct StatusStats: Identifiable {
     let id = UUID()
     let status: String
+    let count: Int
+}
+
+struct SignInTimeStats: Identifiable {
+    let id = UUID()
+    let timeDiff: Int
     let count: Int
 }
 
