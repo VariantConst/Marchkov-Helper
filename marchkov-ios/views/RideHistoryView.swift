@@ -327,24 +327,24 @@ struct RideHistoryView: View {
     // 修改 statusStatsView
     private var statusStatsView: some View {
         CardView {
-            VStack(alignment: .leading, spacing: 20) {
-                cardTitle("爽约分析")
-                
-                let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
-                let noShowRate = Double(noShowCount) / Double(validRideCount)
-                
-                if noShowRate > 0.3 {
-                    cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
-                } else {
-                    cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .center, spacing: 30) { // 将 alignment 改为 .center
+                    cardTitle("爽约分析")
+                        .frame(maxWidth: .infinity, alignment: .leading) // 保持标题左对齐
+                    
+                    let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
+                    let noShowRate = Double(noShowCount) / Double(validRideCount)
+                    
+                    if noShowRate > 0.3 {
+                        cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
+                    } else {
+                        cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+                    }
                 }
+                .frame(maxWidth: .infinity) // 让 VStack 占据所有可用空间
                 
-                HStack {
-                    Spacer()
-                    PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
-                        .frame(width: 150, height: 150)
-                    Spacer()
-                }
+                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
+                    .frame(width: 150, height: 150)
             }
         }
     }
@@ -395,7 +395,7 @@ struct RideHistoryView: View {
         showLongLoadingMessage = false
         isDataReady = false // 重置数据准备状态
         
-        // 设置一个3秒后显示长时间加载消息的计时器
+        // 设置一个3秒后显示长时间加载消���的计时器
         loadingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
             DispatchQueue.main.async {
                 if self.isLoading {
