@@ -115,6 +115,7 @@ struct RideHistoryView: View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 cardTitle("乘车日历")
+                cardSubtitle(getRideCalendarSubtitle())
                 RideCalendarView(selectedDate: $selectedDate, 
                                  calendarDates: calendarDates, 
                                  earliestDate: earliestDate ?? latestDate, 
@@ -124,11 +125,35 @@ struct RideHistoryView: View {
         }
     }
     
+    // 添加新的方法来计算乘车日历的副标题
+    private func getRideCalendarSubtitle() -> String {
+        let calendar = Calendar.current
+        let today = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: today)!
+        let sixtyDaysAgo = calendar.date(byAdding: .day, value: -60, to: today)!
+        
+        let last30DaysRides = calendarDates.filter { $0 >= thirtyDaysAgo && $0 <= today }
+        let previous30DaysRides = calendarDates.filter { $0 >= sixtyDaysAgo && $0 < thirtyDaysAgo }
+        
+        let last30DaysRideCount = last30DaysRides.count
+        let last30DaysPercentage = Double(last30DaysRideCount) / 30.0 * 100
+        
+        if last30DaysPercentage > 60 {
+            return String(format: "刻苦如你，过去30天有%.1f%%的天数乘坐了班车。", last30DaysPercentage)
+        } else if last30DaysRideCount > 0 {
+            let comparisonText = last30DaysRideCount > previous30DaysRides.count ? "多" : "少"
+            let encouragementText = comparisonText == "多" ? "辛苦！" : "馨园吃腻了吗？"
+            return "你最近乘坐班车比以前更\(comparisonText)了。\(encouragementText)"
+        } else {
+            return "过去一个月你一次班车都没坐过。开摆！"
+        }
+    }
+    
     // 修改 timeStatsView
     private var timeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                cardTitle("按时间统计")
+                cardTitle("乘车时间统计")
                 cardSubtitle(getTimeStatsSubtitle())
                 timeStatsChart
             }
@@ -275,7 +300,7 @@ struct RideHistoryView: View {
     private var statusStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                cardTitle("签到状态统计")
+                cardTitle("爽约分析")
                 
                 let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
                 let noShowRate = Double(noShowCount) / Double(validRideCount)
@@ -296,9 +321,9 @@ struct RideHistoryView: View {
     private var routeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                cardTitle("按路线统计")
+                cardTitle("路线统计")
                 if let mostFrequentRoute = resourceNameStats.first {
-                    cardSubtitle("您最常乘坐的班车线路是: \(mostFrequentRoute.route)")
+                    cardSubtitle("你最常坐的路线是: \(mostFrequentRoute.route)")
                 }
                 Chart(resourceNameStats) {
                     BarMark(
