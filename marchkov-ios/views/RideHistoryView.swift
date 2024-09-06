@@ -15,10 +15,22 @@ struct RideHistoryView: View {
     @State private var isDataReady: Bool = false // 新增状态变量
     @State private var loadingTimer: Timer?
     @Environment(\.scenePhase) private var scenePhase
+    @State private var selectedDate: Date = Date()
+    @State private var calendarDates: Set<Date> = []
+    @State private var earliestDate: Date?
+    @State private var latestDate: Date = Date()
+    
+    private static let appointmentDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
     
     var body: some View {
         NavigationView {
             ZStack {
+                Color(UIColor.systemGroupedBackground).edgesIgnoringSafeArea(.all)
+                
                 if isLoading {
                     VStack {
                         ProgressView("加载中...")
@@ -34,53 +46,96 @@ struct RideHistoryView: View {
                     }
                 } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            Text("有效乘车次数：\(validRideCount)")
-                                .font(.title)
-                                .fontWeight(.bold)
-                            
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("按路线统计：")
-                                    .font(.headline)
-                                Chart(resourceNameStats) {
-                                    BarMark(
-                                        x: .value("次数", $0.count),
-                                        y: .value("路线", $0.route)
-                                    )
-                                    .foregroundStyle(Color.blue.gradient)
-                                }
-                                .frame(height: CGFloat(resourceNameStats.count * 30))
+                        VStack(spacing: 20) {
+                            CardView {
+                                Text("有效乘车次数：\(validRideCount)")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
                             }
                             
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("按时间统计：")
-                                    .font(.headline)
-                                Chart(timeStats) {
-                                    BarMark(
-                                        x: .value("次数", $0.count),
-                                        y: .value("时间", $0.time)
-                                    )
-                                    .foregroundStyle(Color.green.gradient)
-                                }
-                                .frame(height: CGFloat(timeStats.count * 25))
-                                .chartXAxis {
-                                    AxisMarks(position: .bottom)
-                                }
-                                .chartYAxis {
-                                    AxisMarks(position: .leading)
+                            CardView {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("按路线统计")
+                                        .font(.headline)
+                                    Chart(resourceNameStats) {
+                                        BarMark(
+                                            x: .value("次数", $0.count),
+                                            y: .value("路线", $0.route)
+                                        )
+                                        .foregroundStyle(Color.blue.gradient)
+                                        .cornerRadius(5)
+                                    }
+                                    .frame(height: CGFloat(resourceNameStats.count * 30))
+                                    .chartXAxis {
+                                        AxisMarks(position: .bottom) {
+                                            AxisGridLine()
+                                            AxisTick()
+                                            AxisValueLabel()
+                                        }
+                                    }
+                                    .chartYAxis {
+                                        AxisMarks(position: .leading) {
+                                            AxisGridLine()
+                                            AxisTick()
+                                            AxisValueLabel()
+                                        }
+                                    }
                                 }
                             }
                             
-                            VStack(alignment: .center, spacing: 10) {
-                                Text("预约状态统计")
-                                    .font(.headline)
-                                Text("已预约和已签到的比例")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
-                                    .frame(height: 250)
+                            CardView {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("按时间统计")
+                                        .font(.headline)
+                                    Chart(timeStats) {
+                                        BarMark(
+                                            x: .value("时间", $0.time),
+                                            y: .value("次数", $0.count)
+                                        )
+                                        .foregroundStyle(Color.green.gradient)
+                                        .cornerRadius(5)
+                                    }
+                                    .frame(height: 200)
+                                    .chartXAxis {
+                                        AxisMarks(position: .bottom) {
+                                            AxisGridLine()
+                                            AxisTick()
+                                            AxisValueLabel()
+                                        }
+                                    }
+                                    .chartYAxis {
+                                        AxisMarks(position: .leading) {
+                                            AxisGridLine()
+                                            AxisTick()
+                                            AxisValueLabel()
+                                        }
+                                    }
+                                }
                             }
-                            .frame(maxWidth: .infinity)
+                            
+                            CardView {
+                                VStack(alignment: .center, spacing: 10) {
+                                    Text("预约状态统计")
+                                        .font(.headline)
+                                    Text("已预约和已签到的比例")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
+                                        .frame(height: 250)
+                                }
+                            }
+                            
+                            CardView {
+                                VStack(alignment: .center, spacing: 10) {
+                                    Text("乘车日历")
+                                        .font(.headline)
+                                    RideCalendarView(selectedDate: $selectedDate, 
+                                                     calendarDates: calendarDates, 
+                                                     earliestDate: earliestDate ?? latestDate, 
+                                                     latestDate: latestDate)
+                                        .frame(height: 300)
+                                }
+                            }
                         }
                         .padding()
                     }
@@ -174,6 +229,8 @@ struct RideHistoryView: View {
         var timeDict: [String: Int] = [:]
         var statusDict: [String: Int] = [:]
         
+        // 处理日历数据
+        var allDates: [Date] = []
         for ride in rides {
             if ride.statusName != "已撤销" {
                 validRideCount += 1
@@ -186,7 +243,16 @@ struct RideHistoryView: View {
                 
                 statusDict[ride.statusName, default: 0] += 1
             }
+            
+            if ride.statusName != "已撤销", let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
+                let startOfDay = Calendar.current.startOfDay(for: date)
+                calendarDates.insert(startOfDay)
+                allDates.append(startOfDay)
+            }
         }
+        
+        earliestDate = allDates.min()
+        latestDate = Date() // 设置为今天
         
         resourceNameStats = resourceNameDict.map { RouteStats(route: $0.key, count: $0.value) }
             .sorted { $0.count > $1.count }
@@ -341,6 +407,170 @@ struct PieSlice: Shape {
         path.addArc(center: center, radius: radius, startAngle: startAngle - .degrees(90), endAngle: endAngle - .degrees(90), clockwise: false)
         path.closeSubpath()
         return path
+    }
+}
+
+struct RideCalendarView: View {
+    @Binding var selectedDate: Date
+    let calendarDates: Set<Date>
+    let earliestDate: Date
+    let latestDate: Date
+    
+    @State private var currentMonth: Date
+    
+    private let calendar = Calendar.current
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy年MM月"
+        return formatter
+    }()
+    
+    init(selectedDate: Binding<Date>, calendarDates: Set<Date>, earliestDate: Date, latestDate: Date) {
+        self._selectedDate = selectedDate
+        self.calendarDates = calendarDates
+        self.earliestDate = earliestDate
+        self.latestDate = latestDate
+        self._currentMonth = State(initialValue: selectedDate.wrappedValue)
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: { changeMonth(by: -1) }) {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(.blue)
+                }
+                .disabled(!canGoToPreviousMonth())
+                
+                Spacer()
+                Text(dateFormatter.string(from: currentMonth))
+                    .font(.headline)
+                    .foregroundColor(.blue)
+                Spacer()
+                
+                Button(action: { changeMonth(by: 1) }) {
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.blue)
+                }
+                .disabled(!canGoToNextMonth())
+            }
+            .padding(.horizontal)
+            .frame(height: 44)
+            .background(Color.white)
+            .zIndex(1)
+            
+            HStack {
+                ForEach(["日", "一", "二", "三", "四", "五", "六"], id: \.self) { weekday in
+                    Text(weekday)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+            .background(Color.white)
+            .zIndex(1)
+            
+            calendarGrid(for: currentMonth)
+                .frame(height: 240) // 固定高度，确保6行时不会影响顶部栏
+        }
+    }
+    
+    private func calendarGrid(for month: Date) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+            ForEach(getDaysInMonth(for: month), id: \.self) { date in
+                if let date = date {
+                    DayView(date: date, isSelected: calendarDates.contains(date))
+                } else {
+                    Text("")
+                        .frame(height: 32)
+                }
+            }
+        }
+    }
+    
+    private func getDaysInMonth(for date: Date) -> [Date?] {
+        let range = calendar.range(of: .day, in: .month, for: date)!
+        let firstWeekday = calendar.component(.weekday, from: date.startOfMonth())
+        
+        var days: [Date?] = Array(repeating: nil, count: firstWeekday - 1)
+        
+        for day in 1...range.count {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: date.startOfMonth()) {
+                days.append(date)
+            }
+        }
+        
+        while days.count % 7 != 0 {
+            days.append(nil)
+        }
+        
+        return days
+    }
+    
+    private func changeMonth(by value: Int) {
+        if let newDate = calendar.date(byAdding: .month, value: value, to: currentMonth) {
+            currentMonth = newDate
+        }
+    }
+    
+    private func canGoToPreviousMonth() -> Bool {
+        return currentMonth > earliestDate
+    }
+    
+    private func canGoToNextMonth() -> Bool {
+        if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) {
+            return nextMonth <= latestDate
+        }
+        return false
+    }
+}
+
+struct DayView: View {
+    let date: Date
+    let isSelected: Bool
+    
+    private let calendar = Calendar.current
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(isSelected ? Color.blue : Color.clear)
+            
+            Text("\(calendar.component(.day, from: date))")
+                .font(.system(size: 16, weight: isSelected ? .bold : .regular))
+                .foregroundColor(isSelected ? .white : .primary)
+        }
+        .frame(height: 32)
+    }
+}
+
+extension Date {
+    func startOfDay() -> Date {
+        return Calendar.current.startOfDay(for: self)
+    }
+    
+    func startOfMonth() -> Date {
+        let components = Calendar.current.dateComponents([.year, .month], from: self)
+        return Calendar.current.date(from: components)!
+    }
+}
+
+struct CardView<Content: View>: View {
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        content
+            .padding()
+            .background(Color(UIColor.systemBackground))
+            .cornerRadius(10)
+            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 
