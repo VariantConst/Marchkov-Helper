@@ -116,7 +116,7 @@ class ReservationManager(private val context: Context) {
                     if (response.isSuccessful && resourceList != null) {
                         callback(true, "第三步：获取班车信息成功\n共获取 ${resourceList.size} 条班车信息", null, null, null)
                     } else {
-                        callback(false, "第三步：获取班车信息失败", null, null, null)
+                        callback(false, "第三步：获取班车信息败", null, null, null)
                     }
                 }
 
@@ -282,7 +282,7 @@ class ReservationManager(private val context: Context) {
                                             val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
                                             if (qrCodeData != null) {
                                                 withContext(Dispatchers.Main) {
-                                                    callback(true, "要解���的乘车码字符串: $qrCodeData", null, null, qrCodeData)
+                                                    callback(true, "要解的乘车码字符串: $qrCodeData", null, null, qrCodeData)
                                                 }
                                                 try {
                                                     val qrCodeBitmap = generateQRCode(qrCodeData)
@@ -394,16 +394,22 @@ class ReservationManager(private val context: Context) {
 
                         for (i in 0 until dataArray.length()) {
                             val ride = dataArray.getJSONObject(i)
-                            rideInfoList.add(
-                                RideInfo(
-                                    id = ride.getInt("id"),
-                                    statusName = ride.getString("status_name"),
-                                    resourceName = ride.getString("resource_name"),
-                                    appointmentTime = ride.getString("appointment_tim").trim(),
-                                    appointmentSignTime = ride.optString("appointment_sign_time", null)?.trim()
+                            val statusName = ride.getString("status_name")
+                            if (statusName != "已撤销") {
+                                rideInfoList.add(
+                                    RideInfo(
+                                        id = ride.getInt("id"),
+                                        statusName = statusName,
+                                        resourceName = ride.getString("resource_name"),
+                                        appointmentTime = ride.getString("appointment_tim").trim(),
+                                        appointmentSignTime = ride.optString("appointment_sign_time", null)?.trim()
+                                    )
                                 )
-                            )
+                            }
                         }
+
+                        // 保存到 SharedPreferences
+                        saveRideInfoListToSharedPreferences(rideInfoList)
 
                         callback(true, responseBody, rideInfoList)
                     } else {
@@ -449,6 +455,27 @@ class ReservationManager(private val context: Context) {
 
         val redirectResponse = client.newCall(redirectRequest).execute()
         return redirectResponse.isSuccessful
+    }
+
+    private fun saveRideInfoListToSharedPreferences(rideInfoList: List<RideInfo>) {
+        val sharedPreferences = context.getSharedPreferences("ride_history", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val gson = Gson()
+        val json = gson.toJson(rideInfoList)
+        editor.putString("ride_info_list", json)
+        editor.apply()
+    }
+
+    fun getRideInfoListFromSharedPreferences(): List<RideInfo> {
+        val sharedPreferences = context.getSharedPreferences("ride_history", Context.MODE_PRIVATE)
+        val json = sharedPreferences.getString("ride_info_list", null)
+        return if (json != null) {
+            val gson = Gson()
+            val type = object : TypeToken<List<RideInfo>>() {}.type
+            gson.fromJson(json, type)
+        } else {
+            emptyList()
+        }
     }
 }
 

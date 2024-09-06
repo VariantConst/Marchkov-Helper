@@ -1,5 +1,7 @@
 [versions]
 accompanistPagerIndicators = "0.28.0"
+accompanistSwiperefresh = "0.24.13-rc"
+accompanistSwiperefreshVersion = "0.28.0"
 activityComposeVersion = "1.6.1"
 agp = "8.5.0"
 androidxActivityCompose = "1.3.1"
@@ -35,6 +37,8 @@ appcompat = "1.7.0"
 [libraries]
 accompanist-pager = { module = "com.google.accompanist:accompanist-pager", version.ref = "accompanistPagerIndicators" }
 accompanist-pager-indicators = { module = "com.google.accompanist:accompanist-pager-indicators", version.ref = "accompanistPagerIndicators" }
+accompanist-swiperefresh = { module = "com.google.accompanist:accompanist-swiperefresh", version.ref = "accompanistSwiperefresh" }
+accompanist-swiperefresh-v0280 = { module = "com.google.accompanist:accompanist-swiperefresh", version.ref = "accompanistSwiperefreshVersion" }
 androidx-activity-compose-v131 = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
 androidx-activity-compose-v161 = { module = "androidx.activity:activity-compose", version.ref = "activityComposeVersion" }
 androidx-compose-material3-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3Version" }

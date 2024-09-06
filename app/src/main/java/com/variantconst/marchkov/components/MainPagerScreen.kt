@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import com.variantconst.marchkov.utils.ReservationManager
 import com.variantconst.marchkov.utils.RideInfo
-import androidx.compose.foundation.lazy.items
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
@@ -55,6 +55,11 @@ fun MainPagerScreen(
 ) {
     var reservationHistory by remember { mutableStateOf<List<RideInfo>?>(null) }
     var isHistoryLoading by remember { mutableStateOf(false) }
+
+    // 在组件初始化时加载保存的历史记录
+    LaunchedEffect(Unit) {
+        reservationHistory = reservationManager.getRideInfoListFromSharedPreferences()
+    }
 
     val pagerState = rememberPagerState(initialPage = currentPage)
 
@@ -317,18 +322,39 @@ fun ReservationHistoryScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "预约历史",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "预约历史",
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Button(
+                onClick = onRefresh,
+                enabled = !isLoading
+            ) {
+                Text("刷新")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-        } else if (reservationHistory == null) {
-            Button(onClick = onRefresh) {
-                Text("加载历史记录")
+            Box(modifier = Modifier.fillMaxSize()) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
+        } else if (reservationHistory == null) {
+            Text(
+                "无法加载历史记录",
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        } else if (reservationHistory.isEmpty()) {
+            Text(
+                "暂无预约历史",
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         } else {
             LazyColumn {
                 items(reservationHistory) { ride ->
