@@ -62,11 +62,11 @@ struct RideHistoryView: View {
             } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
                 ScrollView {
                     VStack(spacing: 20) {
-                        routeStatsView
-                        timeStatsView
-                        statusStatsView
                         rideCalendarView
+                        timeStatsView
                         signInTimeStatsView
+                        statusStatsView
+                        routeStatsView
                     }
                     .padding()
                 }
@@ -96,54 +96,39 @@ struct RideHistoryView: View {
         }
     }
     
-    private var routeStatsView: some View {
+    // 首先,定义一个通用的卡片标题样式
+    private func cardTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
+            .foregroundColor(.primary)
+    }
+    
+    // 定义一个通用的卡片副标题样式
+    private func cardSubtitle(_ subtitle: String) -> some View {
+        Text(subtitle)
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+    }
+    
+    // 修改 rideCalendarView
+    private var rideCalendarView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                Text("按路线统计")
-                    .font(.headline)
-                if let mostFrequentRoute = resourceNameStats.first {
-                    Text("您最常乘坐的班车线路是: \(mostFrequentRoute.route)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Chart(resourceNameStats) {
-                    BarMark(
-                        x: .value("次数", $0.count),
-                        y: .value("路线", $0.route)
-                    )
-                    .foregroundStyle(Color.blue.gradient)
-                    .cornerRadius(5)
-                }
-                .frame(height: CGFloat(resourceNameStats.count * 30))
-                .chartXAxis {
-                    AxisMarks(position: .bottom) {
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel()
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .leading) {
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel()
-                    }
-                }
-                .chartXScale(domain: 0...(maxRouteCount * 1.1))
+                cardTitle("乘车日历")
+                RideCalendarView(selectedDate: $selectedDate, 
+                                 calendarDates: calendarDates, 
+                                 earliestDate: earliestDate ?? latestDate, 
+                                 latestDate: latestDate)
+                    .frame(height: 300)
             }
         }
     }
     
-    // 在 RideHistoryView 结构体内添加这个计算属性
-    private var maxRouteCount: Double {
-        resourceNameStats.map { Double($0.count) }.max() ?? 0
-    }
-    
+    // 修改 timeStatsView
     private var timeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                Text("按时间统计")
-                    .font(.headline)
+                cardTitle("按时间统计")
                 timeStatsChart
             }
         }
@@ -207,62 +192,15 @@ struct RideHistoryView: View {
         ]
     }
     
-    private var statusStatsView: some View {
-        CardView {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("签到状态统计")
-                    .font(.headline)
-                
-                let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
-                let noShowRate = Double(noShowCount) / Double(validRideCount)
-                
-                if noShowRate > 0.3 {
-                    Text("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有���神！")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
-                    .frame(height: 250)
-            }
-        }
-    }
-    
-    private var rideCalendarView: some View {
-        CardView {
-            VStack(alignment: .center, spacing: 10) {
-                Text("乘车日历")
-                    .font(.headline)
-                RideCalendarView(selectedDate: $selectedDate, 
-                                 calendarDates: calendarDates, 
-                                 earliestDate: earliestDate ?? latestDate, 
-                                 latestDate: latestDate)
-                    .frame(height: 300)
-            }
-        }
-    }
-    
+    // 修改 signInTimeStatsView
     private var signInTimeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
-                signInTimeStatsHeader
+                cardTitle("签到时间差统计")
+                cardSubtitle("负值表示提前签到，正值表示迟到")
                 signInTimeStatsChart
                 signInTimeStatsFooter
             }
-        }
-    }
-    
-    private var signInTimeStatsHeader: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("签到时间差统计")
-                .font(.headline)
-            Text("负值表示提前签到，正值表示迟到")
-                .font(.caption)
-                .foregroundColor(.secondary)
         }
     }
     
@@ -302,6 +240,68 @@ struct RideHistoryView: View {
     
     private var maxSignInTimeCount: Double {
         signInTimeStats.map { Double($0.count) }.max() ?? 0
+    }
+    
+    // 修改 statusStatsView
+    private var statusStatsView: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 10) {
+                cardTitle("签到状态统计")
+                
+                let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
+                let noShowRate = Double(noShowCount) / Double(validRideCount)
+                
+                if noShowRate > 0.3 {
+                    cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
+                } else {
+                    cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+                }
+                
+                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
+                    .frame(height: 200)
+            }
+        }
+    }
+    
+    // 修改 routeStatsView
+    private var routeStatsView: some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 10) {
+                cardTitle("按路线统计")
+                if let mostFrequentRoute = resourceNameStats.first {
+                    cardSubtitle("您最常乘坐的班车线路是: \(mostFrequentRoute.route)")
+                }
+                Chart(resourceNameStats) {
+                    BarMark(
+                        x: .value("次数", $0.count),
+                        y: .value("路线", $0.route)
+                    )
+                    .foregroundStyle(Color.blue.gradient)
+                    .cornerRadius(5)
+                }
+                .frame(height: CGFloat(resourceNameStats.count * 30))
+                .chartXAxis {
+                    AxisMarks(position: .bottom) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) {
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
+                }
+                .chartXScale(domain: 0...(maxRouteCount * 1.1))
+            }
+        }
+    }
+    
+    // 在 RideHistoryView 结构体内添加这个计算属性
+    private var maxRouteCount: Double {
+        resourceNameStats.map { Double($0.count) }.max() ?? 0
     }
     
     private func fetchRideHistory() {
@@ -521,7 +521,7 @@ struct PieChartView: View {
                     )
                     .overlay(
                         PieChartLabel(
-                            status: stat.status,
+                            status: stat.status == "已预约" ? "已爽约" : stat.status,
                             count: stat.count,
                             angle: midAngle(for: stat),
                             highlighted: highlightedSlice == stat.status
@@ -570,6 +570,7 @@ struct PieChartView: View {
     }
 }
 
+// 修改 PieChartLabel 结构体,调整文字位置
 struct PieChartLabel: View {
     let status: String
     let count: Int
@@ -580,19 +581,29 @@ struct PieChartLabel: View {
         GeometryReader { geometry in
             VStack(spacing: 2) {
                 Text(status)
-                    .font(.subheadline)
+                    .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                 Text("\(count)")
-                    .font(.headline)
+                    .font(.caption2)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
             }
+            .background(GeometryReader { labelGeometry in
+                Color.clear.preference(key: LabelSizePreferenceKey.self, value: labelGeometry.size)
+            })
             .position(
-                x: geometry.size.width / 2 + cos(angle.radians - .pi / 2) * geometry.size.width * 0.2,
-                y: geometry.size.height / 2 + sin(angle.radians - .pi / 2) * geometry.size.height * 0.2
+                x: geometry.size.width / 2 + cos(angle.radians - .pi / 2) * geometry.size.width * 0.18,
+                y: geometry.size.height / 2 + sin(angle.radians - .pi / 2) * geometry.size.height * 0.18
             )
         }
+    }
+}
+
+struct LabelSizePreferenceKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
     }
 }
 
