@@ -30,11 +30,44 @@ struct RideHistoryView: View {
         return formatter
     }()
     
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    private var cardBackgroundColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.5)
+    }
+    
+    private var textColor: Color {
+        colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4)
+    }
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
     var body: some View {
         NavigationView {
-            content
+            ZStack {
+                gradientBackground.edgesIgnoringSafeArea(.all)
+                content
+            }
+            .navigationTitle("乘车历史")
         }
-        .navigationTitle("乘车历史")
         .onAppear(perform: onAppear)
         .onChange(of: rideHistory) { _, _ in
             processRideHistory()
@@ -54,43 +87,40 @@ struct RideHistoryView: View {
     
     @ViewBuilder
     private var content: some View {
-        ZStack {
-            Color(UIColor.systemGroupedBackground).edgesIgnoringSafeArea(.all)
-            
-            if isLoading {
-                loadingView
-            } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        rideCalendarView
-                        timeStatsView
-                        signInTimeStatsView
-                        statusStatsView
-                        routeStatsView
-                    }
-                    .padding()
+        if isLoading {
+            loadingView
+        } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
+            ScrollView {
+                VStack(spacing: 20) {
+                    rideCalendarView
+                    timeStatsView
+                    signInTimeStatsView
+                    statusStatsView
+                    routeStatsView
                 }
-            } else if !errorMessage.isEmpty {
-                Text(errorMessage)
-                    .foregroundColor(.red)
-                    .padding()
-            } else {
-                Text("暂无数据")
-                    .padding()
+                .padding()
             }
+        } else if !errorMessage.isEmpty {
+            Text(errorMessage)
+                .foregroundColor(.red)
+                .padding()
+        } else {
+            Text("暂无数据")
+                .foregroundColor(textColor)
+                .padding()
         }
     }
     
     private var loadingView: some View {
         VStack {
             ProgressView("加载中...")
-                .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
+                .progressViewStyle(CircularProgressViewStyle(tint: accentColor))
                 .scaleEffect(1.2)
             
             if showLongLoadingMessage {
                 Text("首次加载可能需要稍长时间")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(textColor)
                     .padding(.top)
             }
         }
@@ -99,15 +129,15 @@ struct RideHistoryView: View {
     // 首先,定义一个通用的卡片标题样式
     private func cardTitle(_ title: String) -> some View {
         Text(title)
-            .font(.headline)
-            .foregroundColor(.primary)
+            .font(.title3.weight(.semibold))
+            .foregroundColor(colorScheme == .dark ? .white : .black)
     }
     
     // 定义一个通用的卡片副标题样式
     private func cardSubtitle(_ subtitle: String) -> some View {
         Text(subtitle)
-            .font(.subheadline)
-            .foregroundColor(.secondary)
+            .font(.subheadline.weight(.medium))
+            .foregroundColor(textColor)
     }
     
     // 修改 rideCalendarView
@@ -175,6 +205,7 @@ struct RideHistoryView: View {
         }
     }
     
+    // 修改 timeStatsChart 中的颜色
     private var timeStatsChart: some View {
         Chart {
             ForEach(timeStats) { stat in
@@ -182,14 +213,14 @@ struct RideHistoryView: View {
                     x: .value("时间", stat.hour),
                     y: .value("去燕园", -stat.countToYanyuan)
                 )
-                .foregroundStyle(Color.green.gradient)
+                .foregroundStyle(accentColor.opacity(0.7).gradient)
                 .cornerRadius(5)
                 
                 BarMark(
                     x: .value("时间", stat.hour),
                     y: .value("回昌平", stat.countToChangping)
                 )
-                .foregroundStyle(Color.blue.gradient)
+                .foregroundStyle(accentColor.gradient)
                 .cornerRadius(5)
             }
         }
@@ -226,10 +257,11 @@ struct RideHistoryView: View {
         timeStats.map { max($0.countToChangping, $0.countToYanyuan) }.max() ?? 0
     }
     
+    // 修改 timeStatsColorScale
     private var timeStatsColorScale: KeyValuePairs<String, Color> {
         [
-            "回昌平": Color.blue,
-            "去燕园": Color.green
+            "回昌平": accentColor,
+            "去燕园": accentColor.opacity(0.7)
         ]
     }
     
@@ -258,13 +290,14 @@ struct RideHistoryView: View {
         return " " // 如果没有数据，返回空行
     }
     
+    // 修改 signInTimeStatsChart 中的颜色
     private var signInTimeStatsChart: some View {
         Chart(signInTimeStats) { stat in
             BarMark(
                 x: .value("时间差", stat.timeDiff),
                 y: .value("次数", stat.count)
             )
-            .foregroundStyle(Color.purple.gradient)
+            .foregroundStyle(accentColor.gradient)
             .cornerRadius(5)
         }
         .frame(height: 200)
@@ -312,7 +345,7 @@ struct RideHistoryView: View {
                 }
                 
                 PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
-                    .frame(height: 200)
+                    .frame(height: 150)
             }
         }
     }
@@ -330,7 +363,7 @@ struct RideHistoryView: View {
                         x: .value("次数", $0.count),
                         y: .value("路线", $0.route)
                     )
-                    .foregroundStyle(Color.blue.gradient)
+                    .foregroundStyle(accentColor.gradient)
                     .cornerRadius(5)
                 }
                 .frame(height: CGFloat(resourceNameStats.count * 30))
@@ -647,7 +680,7 @@ struct PieChartLabel: View {
                 Color.clear.preference(key: LabelSizePreferenceKey.self, value: labelGeometry.size)
             })
             .position(
-                x: geometry.size.width / 2 + cos(angle.radians - .pi / 2) * geometry.size.width * 0.18,
+                x: geometry.size.width / 2 + cos(angle.radians - .pi / 2) * geometry.size.width * 0.13,
                 y: geometry.size.height / 2 + sin(angle.radians - .pi / 2) * geometry.size.height * 0.18
             )
         }
