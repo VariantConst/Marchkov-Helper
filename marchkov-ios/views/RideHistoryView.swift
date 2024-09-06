@@ -48,16 +48,12 @@ struct RideHistoryView: View {
         }
     }
     
-    private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.2) : Color.white.opacity(0.5)
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)
     }
     
     private var textColor: Color {
         colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4)
-    }
-    
-    private var accentColor: Color {
-        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
     }
     
     var body: some View {
@@ -66,7 +62,6 @@ struct RideHistoryView: View {
                 gradientBackground.edgesIgnoringSafeArea(.all)
                 content
             }
-            .navigationTitle("乘车历史")
         }
         .onAppear(perform: onAppear)
         .onChange(of: rideHistory) { _, _ in
@@ -126,11 +121,11 @@ struct RideHistoryView: View {
         }
     }
     
-    // 首先,定义一个通用的卡片标题样式
+    // 首先,定义一个通用的片标题样式
     private func cardTitle(_ title: String) -> some View {
         Text(title)
             .font(.title3.weight(.semibold))
-            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .foregroundColor(.primary)
     }
     
     // 定义一个通用的卡片副标题样式
@@ -738,24 +733,28 @@ struct RideCalendarView: View {
                 Button(action: { changeMonth(by: -1) }) {
                     Image(systemName: "chevron.left")
                         .foregroundColor(.blue)
+                        .frame(width: 44, height: 44) // 增加点击区域
+                        .contentShape(Rectangle()) // 确保整个区域可点击
                 }
                 .disabled(!canGoToPreviousMonth())
-                
+
                 Spacer()
                 Text(dateFormatter.string(from: currentMonth))
                     .font(.headline)
                     .foregroundColor(.blue)
                 Spacer()
-                
+
                 Button(action: { changeMonth(by: 1) }) {
                     Image(systemName: "chevron.right")
                         .foregroundColor(.blue)
+                        .frame(width: 44, height: 44) // 增加点击区域
+                        .contentShape(Rectangle()) // 确保整个区域可点击
                 }
                 .disabled(!canGoToNextMonth())
             }
             .padding(.horizontal)
             .frame(height: 44)
-            .background(Color.white)
+            .background(Color.clear.contentShape(Rectangle())) // 保持背景透明，但使整个区域可交互
             .zIndex(1)
             
             HStack {
@@ -769,7 +768,7 @@ struct RideCalendarView: View {
             }
             .padding(.top, 8)
             .padding(.bottom, 4)
-            .background(Color.white)
+            .background(Color.clear) // 保持背景为透明
             .zIndex(1)
             
             calendarGrid(for: currentMonth)
@@ -859,17 +858,38 @@ extension Date {
 
 struct CardView<Content: View>: View {
     let content: Content
-    
+    @Environment(\.colorScheme) private var colorScheme
+
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
-    
+
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 200/255, green: 200/255, blue: 210/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+
     var body: some View {
         content
             .padding()
-            .background(Color(UIColor.systemBackground))
-            .cornerRadius(10)
-            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+            .background(BlurView(style: .systemMaterial))
+            .cornerRadius(20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(gradientBackground, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
     }
 }
 
