@@ -128,7 +128,7 @@ struct RideHistoryView: View {
             .foregroundColor(.primary)
     }
     
-    // 定义一个通用的卡片副标题样式
+    // 定义个通用的卡片副标题样式
     private func cardSubtitle(_ subtitle: String) -> some View {
         Text(subtitle)
             .font(.subheadline.weight(.medium))
@@ -208,7 +208,7 @@ struct RideHistoryView: View {
                     x: .value("时间", stat.hour),
                     y: .value("去燕园", -stat.countToYanyuan)
                 )
-                .foregroundStyle(accentColor.opacity(0.7).gradient)
+                .foregroundStyle(Color(hex: colorScheme == .dark ? "#4A6E5D" : "#8FBC8F").gradient)
                 .cornerRadius(5)
                 
                 BarMark(
@@ -256,7 +256,7 @@ struct RideHistoryView: View {
     private var timeStatsColorScale: KeyValuePairs<String, Color> {
         [
             "回昌平": accentColor,
-            "去燕园": accentColor.opacity(0.7)
+            "去燕园": Color(hex: colorScheme == .dark ? "#4A6E5D" : "#8FBC8F")
         ]
     }
     
@@ -327,20 +327,22 @@ struct RideHistoryView: View {
     // 修改 statusStatsView
     private var statusStatsView: some View {
         CardView {
-            VStack(alignment: .leading, spacing: 10) {
-                cardTitle("爽约分析")
-                
-                let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
-                let noShowRate = Double(noShowCount) / Double(validRideCount)
-                
-                if noShowRate > 0.3 {
-                    cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
-                } else {
-                    cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 40) {
+                    cardTitle("爽约分析")
+                    
+                    let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
+                    let noShowRate = Double(noShowCount) / Double(validRideCount)
+                    
+                    if noShowRate > 0.3 {
+                        cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
+                    } else {
+                        cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+                    }
                 }
                 
-                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
-                    .frame(height: 150)
+                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
+                    .frame(width: 150, height: 150)
             }
         }
     }
@@ -500,7 +502,7 @@ struct RideHistoryView: View {
             }
         }
         
-        // 计算95%的数据范围
+        // 计算95%的数据围
         let sortedDiffs = signInTimeDiffs.sorted()
         let lowerIndex = Int(Double(sortedDiffs.count) * 0.025)
         let upperIndex = Int(Double(sortedDiffs.count) * 0.975)
@@ -591,6 +593,9 @@ struct SignInTimeStats: Identifiable {
 struct PieChartView: View {
     let data: [StatusStats]
     @Binding var highlightedSlice: String?
+    let accentColor: Color
+    
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         ZStack {
@@ -637,11 +642,11 @@ struct PieChartView: View {
     private func colorForStatus(_ status: String) -> Color {
         switch status {
         case "已预约":
-            return Color(hex: "#4A90E2") // 柔和的蓝色
+            return colorScheme == .dark ? Color(hex: "#4A6E5D") : Color(hex: "#8FBC8F") // 与"去燕园"颜色一致
         case "已签到":
-            return Color(hex: "#50E3C2") // 清新的绿色
+            return accentColor
         default:
-            return Color(hex: "#C7C7CC") // 浅灰色
+            return Color.gray
         }
     }
     
@@ -675,8 +680,8 @@ struct PieChartLabel: View {
                 Color.clear.preference(key: LabelSizePreferenceKey.self, value: labelGeometry.size)
             })
             .position(
-                x: geometry.size.width / 2 + cos(angle.radians - .pi / 2) * geometry.size.width * 0.13,
-                y: geometry.size.height / 2 + sin(angle.radians - .pi / 2) * geometry.size.height * 0.18
+                x: geometry.size.width / 2 + cos(angle.radians - .pi / 2) * geometry.size.width * 0.25,
+                y: geometry.size.height / 2 + sin(angle.radians - .pi / 2) * geometry.size.height * 0.25
             )
         }
     }
