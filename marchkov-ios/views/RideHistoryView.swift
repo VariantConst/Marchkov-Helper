@@ -327,22 +327,24 @@ struct RideHistoryView: View {
     // 修改 statusStatsView
     private var statusStatsView: some View {
         CardView {
-            HStack(alignment: .top, spacing: 20) {
-                VStack(alignment: .leading, spacing: 40) {
-                    cardTitle("爽约分析")
-                    
-                    let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
-                    let noShowRate = Double(noShowCount) / Double(validRideCount)
-                    
-                    if noShowRate > 0.3 {
-                        cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
-                    } else {
-                        cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
-                    }
+            VStack(alignment: .leading, spacing: 20) {
+                cardTitle("爽约分析")
+                
+                let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
+                let noShowRate = Double(noShowCount) / Double(validRideCount)
+                
+                if noShowRate > 0.3 {
+                    cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
+                } else {
+                    cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
                 }
                 
-                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
-                    .frame(width: 150, height: 150)
+                HStack {
+                    Spacer()
+                    PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
+                        .frame(width: 150, height: 150)
+                    Spacer()
+                }
             }
         }
     }
