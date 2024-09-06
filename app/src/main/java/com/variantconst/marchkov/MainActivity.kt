@@ -19,6 +19,9 @@ import kotlinx.coroutines.*
 import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import com.variantconst.marchkov.components.LogScreen
 import com.variantconst.marchkov.components.LoginScreen
 import com.variantconst.marchkov.components.MainPagerScreen
@@ -107,52 +110,104 @@ class MainActivity : ComponentActivity() {
             }
 
             AppTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFF0F4F8),
+                                    Color(0xFFE1E8ED)
+                                )
+                            )
+                        )
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        AnimatedVisibility(
-                            visible = (showLoading || loadingMessage.isNotEmpty()) && !isTimeout,
-                            enter = fadeIn(),
-                            exit = fadeOut()
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Transparent
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AnimatedVisibility(
+                                visible = (showLoading || loadingMessage.isNotEmpty()) && !isTimeout,
+                                enter = fadeIn(),
+                                exit = fadeOut()
                             ) {
-                                LoadingScreen(message = loadingMessage)
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LoadingScreen(message = loadingMessage)
+                                }
                             }
-                        }
 
-                        if (!showLoading && loadingMessage.isEmpty()) {
-                            if (isLoggedIn) {
-                                if (showLogs) {
-                                    LogScreen(
-                                        responseTexts = responseTexts,
-                                        onBack = {
-                                            showLogs = false
-                                            currentPage = 1
-                                        }
-                                    )
-                                } else {
-                                    MainPagerScreen(
-                                        qrCodeBitmap = qrCodeBitmap,
-                                        reservationDetails = reservationDetails,
-                                        onLogout = {
-                                            isLoggedIn = false
-                                            responseTexts = listOf()
-                                            qrCodeBitmap = null
-                                            reservationDetails = null
-                                            qrCodeString = null
-                                            clearLoginInfo()
-                                            errorMessage = null
-                                            showLoading = false
-                                        },
-                                        onToggleBusDirection = {
-                                            isToYanyuan = !isToYanyuan
-                                            isReservationLoading = true
-                                            scope.launch {
+                            if (!showLoading && loadingMessage.isEmpty()) {
+                                if (isLoggedIn) {
+                                    if (showLogs) {
+                                        LogScreen(
+                                            responseTexts = responseTexts,
+                                            onBack = {
+                                                showLogs = false
+                                                currentPage = 1
+                                            }
+                                        )
+                                    } else {
+                                        MainPagerScreen(
+                                            qrCodeBitmap = qrCodeBitmap,
+                                            reservationDetails = reservationDetails,
+                                            onLogout = {
+                                                isLoggedIn = false
+                                                responseTexts = listOf()
+                                                qrCodeBitmap = null
+                                                reservationDetails = null
+                                                qrCodeString = null
+                                                clearLoginInfo()
+                                                errorMessage = null
+                                                showLoading = false
+                                            },
+                                            onToggleBusDirection = {
+                                                isToYanyuan = !isToYanyuan
+                                                isReservationLoading = true
+                                                scope.launch {
+                                                    performLoginAndHandleResult(
+                                                        username = savedUsername ?: "",
+                                                        password = savedPassword ?: "",
+                                                        isToYanyuan = isToYanyuan,
+                                                        updateLoadingMessage = { message -> loadingMessage = message },
+                                                        handleResult = { success, response, bitmap, details, qrCode ->
+                                                            responseTexts = responseTexts + response
+                                                            Log.v("Mytag", "response is $response and success is $success")
+                                                            if (success) {
+                                                                isLoggedIn = true
+                                                                showLoading = details == null
+                                                                isReservationLoaded = details != null
+                                                                currentPage = 0
+                                                                qrCodeBitmap = bitmap
+                                                                reservationDetails = details
+                                                                qrCodeString = qrCode
+
+                                                                if (!isReservationLoaded) {
+                                                                    isReservationLoading = true
+                                                                    timeoutJob = startLoadingTimeout(scope) {
+                                                                        isTimeout = true
+                                                                        showLoading = false
+                                                                        errorMessage = "加载超时，请重试"
+                                                                        isReservationLoading = false
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                errorMessage = response
+                                                                showLoading = false
+                                                            }
+                                                        },
+                                                        timeoutJob = timeoutJob
+                                                    )
+                                                }
+                                            },
+                                            onShowLogs = { showLogs = true },
+                                            currentPage = currentPage,
+                                            setPage = { currentPage = it },
+                                            isReservationLoading = isReservationLoading,
+                                            onRefresh = {
                                                 performLoginAndHandleResult(
                                                     username = savedUsername ?: "",
                                                     password = savedPassword ?: "",
@@ -187,38 +242,59 @@ class MainActivity : ComponentActivity() {
                                                     timeoutJob = timeoutJob
                                                 )
                                             }
-                                        },
-                                        onShowLogs = { showLogs = true },
-                                        currentPage = currentPage,
-                                        setPage = { currentPage = it },
-                                        isReservationLoading = isReservationLoading,
-                                        onRefresh = {
-                                            performLoginAndHandleResult(
-                                                username = savedUsername ?: "",
-                                                password = savedPassword ?: "",
+                                        )
+                                    }
+                                } else {
+                                    errorMessage?.let { msg ->
+                                        ErrorScreen(message = msg, onRetry = {
+                                            errorMessage = null
+                                            showLoading = true
+                                            scope.launch {
+                                                reservationManager.performLogin(
+                                                    username = savedUsername ?: "",
+                                                    password = savedPassword ?: "",
+                                                    isToYanyuan = isToYanyuan,
+                                                    updateLoadingMessage = { message ->
+                                                        loadingMessage = message
+                                                    },
+                                                    callback = { success, response, bitmap, details, qrCode ->
+                                                        responseTexts = responseTexts + response
+                                                        if (success) {
+                                                            isLoggedIn = true
+                                                            showLoading = false
+                                                            currentPage = 0
+                                                            qrCodeBitmap = bitmap
+                                                            reservationDetails = details
+                                                            qrCodeString = qrCode
+                                                        } else {
+                                                            errorMessage = response
+                                                            showLoading = false
+                                                        }
+                                                    },
+                                                    timeoutJob = timeoutJob
+                                                )
+                                            }
+                                        })
+                                    } ?: LoginScreen(
+                                        onLogin = { username, password ->
+                                            showLoading = true
+                                            reservationManager.performLogin(
+                                                username = username,
+                                                password = password,
                                                 isToYanyuan = isToYanyuan,
-                                                updateLoadingMessage = { message -> loadingMessage = message },
-                                                handleResult = { success, response, bitmap, details, qrCode ->
+                                                updateLoadingMessage = { message ->
+                                                    loadingMessage = message
+                                                },
+                                                callback = { success, response, bitmap, details, qrCode ->
                                                     responseTexts = responseTexts + response
-                                                    Log.v("Mytag", "response is $response and success is $success")
                                                     if (success) {
                                                         isLoggedIn = true
-                                                        showLoading = details == null
-                                                        isReservationLoaded = details != null
+                                                        showLoading = false
+                                                        saveLoginInfo(username, password)
                                                         currentPage = 0
                                                         qrCodeBitmap = bitmap
                                                         reservationDetails = details
                                                         qrCodeString = qrCode
-
-                                                        if (!isReservationLoaded) {
-                                                            isReservationLoading = true
-                                                            timeoutJob = startLoadingTimeout(scope) {
-                                                                isTimeout = true
-                                                                showLoading = false
-                                                                errorMessage = "加载超时，请重试"
-                                                                isReservationLoading = false
-                                                            }
-                                                        }
                                                     } else {
                                                         errorMessage = response
                                                         showLoading = false
@@ -229,66 +305,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                 }
-                            } else {
-                                errorMessage?.let { msg ->
-                                    ErrorScreen(message = msg, onRetry = {
-                                        errorMessage = null
-                                        showLoading = true
-                                        scope.launch {
-                                            reservationManager.performLogin(
-                                                username = savedUsername ?: "",
-                                                password = savedPassword ?: "",
-                                                isToYanyuan = isToYanyuan,
-                                                updateLoadingMessage = { message ->
-                                                    loadingMessage = message
-                                                },
-                                                callback = { success, response, bitmap, details, qrCode ->
-                                                    responseTexts = responseTexts + response
-                                                    if (success) {
-                                                        isLoggedIn = true
-                                                        showLoading = false
-                                                        currentPage = 0
-                                                        qrCodeBitmap = bitmap
-                                                        reservationDetails = details
-                                                        qrCodeString = qrCode
-                                                    } else {
-                                                        errorMessage = response
-                                                        showLoading = false
-                                                    }
-                                                },
-                                                timeoutJob = timeoutJob
-                                            )
-                                        }
-                                    })
-                                } ?: LoginScreen(
-                                    onLogin = { username, password ->
-                                        showLoading = true
-                                        reservationManager.performLogin(
-                                            username = username,
-                                            password = password,
-                                            isToYanyuan = isToYanyuan,
-                                            updateLoadingMessage = { message ->
-                                                loadingMessage = message
-                                            },
-                                            callback = { success, response, bitmap, details, qrCode ->
-                                                responseTexts = responseTexts + response
-                                                if (success) {
-                                                    isLoggedIn = true
-                                                    showLoading = false
-                                                    saveLoginInfo(username, password)
-                                                    currentPage = 0
-                                                    qrCodeBitmap = bitmap
-                                                    reservationDetails = details
-                                                    qrCodeString = qrCode
-                                                } else {
-                                                    errorMessage = response
-                                                    showLoading = false
-                                                }
-                                            },
-                                            timeoutJob = timeoutJob
-                                        )
-                                    }
-                                )
                             }
                         }
                     }

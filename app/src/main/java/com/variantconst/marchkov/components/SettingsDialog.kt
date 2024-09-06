@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 @Composable
 fun SettingsScreen(
@@ -27,8 +29,8 @@ fun SettingsScreen(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 16.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 24.dp)
     ) {
         AdvancedSettingsCard(
             prevInterval = prevInterval,
@@ -61,21 +63,23 @@ fun AdvancedSettingsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(24.dp)
                 .fillMaxWidth()
         ) {
             Text(
                 text = "高级设置",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 24.dp)
             )
-
+            
             SettingSlider(
                 label = "上一时间间隔",
                 value = prevInterval,
@@ -86,6 +90,8 @@ fun AdvancedSettingsCard(
                 valueRepresentation = { "${it.toInt()}分钟" }
             )
 
+            Spacer(modifier = Modifier.height(20.dp))
+
             SettingSlider(
                 label = "下一时间间隔",
                 value = nextInterval,
@@ -95,6 +101,8 @@ fun AdvancedSettingsCard(
                 snapValues = (1..51).map { it * 10f }.toSet() + setOf(1f, 514f),
                 valueRepresentation = { "${it.toInt()}分钟" }
             )
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             SettingSlider(
                 label = "临界时间",
@@ -109,6 +117,7 @@ fun AdvancedSettingsCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingSlider(
     label: String,
@@ -121,7 +130,7 @@ private fun SettingSlider(
 ) {
     var sliderPosition by remember { mutableFloatStateOf(value.toFloat()) }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -136,12 +145,13 @@ private fun SettingSlider(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = valueRepresentation(sliderPosition),
                 style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
         }
@@ -153,12 +163,14 @@ private fun SettingSlider(
                 onValueChange(snappedValue.toInt())
             },
             valueRange = valueRange,
-            steps = (valueRange.endInclusive - valueRange.start).toInt() - 1,
-            modifier = Modifier.padding(top = 8.dp),
+            steps = 0,
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth(),
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,
                 activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
             )
         )
     }
