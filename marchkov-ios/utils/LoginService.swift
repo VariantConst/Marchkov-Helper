@@ -104,9 +104,17 @@ struct LoginService {
         
         let encodedUsername = username.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let encodedPassword = password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let bodyData = "appid=wproc&userName=\(encodedUsername)&password=\(encodedPassword)&redirUrl=https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/"
-
-        request.httpBody = bodyData.data(using: .utf8)
+        
+        // 使用URLComponents来构建请求体，以正确处理包含特殊字符（如&）的密码
+        var components = URLComponents()
+        components.queryItems = [
+            URLQueryItem(name: "appid", value: "wproc"),
+            URLQueryItem(name: "userName", value: encodedUsername),
+            URLQueryItem(name: "password", value: encodedPassword),
+            URLQueryItem(name: "redirUrl", value: "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/")
+        ]
+        
+        request.httpBody = components.query?.data(using: .utf8)
         
         let task = session.dataTask(with: request) { data, response, error in
             if let error = error {
