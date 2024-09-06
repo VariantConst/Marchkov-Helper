@@ -9,11 +9,16 @@
 
 ## 画廊
 
-<div style="display: flex; align-items: center;">
-  <img src="public/demo.gif" alt="demo" style="height: 512px; margin-right: 10px;">
-  <img src="https://github.com/user-attachments/assets/9ad04c0c-ef7e-4b58-b1d5-a176da739cc0" alt="App Store Connect" style="height: 512px; margin-right: 10px;">
-  <img src="https://github.com/user-attachments/assets/1b252df4-7e41-4ece-a188-1b8899d7dfa4" alt="0x0ss1" style="height: 512px;">
-</div>
+<details>
+  <summary>点击查看应用截图</summary>
+  <div style="display: flex; align-items: center;">
+    <img src="public/demo.gif" alt="demo" style="height: 360px; margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/9ad04c0c-ef7e-4b58-b1d5-a176da739cc0" alt="App Store Connect" style="height: 360px; margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/d215a3e1-e8bd-4d9e-82a2-a3e7747d6ff3" alt="Simulator Screenshot - iPhone 15 - 2024-09-06 at 20 31 47" style="height: 360px; margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/a070d59d-4796-4c33-a997-6b2a1d58919d" alt="Simulator Screenshot - iPhone 15 - 2024-09-06 at 20 32 13" style="height: 360px; margin-right: 10px;">
+    <img src="https://github.com/user-attachments/assets/1b252df4-7e41-4ece-a188-1b8899d7dfa4" alt="0x0ss1" style="height: 360px;">
+  </div>
+</details>
 
 ## 动机
 
