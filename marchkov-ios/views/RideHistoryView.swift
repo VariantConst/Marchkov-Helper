@@ -152,26 +152,42 @@ struct RideHistoryView: View {
             ForEach(timeStats) { stat in
                 BarMark(
                     x: .value("时间", Double(stat.hour) + 0.5),
-                    y: .value("回昌平", stat.countToChangping)
+                    y: .value("回昌平", stat.countToChangping),
+                    width: .fixed(12)
                 )
                 .foregroundStyle(Color.blue.gradient)
+                .cornerRadius(5)
                 
                 BarMark(
                     x: .value("时间", Double(stat.hour) + 0.5),
-                    y: .value("去燕园", stat.countToYanyuan)
+                    y: .value("去燕园", stat.countToYanyuan),
+                    width: .fixed(12)
                 )
                 .foregroundStyle(Color.green.gradient)
+                .cornerRadius(5)
             }
         }
         .frame(height: 200)
-        .chartXAxis(content: xAxisContent)
+        .padding(.horizontal, 10) // 添加水平内边距
+        .chartXAxis(content: timeStatsXAxis)
         .chartYAxis(content: yAxisContent)
-        .chartXScale(domain: 5.5...23)
+        .chartXScale(domain: 5...25)
         .chartYScale(domain: 0...(maxCount * 1.1))
         .chartLegend(position: .bottom, spacing: 10)
         .chartForegroundStyleScale(timeStatsColorScale)
-        .chartOverlay(content: chartOverlayContent)
-        .chartBackground(content: chartBackgroundContent)
+    }
+    
+    private func timeStatsXAxis() -> some AxisContent {
+        AxisMarks(values: [6, 14, 22]) { value in
+            AxisGridLine()
+            AxisTick()
+            AxisValueLabel {
+                if let hour = value.as(Int.self) {
+                    Text("\(hour):00")
+                        .font(.caption) // 使用更小的字体
+                }
+            }
+        }
     }
     
     private var timeStatsColorScale: KeyValuePairs<String, Color> {
@@ -185,18 +201,6 @@ struct RideHistoryView: View {
         timeStats.map { Double(max($0.countToChangping, $0.countToYanyuan)) }.max() ?? 0
     }
     
-    private func xAxisContent() -> some AxisContent {
-        AxisMarks(values: [6, 14, 22]) { value in
-            AxisGridLine()
-            AxisTick()
-            AxisValueLabel {
-                if let hour = value.as(Int.self) {
-                    Text("\(hour):00")
-                }
-            }
-        }
-    }
-    
     private func yAxisContent() -> some AxisContent {
         AxisMarks(position: .leading) { _ in
             AxisGridLine()
@@ -205,56 +209,12 @@ struct RideHistoryView: View {
         }
     }
     
-    @ViewBuilder
-    private func chartOverlayContent(proxy: ChartProxy) -> some View {
-        GeometryReader { geometry in
-            Rectangle().fill(.clear).contentShape(Rectangle())
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            let x = value.location.x - geometry[proxy.plotAreaFrame].origin.x
-                            guard let hour: Double = proxy.value(atX: x),
-                                  let stat = timeStats.first(where: { $0.hour == Int(hour) }) else {
-                                return
-                            }
-                            selectedHour = stat.hour
-                        }
-                        .onEnded { _ in
-                            selectedHour = nil
-                        }
-                )
-        }
-    }
-    
-    @ViewBuilder
-    private func chartBackgroundContent(proxy: ChartProxy) -> some View {
-        ZStack(alignment: .topLeading) {
-            GeometryReader { geometry in
-                if let selectedHour = selectedHour,
-                   let stat = timeStats.first(where: { $0.hour == selectedHour }) {
-                    let startX = proxy.position(forX: Double(selectedHour)) ?? 0
-                    let midY = geometry[proxy.plotAreaFrame].midY
-                    
-                    VStack(alignment: .leading) {
-                        Text("\(selectedHour):00 - \(selectedHour + 1):00")
-                        Text("回昌平: \(stat.countToChangping)")
-                        Text("去燕园: \(stat.countToYanyuan)")
-                    }
-                    .padding(6)
-                    .background(Color.white.opacity(0.9))
-                    .cornerRadius(6)
-                    .offset(x: startX, y: midY)
-                }
-            }
-        }
-    }
-    
     private var statusStatsView: some View {
         CardView {
             VStack(alignment: .center, spacing: 10) {
-                Text("预约态统计")
+                Text("签到状态统计")
                     .font(.headline)
-                Text("已预约和已签的比例")
+                Text("爽约和正常签到的比例")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
@@ -322,8 +282,7 @@ struct RideHistoryView: View {
             }
         }
         .chartXScale(domain: Double(signInTimeRange.0)...Double(signInTimeRange.1))
-        .chartOverlay(content: chartOverlay)
-        .chartBackground(content: chartBackground)
+        .chartYScale(domain: 0...(maxSignInTimeCount * 1.1))
     }
     
     private var signInTimeStatsFooter: some View {
@@ -332,45 +291,8 @@ struct RideHistoryView: View {
             .foregroundColor(.secondary)
     }
     
-    @ViewBuilder
-    private func chartOverlay(proxy: ChartProxy) -> some View {
-        GeometryReader { geometry in
-            Rectangle().fill(.clear).contentShape(Rectangle())
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            let x = value.location.x - geometry[proxy.plotAreaFrame].origin.x
-                            if let timeDiff = proxy.value(atX: x, as: Int.self) {
-                                highlightedTimeDiff = timeDiff
-                            }
-                        }
-                        .onEnded { _ in
-                            highlightedTimeDiff = nil
-                        }
-                )
-        }
-    }
-    
-    @ViewBuilder
-    private func chartBackground(proxy: ChartProxy) -> some View {
-        ZStack(alignment: .topLeading) {
-            GeometryReader { geometry in
-                if let highlightedTimeDiff = highlightedTimeDiff,
-                   let stat = signInTimeStats.first(where: { $0.timeDiff == highlightedTimeDiff }) {
-                    let x = proxy.position(forX: Double(highlightedTimeDiff)) ?? 0
-                    let y = proxy.position(forY: Double(stat.count)) ?? 0
-                    
-                    VStack(alignment: .leading) {
-                        Text("时间差: \(highlightedTimeDiff) 分钟")
-                        Text("次数: \(stat.count)")
-                    }
-                    .padding(6)
-                    .background(Color.white.opacity(0.9))
-                    .cornerRadius(6)
-                    .offset(x: x, y: y)
-                }
-            }
-        }
+    private var maxSignInTimeCount: Double {
+        signInTimeStats.map { Double($0.count) }.max() ?? 0
     }
     
     private func fetchRideHistory() {
@@ -457,20 +379,18 @@ struct RideHistoryView: View {
         for ride in rides {
             if ride.statusName != "已撤销", let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
                 let hour = Calendar.current.component(.hour, from: date)
-                let minutes = Calendar.current.component(.minute, from: date)
-                if hour >= 5 && hour < 23 || (hour == 23 && minutes == 0) {
-                    let adjustedHour = (hour == 5 && minutes < 30) ? 5 : hour
+                if hour >= 5 && hour <= 23 {
                     let isToChangping = isRouteToChangping(ride.resourceName)
                     if isToChangping {
-                        hourlyDict[adjustedHour, default: (0, 0)].toChangping += 1
+                        hourlyDict[hour, default: (0, 0)].toChangping += 1
                     } else {
-                        hourlyDict[adjustedHour, default: (0, 0)].toYanyuan += 1
+                        hourlyDict[hour, default: (0, 0)].toYanyuan += 1
                     }
                 }
             }
         }
         
-        timeStats = (5...22).map { hour in
+        timeStats = (5...23).map { hour in
             let counts = hourlyDict[hour] ?? (0, 0)
             return HourlyStats(hour: hour, countToChangping: counts.toChangping, countToYanyuan: counts.toYanyuan)
         }
@@ -751,7 +671,7 @@ struct RideCalendarView: View {
             .zIndex(1)
             
             calendarGrid(for: currentMonth)
-                .frame(height: 240) // 固定高度，确保6行时不会影响顶部栏
+                .frame(height: 240) // 固定高度，确保6行时不会影响部栏
         }
     }
     
