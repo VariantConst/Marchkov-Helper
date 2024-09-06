@@ -62,7 +62,6 @@ struct RideHistoryView: View {
             } else if isDataReady && rideHistory != nil && !rideHistory!.isEmpty {
                 ScrollView {
                     VStack(spacing: 20) {
-                        validRideCountView
                         routeStatsView
                         timeStatsView
                         statusStatsView
@@ -97,19 +96,16 @@ struct RideHistoryView: View {
         }
     }
     
-    private var validRideCountView: some View {
-        CardView {
-            Text("有效乘车次数：\(validRideCount)")
-                .font(.title2)
-                .fontWeight(.bold)
-        }
-    }
-    
     private var routeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 Text("按路线统计")
                     .font(.headline)
+                if let mostFrequentRoute = resourceNameStats.first {
+                    Text("您最常乘坐的班车线路是: \(mostFrequentRoute.route)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 Chart(resourceNameStats) {
                     BarMark(
                         x: .value("次数", $0.count),
@@ -133,8 +129,14 @@ struct RideHistoryView: View {
                         AxisValueLabel()
                     }
                 }
+                .chartXScale(domain: 0...(maxRouteCount * 1.1))
             }
         }
+    }
+    
+    // 在 RideHistoryView 结构体内添加这个计算属性
+    private var maxRouteCount: Double {
+        resourceNameStats.map { Double($0.count) }.max() ?? 0
     }
     
     private var timeStatsView: some View {
@@ -211,12 +213,23 @@ struct RideHistoryView: View {
     
     private var statusStatsView: some View {
         CardView {
-            VStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("签到状态统计")
                     .font(.headline)
-                Text("爽约和正常签到的比例")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                
+                let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
+                let noShowRate = Double(noShowCount) / Double(validRideCount)
+                
+                if noShowRate > 0.3 {
+                    Text("你爽约了\(validRideCount)预约中的\(noShowCount)次。咕咕咕？")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("你在\(validRideCount)预约中只爽约了\(noShowCount)次。很有精神！")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
                 PieChartView(data: statusStats, highlightedSlice: $highlightedSlice)
                     .frame(height: 250)
             }
