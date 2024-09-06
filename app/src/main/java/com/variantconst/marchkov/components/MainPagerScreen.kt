@@ -4,6 +4,8 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,7 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import com.variantconst.marchkov.utils.ReservationManager
+import com.variantconst.marchkov.utils.RideInfo
+import androidx.compose.foundation.lazy.items
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 fun MainPagerScreen(
@@ -48,7 +53,7 @@ fun MainPagerScreen(
     username: String,
     password: String
 ) {
-    var reservationHistory by remember { mutableStateOf<String?>(null) }
+    var reservationHistory by remember { mutableStateOf<List<RideInfo>?>(null) }
     var isHistoryLoading by remember { mutableStateOf(false) }
 
     val pagerState = rememberPagerState(initialPage = currentPage)
@@ -74,28 +79,28 @@ fun MainPagerScreen(
                         )
                     }
                 }
-                1 -> AdditionalActionsScreen(
-                    onShowLogs = onShowLogs,
-                    onLogout = onLogout
-                )
-                2 -> {
+                1 -> {
                     ReservationHistoryScreen(
                         reservationHistory = reservationHistory,
                         isLoading = isHistoryLoading,
                         onRefresh = {
                             isHistoryLoading = true
-                            reservationManager.getReservationHistory(username, password) { success, response ->
+                            reservationManager.getReservationHistory(username, password) { success, response, rideInfoList ->
                                 isHistoryLoading = false
                                 if (success) {
-                                    reservationHistory = response
+                                    reservationHistory = rideInfoList
                                 } else {
                                     // 显示错误消息
-                                    reservationHistory = "加载失败: $response"
+                                    reservationHistory = null
                                 }
                             }
                         }
                     )
                 }
+                2 -> AdditionalActionsScreen(
+                    onShowLogs = onShowLogs,
+                    onLogout = onLogout
+                )
             }
         }
 
@@ -303,7 +308,7 @@ fun ActionCard(
 
 @Composable
 fun ReservationHistoryScreen(
-    reservationHistory: String?,
+    reservationHistory: List<RideInfo>?,
     isLoading: Boolean,
     onRefresh: () -> Unit
 ) {
@@ -325,17 +330,17 @@ fun ReservationHistoryScreen(
                 Text("加载历史记录")
             }
         } else {
-            Text(
-                text = reservationHistory,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            )
+            LazyColumn {
+                items(reservationHistory) { ride ->
+                    RideInfoItem(ride)
+                }
+            }
         }
     }
 }
 
 @Composable
-fun ReservationHistoryItem(reservation: Map<String, Any>) {
+fun RideInfoItem(ride: RideInfo) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -344,17 +349,33 @@ fun ReservationHistoryItem(reservation: Map<String, Any>) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = reservation["resource_name"] as? String ?: "未知班车",
+                text = ride.resourceName,
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = reservation["appointment_tim"] as? String ?: "未知时间",
+                text = "预约时间: ${ride.appointmentTime}",
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "状态: ${reservation["status_name"] as? String ?: "未知状态"}",
+                text = "状态: ${ride.statusName}",
                 style = MaterialTheme.typography.bodySmall
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = "签到时间",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = ride.appointmentSignTime?.let { "签到时间: $it" } ?: "未签到",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (ride.appointmentSignTime != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }

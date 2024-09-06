@@ -15,6 +15,16 @@ import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import org.json.JSONObject
+
+// 在文件顶部添加这个数据类定义
+data class RideInfo(
+    val id: Int,
+    val statusName: String,
+    val resourceName: String,
+    val appointmentTime: String,
+    val appointmentSignTime: String?
+)
 
 class ReservationManager(private val context: Context) {
     private val gson = Gson()
@@ -71,7 +81,7 @@ class ReservationManager(private val context: Context) {
                     if (response.isSuccessful && token.isNotEmpty()) {
                         callback(true, "第一步：登录账号成功\n获取 token 为 $token", null, null, null)
                     } else {
-                        callback(false, "第一步：登录账号失败\n获取 token 为 $token", null, null, null)
+                        callback(false, "第一步登录账号失败\n获取 token 为 $token", null, null, null)
                     }
                 }
 
@@ -272,7 +282,7 @@ class ReservationManager(private val context: Context) {
                                             val qrCodeData = (qrCodeJson["d"] as? Map<*, *>)?.get("code") as? String
                                             if (qrCodeData != null) {
                                                 withContext(Dispatchers.Main) {
-                                                    callback(true, "要解码的乘车码字符串: $qrCodeData", null, null, qrCodeData)
+                                                    callback(true, "要解���的乘车码字符串: $qrCodeData", null, null, qrCodeData)
                                                 }
                                                 try {
                                                     val qrCodeBitmap = generateQRCode(qrCodeData)
@@ -348,7 +358,7 @@ class ReservationManager(private val context: Context) {
     fun getReservationHistory(
         username: String,
         password: String,
-        callback: (Boolean, String) -> Unit
+        callback: (Boolean, String, List<RideInfo>?) -> Unit
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -363,7 +373,7 @@ class ReservationManager(private val context: Context) {
                 val loginSuccess = performLoginForHistory(username, password, client)
                 if (!loginSuccess) {
                     withContext(Dispatchers.Main) {
-                        callback(false, "登录失败")
+                        callback(false, "登录失败", null)
                     }
                     return@launch
                 }
@@ -378,9 +388,26 @@ class ReservationManager(private val context: Context) {
                 
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
-                        callback(true, responseBody)
+                        val jsonObject = JSONObject(responseBody)
+                        val dataArray = jsonObject.getJSONObject("d").getJSONArray("data")
+                        val rideInfoList = mutableListOf<RideInfo>()
+
+                        for (i in 0 until dataArray.length()) {
+                            val ride = dataArray.getJSONObject(i)
+                            rideInfoList.add(
+                                RideInfo(
+                                    id = ride.getInt("id"),
+                                    statusName = ride.getString("status_name"),
+                                    resourceName = ride.getString("resource_name"),
+                                    appointmentTime = ride.getString("appointment_tim").trim(),
+                                    appointmentSignTime = ride.optString("appointment_sign_time", null)?.trim()
+                                )
+                            )
+                        }
+
+                        callback(true, responseBody, rideInfoList)
                     } else {
-                        callback(false, "获取历史记录失败: $responseBody\n响应码: ${response.code}")
+                        callback(false, "获取历史记录失败: $responseBody\n响应码: ${response.code}", null)
                     }
                 }
             } catch (e: Exception) {
@@ -391,7 +418,7 @@ class ReservationManager(private val context: Context) {
                     else -> "发生错误: ${e.message}\n${e.stackTraceToString()}"
                 }
                 withContext(Dispatchers.Main) {
-                    callback(false, errorMessage)
+                    callback(false, errorMessage, null)
                 }
             }
         }
