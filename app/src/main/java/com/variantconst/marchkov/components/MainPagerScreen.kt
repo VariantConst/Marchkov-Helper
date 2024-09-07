@@ -35,6 +35,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import com.variantconst.marchkov.utils.ReservationManager
 import com.variantconst.marchkov.utils.RideInfo
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.toArgb
+import kotlin.math.absoluteValue
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
@@ -364,11 +377,184 @@ fun ReservationHistoryScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         } else {
+            // 添加乘车时间统计卡片
+            RideTimeStatisticsCard(reservationHistory)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 原有的预约历史列表
             LazyColumn {
                 items(reservationHistory) { ride ->
                     RideInfoItem(ride)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun RideTimeStatisticsCard(rideInfoList: List<RideInfo>) {
+    val toYanyuanColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+    val toChangpingColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(390.dp)
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "乘车时间统计",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            RideTimeStatisticsChart(rideInfoList, toYanyuanColor, toChangpingColor)
+            Spacer(modifier = Modifier.height(8.dp))  // 减小图表和图例之间的间距
+            RideTimeLegend(toYanyuanColor, toChangpingColor)
+        }
+    }
+}
+
+@Composable
+fun RideTimeStatisticsChart(
+    rideInfoList: List<RideInfo>,
+    toYanyuanColor: Color,
+    toChangpingColor: Color
+) {
+    val toYanyuanCounts = IntArray(24)
+    val toChangpingCounts = IntArray(24)
+
+    // 统计各时间段的乘车次数
+    rideInfoList.forEach { ride ->
+        val hour = ride.appointmentTime.substring(11, 13).toInt()
+        if (ride.resourceName.indexOf("新") < ride.resourceName.indexOf("燕")) {
+            toYanyuanCounts[hour]++
+        } else {
+            toChangpingCounts[hour]++
+        }
+    }
+
+    val maxCount = (toYanyuanCounts.maxOrNull() ?: 0).coerceAtLeast(toChangpingCounts.maxOrNull() ?: 0)
+
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(280.dp)
+        .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 24.dp)
+    ) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val barWidth = canvasWidth / 17  // 6点到22点，共17个小时
+        val centerY = canvasHeight / 2
+
+        val paint = Paint().apply {
+            textSize = 24f
+            typeface = Typeface.DEFAULT
+            textAlign = Paint.Align.RIGHT
+        }
+
+        // 绘制y轴刻度和标签
+        val yAxisSteps = 2
+        val maxYValue = maxCount / 2
+        for (i in -yAxisSteps..yAxisSteps) {
+            val y = centerY - (centerY * i / yAxisSteps)
+            // 绘制水平网格线
+            drawLine(
+                color = Color.LightGray,
+                start = Offset(-50f, y),
+                end = Offset(canvasWidth, y),
+                strokeWidth = 1f
+            )
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.drawText(
+                    "${(maxYValue * i / yAxisSteps).absoluteValue}",
+                    -25f,
+                    y - 4f,  // 将y轴标签向上移动
+                    paint
+                )
+            }
+        }
+
+        // 绘制x轴
+        drawLine(
+            color = Color.LightGray,
+            start = Offset(0f, canvasHeight),
+            end = Offset(canvasWidth, canvasHeight),
+            strokeWidth = 1f
+        )
+
+        for (hour in 6..22) {
+            val x = (hour - 6) * barWidth
+            val toYanyuanHeight = (toYanyuanCounts[hour] / maxCount.toFloat()) * centerY
+            val toChangpingHeight = (toChangpingCounts[hour] / maxCount.toFloat()) * centerY
+
+            // 绘制去燕园的柱形（下半部分）
+            drawRoundRect(
+                color = toYanyuanColor,
+                topLeft = Offset(x + barWidth * 0.3f, centerY),
+                size = Size(barWidth * 0.4f, toYanyuanHeight),
+                cornerRadius = CornerRadius(0.dp.toPx(), 4.dp.toPx())  // 只在底部有圆角
+            )
+
+            // 绘制回昌平的柱形（上半部分）
+            drawRoundRect(
+                color = toChangpingColor,
+                topLeft = Offset(x + barWidth * 0.3f, centerY - toChangpingHeight),
+                size = Size(barWidth * 0.4f, toChangpingHeight),
+                cornerRadius = CornerRadius(4.dp.toPx(), 0.dp.toPx())  // 只在顶部有圆角
+            )
+
+            // 每隔4小时绘制一次x轴标签
+            if ((hour - 6) % 4 == 0 || hour == 22) {
+                drawIntoCanvas { canvas ->
+                    canvas.nativeCanvas.drawText(
+                        String.format("%02d:00", hour),
+                        x + barWidth / 2 + 5f,  // 将x轴标签向右移动
+                        canvasHeight + 30f,
+                        paint.apply { textAlign = Paint.Align.CENTER }
+                    )
+                }
+                // 绘制垂直虚线，延长至超过横线
+                drawLine(
+                    color = Color.LightGray,
+                    start = Offset(x, -20f),  // 向上延伸
+                    end = Offset(x, canvasHeight + 10f),  // 向下延伸
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RideTimeLegend(toYanyuanColor: Color, toChangpingColor: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(toChangpingColor, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("回昌平", style = MaterialTheme.typography.labelSmall)
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(toYanyuanColor, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("去燕园", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
