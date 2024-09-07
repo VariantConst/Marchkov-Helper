@@ -1,5 +1,6 @@
 package com.variantconst.marchkov.components
 
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
@@ -61,6 +62,17 @@ import kotlin.math.sin
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
+import java.net.URL
+import java.io.IOException
+import java.net.MalformedURLException
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
@@ -165,6 +177,8 @@ fun AdditionalActionsScreen(
     val realName = sharedPreferences.getString("realName", "马池口🐮🐴") ?: "马池口🐮🐴"
     val department = sharedPreferences.getString("department", "这个需要你自己衡量！") ?: "这个需要你自己衡量！"
     val scrollState = rememberScrollState()
+    var showVersionDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         visible = true
     }
@@ -214,6 +228,98 @@ fun AdditionalActionsScreen(
                     context.startActivity(intent)
                 }
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 添加检查更新按钮
+            ActionCard(
+                icon = Icons.Default.Update,
+                text = "检查更新",
+                onClick = {
+                    showVersionDialog = true
+                }
+            )
+        }
+    }
+
+    if (showVersionDialog) {
+        ShowVersionDialog(
+            context = context,
+            onDismiss = { showVersionDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun ShowVersionDialog(context: Context, onDismiss: () -> Unit) {
+    val packageInfo = remember {
+        context.packageManager.getPackageInfo(context.packageName, 0)
+    }
+    val currentVersionName = packageInfo.versionName
+    var latestVersion by remember { mutableStateOf("") }
+    var downloadUrl by remember { mutableStateOf("") }
+    var isChecking by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val versionResponse = withContext(Dispatchers.IO) {
+                URL("https://shuttle.variantconst.com/api/android-version").readText()
+            }
+            val urlResponse = withContext(Dispatchers.IO) {
+                URL("https://shuttle.variantconst.com/api/android-latest").readText()
+            }
+            latestVersion = versionResponse.trim()
+            downloadUrl = urlResponse.trim()
+            isChecking = false
+        } catch (e: Exception) {
+            val detailedError = when (e) {
+                is IOException -> "网络错误: ${e.message}"
+                is MalformedURLException -> "URL 格式错误: ${e.message}"
+                else -> "未知错误: ${e.message}"
+            }
+            errorMessage = "检查更新失败: $detailedError"
+            isChecking = false
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("版本信息") },
+        text = {
+            Column {
+                Text("当前版本: $currentVersionName")
+                if (isChecking) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                } else if (errorMessage != null) {
+                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                } else if (currentVersionName == latestVersion) {
+                    Text("已经是最新版本")
+                } else {
+                    Text("发现新版本: $latestVersion")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("下载最新版")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("确定")
+            }
+        }
+    )
+
+    if (currentVersionName == latestVersion && !isChecking && errorMessage == null) {
+        LaunchedEffect(Unit) {
+            delay(500)
+            onDismiss()
         }
     }
 }
