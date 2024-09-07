@@ -162,7 +162,7 @@ fun AdditionalActionsScreen(
     val context = LocalContext.current
     val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
     val username = sharedPreferences.getString("username", "2301234567") ?: "2301234567"
-    val realName = sharedPreferences.getString("realName", "马池口🐮🐴") ?: "马池口🐮🐴"
+    val realName = sharedPreferences.getString("realName", "马池口����🐴") ?: "马池口🐮🐴"
     val department = sharedPreferences.getString("department", "这个需要你自己衡量！") ?: "这个需要你自己衡量！"
     val scrollState = rememberScrollState()
     LaunchedEffect(Unit) {
@@ -454,6 +454,17 @@ fun ReservationCalendarCard(reservationHistory: List<RideInfo>) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "乘车日历",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = getRideCalendarSubtitle(reservationDates),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -487,6 +498,28 @@ fun ReservationCalendarCard(reservationHistory: List<RideInfo>) {
             Spacer(modifier = Modifier.height(8.dp))
             CalendarGrid(currentMonth, reservationDates)
         }
+    }
+}
+
+fun getRideCalendarSubtitle(reservationDates: Set<LocalDate>): String {
+    val today = LocalDate.now()
+    val thirtyDaysAgo = today.minusDays(30)
+    val sixtyDaysAgo = today.minusDays(60)
+    
+    val last30DaysRides = reservationDates.filter { it >= thirtyDaysAgo && it <= today }
+    val previous30DaysRides = reservationDates.filter { it >= sixtyDaysAgo && it < thirtyDaysAgo }
+    
+    val last30DaysRideCount = last30DaysRides.size
+    val last30DaysPercentage = last30DaysRideCount.toDouble() / 30.0 * 100
+
+    return when {
+        last30DaysPercentage > 60 -> "刻苦如你，过去30天有%.1f%%的天数乘坐了班车。".format(last30DaysPercentage)
+        last30DaysRideCount > 0 -> {
+            val comparisonText = if (last30DaysRideCount > previous30DaysRides.size) "多" else "少"
+            val encouragementText = if (comparisonText == "多") "辛苦！" else "馨园吃腻了吗？"
+            "你最近乘坐班车比以前更${comparisonText}了。${encouragementText}"
+        }
+        else -> "过去一个月你一次班车都没坐过。开摆！"
     }
 }
 
@@ -706,10 +739,36 @@ fun RideTimeStatisticsCard(rideInfoList: List<RideInfo>) {
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = getTimeStatsSubtitle(rideInfoList),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             RideTimeStatisticsChart(rideInfoList, toYanyuanColor, toChangpingColor)
-            Spacer(modifier = Modifier.height(8.dp))  // 减小图表和图例之间的间距
+            Spacer(modifier = Modifier.height(8.dp))
             RideTimeLegend(toYanyuanColor, toChangpingColor)
         }
+    }
+}
+
+fun getTimeStatsSubtitle(rideInfoList: List<RideInfo>): String {
+    val timeStats = rideInfoList.groupBy { it.appointmentTime.substring(11, 13).toInt() }
+        .mapValues { (_, rides) ->
+            rides.partition { it.resourceName.indexOf("新") < it.resourceName.indexOf("燕") }
+        }
+    
+    val maxToYanyuan = timeStats.maxByOrNull { it.value.first.size }
+    val maxToChangping = timeStats.maxByOrNull { it.value.second.size }
+
+    return when {
+        maxToYanyuan != null && (11..17).contains(maxToYanyuan.key) ->
+            "你习惯日上三竿时再去燕园。年轻人要少熬夜。"
+        maxToChangping != null && maxToChangping.key >= 21 ->
+            "你习惯工作到深夜才休息。真是个卷王！"
+        maxToYanyuan != null && maxToYanyuan.key < 10 ->
+            "你习惯早起去燕园工作。早起的鸟儿有丹炼！"
+        else -> " " // 空行
     }
 }
 
