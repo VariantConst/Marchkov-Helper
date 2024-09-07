@@ -54,6 +54,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -124,7 +125,10 @@ fun MainPagerScreen(
                                     reservationHistory = null
                                 }
                             }
-                        }
+                        },
+                        reservationManager = reservationManager,
+                        username = username,
+                        password = password
                     )
                 }
                 2 -> AdditionalActionsScreen(
@@ -340,9 +344,15 @@ fun ActionCard(
 fun ReservationHistoryScreen(
     reservationHistory: List<RideInfo>?,
     isLoading: Boolean,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    reservationManager: ReservationManager,
+    username: String,
+    password: String
 ) {
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    var localReservationHistory by remember { mutableStateOf(reservationHistory) }
+    var localIsLoading by remember { mutableStateOf(isLoading) }
 
     Column(
         modifier = Modifier
@@ -360,7 +370,7 @@ fun ReservationHistoryScreen(
                     text = "预约历史",
                     style = MaterialTheme.typography.headlineMedium
                 )
-                reservationHistory?.let {
+                localReservationHistory?.let {
                     Text(
                         text = "共 ${it.size} 条有效预约",
                         style = MaterialTheme.typography.bodyMedium
@@ -368,8 +378,21 @@ fun ReservationHistoryScreen(
                 }
             }
             Button(
-                onClick = onRefresh,
-                enabled = !isLoading
+                onClick = {
+                    localIsLoading = true
+                    scope.launch {
+                        reservationManager.getReservationHistory(username, password) { success, response, rideInfoList ->
+                            localIsLoading = false
+                            if (success) {
+                                localReservationHistory = rideInfoList
+                            } else {
+                                // 显示错误消息
+                                // 这里可以添加一个 SnackBar 或者 Toast 来显示错误信息
+                            }
+                        }
+                    }
+                },
+                enabled = !localIsLoading
             ) {
                 Text("刷新")
             }
@@ -377,38 +400,38 @@ fun ReservationHistoryScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (isLoading) {
+        if (localIsLoading) {
             Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
-        } else if (reservationHistory == null) {
+        } else if (localReservationHistory == null) {
             Text(
                 "无法加载历史记录",
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-        } else if (reservationHistory.isEmpty()) {
+        } else if (localReservationHistory!!.isEmpty()) {
             Text(
                 "暂无预约历史",
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         } else {
             // 添加日历视图卡片
-            ReservationCalendarCard(reservationHistory)
+            ReservationCalendarCard(localReservationHistory!!)
             
             Spacer(modifier = Modifier.height(16.dp))
 
             // 添加乘车时间统计卡片
-            RideTimeStatisticsCard(reservationHistory)
+            RideTimeStatisticsCard(localReservationHistory!!)
             
             Spacer(modifier = Modifier.height(16.dp))
 
             // 添加签到时间差统计卡片
-            SignInTimeStatisticsCard(reservationHistory)
+            SignInTimeStatisticsCard(localReservationHistory!!)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // 添加爽约分析卡片
-            NoShowAnalysisCard(reservationHistory)
+            NoShowAnalysisCard(localReservationHistory!!)
         }
     }
 }
@@ -743,7 +766,7 @@ fun RideTimeStatisticsChart(
                 canvas.nativeCanvas.drawText(
                     "${(maxYValue * i / yAxisSteps).absoluteValue}",
                     -25f,
-                    y - 4f,  // 将y轴标签向上移动
+                    y - 4f,  // y轴标签向上移动
                     paint
                 )
             }

@@ -14,7 +14,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.variantconst.marchkov.utils.Settings
 
 @Composable
 fun SettingsScreen(
@@ -26,6 +28,7 @@ fun SettingsScreen(
     var prevInterval by remember { mutableIntStateOf(initialPrevInterval) }
     var nextInterval by remember { mutableIntStateOf(initialNextInterval) }
     var criticalTime by remember { mutableIntStateOf(initialCriticalTime) }
+    var resetTrigger by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -47,7 +50,15 @@ fun SettingsScreen(
             onCriticalTimeChange = {
                 criticalTime = it
                 onSettingsChanged(prevInterval, nextInterval, it)
-            }
+            },
+            onReset = {
+                prevInterval = Settings.DEFAULT_PREV_INTERVAL
+                nextInterval = Settings.DEFAULT_NEXT_INTERVAL
+                criticalTime = Settings.DEFAULT_CRITICAL_TIME
+                onSettingsChanged(prevInterval, nextInterval, criticalTime)
+                resetTrigger = !resetTrigger  // 触发重组
+            },
+            resetTrigger = resetTrigger
         )
     }
 }
@@ -59,7 +70,9 @@ fun AdvancedSettingsCard(
     criticalTime: Int,
     onPrevIntervalChange: (Int) -> Unit,
     onNextIntervalChange: (Int) -> Unit,
-    onCriticalTimeChange: (Int) -> Unit
+    onCriticalTimeChange: (Int) -> Unit,
+    onReset: () -> Unit,
+    resetTrigger: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -72,15 +85,31 @@ fun AdvancedSettingsCard(
                 .padding(24.dp)
                 .fillMaxWidth()
         ) {
-            Text(
-                text = "高级设置",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "高级设置",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                IconButton(onClick = onReset) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "复位设置",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
             
             SettingSlider(
+                key = "prevInterval$resetTrigger",
                 label = "上一时间间隔",
                 value = prevInterval,
                 onValueChange = onPrevIntervalChange,
@@ -93,6 +122,7 @@ fun AdvancedSettingsCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             SettingSlider(
+                key = "nextInterval$resetTrigger",
                 label = "下一时间间隔",
                 value = nextInterval,
                 onValueChange = onNextIntervalChange,
@@ -105,6 +135,7 @@ fun AdvancedSettingsCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             SettingSlider(
+                key = "criticalTime$resetTrigger",
                 label = "临界时间",
                 value = criticalTime,
                 onValueChange = onCriticalTimeChange,
@@ -120,6 +151,7 @@ fun AdvancedSettingsCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingSlider(
+    key: Any,
     label: String,
     value: Int,
     onValueChange: (Int) -> Unit,
@@ -128,50 +160,52 @@ private fun SettingSlider(
     snapValues: Set<Float>,
     valueRepresentation: (Float) -> String
 ) {
-    var sliderPosition by remember { mutableFloatStateOf(value.toFloat()) }
+    key(key) {
+        var sliderPosition by remember { mutableFloatStateOf(value.toFloat()) }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = valueRepresentation(sliderPosition),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = valueRepresentation(sliderPosition),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Slider(
+                value = sliderPosition,
+                onValueChange = { newValue ->
+                    val snappedValue = snapValues.minByOrNull { kotlin.math.abs(it - newValue) } ?: newValue
+                    sliderPosition = snappedValue
+                    onValueChange(snappedValue.toInt())
+                },
+                valueRange = valueRange,
+                steps = 0,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                )
             )
         }
-        Slider(
-            value = sliderPosition,
-            onValueChange = { newValue ->
-                val snappedValue = snapValues.minByOrNull { kotlin.math.abs(it - newValue) } ?: newValue
-                sliderPosition = snappedValue
-                onValueChange(snappedValue.toInt())
-            },
-            valueRange = valueRange,
-            steps = 0,
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
-            )
-        )
     }
 }

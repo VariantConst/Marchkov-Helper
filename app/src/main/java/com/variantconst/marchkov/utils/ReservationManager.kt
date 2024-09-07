@@ -173,7 +173,7 @@ class ReservationManager(private val context: Context) {
                                     callback(false, "无法解码临时码字符串: ${e.message}", null, null, qrCodeData)
                                 }
                             } else {
-                                callback(false, "找不到临时码字符串", null, null, null)
+                                callback(false, "找不到临���字符串", null, null, null)
                             }
                         } else {
                             callback(false, "临时码请求响应为: $tempQrCodeResponse", null, null, null)
@@ -237,7 +237,7 @@ class ReservationManager(private val context: Context) {
 
                     withContext(Dispatchers.Main) {
                         if (response.isSuccessful) {
-                            callback(true, "第五步：获取已约班车信息成功\n响应：$formattedJson", null, reservationDetails, null)
+                            callback(true, "第五步：获取已约班车信息成功\n应：$formattedJson", null, reservationDetails, null)
                         } else {
                             callback(false, "第五步：获取已约班车信息失败\n响应：$formattedJson", null, null, null)
                         }
@@ -372,7 +372,7 @@ class ReservationManager(private val context: Context) {
                     .writeTimeout(30, TimeUnit.SECONDS)
                     .build()
 
-                // 登录
+                // 使用传入的 username 和 password 进行登录
                 val loginSuccess = performLoginForHistory(username, password, client)
                 if (!loginSuccess) {
                     withContext(Dispatchers.Main) {
@@ -420,7 +420,7 @@ class ReservationManager(private val context: Context) {
                             }
                         }
 
-                        // 合并新旧数据
+                        // 合并新旧数
                         val oldRideInfoList = getRideInfoListFromSharedPreferences()
                         val mergedRideInfoList = mergeRideInfoLists(oldRideInfoList, newRideInfoList, lastQueryDate)
 
@@ -519,6 +519,16 @@ class ReservationManager(private val context: Context) {
         } else {
             emptyList()
         }
+    }
+
+    fun clearAllData() {
+        // 清除乘车历史记录
+        val rideHistoryPrefs = context.getSharedPreferences("ride_history", Context.MODE_PRIVATE)
+        rideHistoryPrefs.edit().clear().apply()
+
+        // 清除最后查询日期
+        val lastQueryPrefs = context.getSharedPreferences("ride_history", Context.MODE_PRIVATE)
+        lastQueryPrefs.edit().remove("last_query_date").apply()
     }
 }
 

@@ -7,9 +7,9 @@ object Settings {
     private const val KEY_PREV_INTERVAL = "prev_interval"
     private const val KEY_NEXT_INTERVAL = "next_interval"
     private const val KEY_CRITICAL_TIME = "critical_time"
-    private const val DEFAULT_PREV_INTERVAL = 30
-    private const val DEFAULT_NEXT_INTERVAL = 300
-    private const val DEFAULT_CRITICAL_TIME = 14
+    const val DEFAULT_PREV_INTERVAL = 10
+    const val DEFAULT_NEXT_INTERVAL = 60
+    const val DEFAULT_CRITICAL_TIME = 14
 
     var PREV_INTERVAL = DEFAULT_PREV_INTERVAL
         private set

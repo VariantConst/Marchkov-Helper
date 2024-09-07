@@ -32,6 +32,7 @@ import com.variantconst.marchkov.utils.Settings
 @RequiresApi(Build.VERSION_CODES.O)
 class MainActivity : ComponentActivity() {
     private lateinit var reservationManager: ReservationManager
+    private var currentUsername by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
                                 qrCodeBitmap = bitmap
                                 reservationDetails = details
                                 qrCodeString = qrCode
+                                currentUsername = savedUsername // 更新当前用户名
 
                                 if (!isReservationLoaded) {
                                     isReservationLoading = true
@@ -161,15 +163,17 @@ class MainActivity : ComponentActivity() {
                                                 reservationDetails = null
                                                 qrCodeString = null
                                                 clearLoginInfo()
+                                                reservationManager.clearAllData()
                                                 errorMessage = null
                                                 showLoading = false
+                                                currentUsername = "" // 清除当前用户名
                                             },
                                             onToggleBusDirection = {
                                                 isToYanyuan = !isToYanyuan
                                                 isReservationLoading = true
                                                 scope.launch {
                                                     performLoginAndHandleResult(
-                                                        username = savedUsername ?: "",
+                                                        username = currentUsername,
                                                         password = savedPassword ?: "",
                                                         isToYanyuan = isToYanyuan,
                                                         updateLoadingMessage = { message -> loadingMessage = message },
@@ -209,7 +213,7 @@ class MainActivity : ComponentActivity() {
                                             isReservationLoading = isReservationLoading,
                                             onRefresh = {
                                                 performLoginAndHandleResult(
-                                                    username = savedUsername ?: "",
+                                                    username = currentUsername,
                                                     password = savedPassword ?: "",
                                                     isToYanyuan = isToYanyuan,
                                                     updateLoadingMessage = { message -> loadingMessage = message },
@@ -243,7 +247,7 @@ class MainActivity : ComponentActivity() {
                                                 )
                                             },
                                             reservationManager = reservationManager,
-                                            username = savedUsername ?: "",
+                                            username = currentUsername,
                                             password = savedPassword ?: ""
                                         )
                                     }
@@ -254,7 +258,7 @@ class MainActivity : ComponentActivity() {
                                             showLoading = true
                                             scope.launch {
                                                 reservationManager.performLogin(
-                                                    username = savedUsername ?: "",
+                                                    username = currentUsername,
                                                     password = savedPassword ?: "",
                                                     isToYanyuan = isToYanyuan,
                                                     updateLoadingMessage = { message ->
@@ -294,6 +298,7 @@ class MainActivity : ComponentActivity() {
                                                         isLoggedIn = true
                                                         showLoading = false
                                                         saveLoginInfo(username, password)
+                                                        currentUsername = username // 更新当前用户名
                                                         currentPage = 0
                                                         qrCodeBitmap = bitmap
                                                         reservationDetails = details
