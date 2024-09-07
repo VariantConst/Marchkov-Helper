@@ -53,9 +53,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
@@ -388,6 +392,11 @@ fun ReservationHistoryScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         } else {
+            // 添加日历视图卡片
+            ReservationCalendarCard(reservationHistory)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
             // 添加乘车时间统计卡片
             RideTimeStatisticsCard(reservationHistory)
             
@@ -400,6 +409,118 @@ fun ReservationHistoryScreen(
 
             // 添加爽约分析卡片
             NoShowAnalysisCard(reservationHistory)
+        }
+    }
+}
+
+@Composable
+fun ReservationCalendarCard(reservationHistory: List<RideInfo>) {
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    
+    val reservationDates = reservationHistory.map { LocalDate.parse(it.appointmentTime.substring(0, 10), dateFormatter) }.toSet()
+    
+    val earliestMonth = reservationHistory.minByOrNull { it.appointmentTime }?.let {
+        YearMonth.parse(it.appointmentTime.substring(0, 7))
+    } ?: YearMonth.now()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { 
+                        if (currentMonth > earliestMonth) {
+                            currentMonth = currentMonth.minusMonths(1)
+                        }
+                    },
+                    enabled = currentMonth > earliestMonth
+                ) {
+                    Icon(Icons.Default.ChevronLeft, contentDescription = "上个月")
+                }
+                Text(
+                    text = "${currentMonth.year}年${currentMonth.monthValue}月",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                IconButton(
+                    onClick = { 
+                        if (currentMonth < YearMonth.now()) {
+                            currentMonth = currentMonth.plusMonths(1)
+                        }
+                    },
+                    enabled = currentMonth < YearMonth.now()
+                ) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "下个月")
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            CalendarGrid(currentMonth, reservationDates)
+        }
+    }
+}
+
+@Composable
+fun CalendarGrid(month: YearMonth, reservationDates: Set<LocalDate>) {
+    val daysInMonth = month.lengthOfMonth()
+    val firstDayOfWeek = month.atDay(1).dayOfWeek.value % 7
+    
+    Column {
+        // 星期标题
+        Row(modifier = Modifier.fillMaxWidth()) {
+            listOf("日", "一", "二", "三", "四", "五", "六").forEach { day ->
+                Text(
+                    text = day,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+        
+        // 日期网格
+        (0 until 6).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                (0 until 7).forEach { col ->
+                    val day = row * 7 + col - firstDayOfWeek + 1
+                    if (day in 1..daysInMonth) {
+                        val date = month.atDay(day)
+                        val hasReservation = date in reservationDates
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .padding(2.dp)
+                        ) {
+                            if (hasReservation) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            shape = CircleShape
+                                        )
+                                )
+                            }
+                            Text(
+                                text = day.toString(),
+                                modifier = Modifier.align(Alignment.Center),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (hasReservation) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
