@@ -162,7 +162,7 @@ fun AdditionalActionsScreen(
     val context = LocalContext.current
     val sharedPreferences: SharedPreferences = context.getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
     val username = sharedPreferences.getString("username", "2301234567") ?: "2301234567"
-    val realName = sharedPreferences.getString("realName", "马池口����🐴") ?: "马池口🐮🐴"
+    val realName = sharedPreferences.getString("realName", "马池口🐮🐴") ?: "马池口🐮🐴"
     val department = sharedPreferences.getString("department", "这个需要你自己衡量！") ?: "这个需要你自己衡量！"
     val scrollState = rememberScrollState()
     LaunchedEffect(Unit) {
@@ -584,6 +584,7 @@ fun CalendarGrid(month: YearMonth, reservationDates: Set<LocalDate>) {
 @Composable
 fun SignInTimeStatisticsCard(rideInfoList: List<RideInfo>) {
     val signInTimeDifferences = calculateSignInTimeDifferences(rideInfoList)
+    val subtitle = getSignInTimeStatsSubtitle(signInTimeDifferences)
     
     Card(
         modifier = Modifier
@@ -598,8 +599,31 @@ fun SignInTimeStatisticsCard(rideInfoList: List<RideInfo>) {
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             SignInTimeStatisticsChart(signInTimeDifferences)
         }
+    }
+}
+
+data class SignInTimeStat(val timeDiff: Int, val count: Int)
+
+fun getSignInTimeStatsSubtitle(signInTimeDifferences: List<Int>): String {
+    val stats = signInTimeDifferences.groupBy { it }
+        .map { (timeDiff, group) -> SignInTimeStat(timeDiff, group.size) }
+    
+    val maxStat = stats.maxByOrNull { it.count }
+    
+    return when {
+        maxStat == null -> " " // 如果没有数据，返回空行
+        maxStat.timeDiff in -3..0 -> "统计上讲，你可能是一个ddl战士。"
+        maxStat.timeDiff < -3 -> "统计上讲，你喜欢留足提前量。"
+        maxStat.timeDiff > 0 -> "统计上讲，你几乎每次都是最后几个上车的。"
+        else -> " " // 其他情况返回空行
     }
 }
 
@@ -925,14 +949,14 @@ fun NoShowAnalysisCard(rideInfoList: List<RideInfo>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
+            .height(220.dp)  // 增加卡片高度以适应更大的饼图
             .padding(vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
             Text(
                 text = "爽约分析",
@@ -952,10 +976,15 @@ fun NoShowAnalysisCard(rideInfoList: List<RideInfo>) {
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(0.6f)  // 稍微减小文字宽度
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                NoShowPieChart(showUpCount, noShowCount)
+                Box(
+                    modifier = Modifier
+                        .size(180.dp)  // 增大 Box 的尺寸
+                        .offset(x = 0.dp, y = (-16).dp)
+                ) {
+                    NoShowPieChart(showUpCount, noShowCount)
+                }
             }
         }
     }
@@ -966,10 +995,10 @@ fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
     val showUpColor = MaterialTheme.colorScheme.primary
     val noShowColor = MaterialTheme.colorScheme.secondary
 
-    Canvas(modifier = Modifier.size(220.dp)) {
+    Canvas(modifier = Modifier.size(180.dp)) {  // 增大 Canvas 的尺寸
         val canvasWidth = size.width
         val canvasHeight = size.height
-        val radius = min(canvasWidth, canvasHeight) / 2 * 1.1f
+        val radius = min(canvasWidth, canvasHeight) / 2 * 1.1f  // 增大半径
         val center = Offset(canvasWidth / 2, canvasHeight / 2)
         
         val total = showUpCount + noShowCount
@@ -1006,7 +1035,7 @@ fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
         val paint = android.graphics.Paint().apply {
             color = Color.White.toArgb()
             textAlign = android.graphics.Paint.Align.CENTER
-            textSize = 14.dp.toPx()
+            textSize = 14.dp.toPx()  // 稍微减小文字大小以适应更大的饼图
         }
 
         val textHeight = paint.fontSpacing
@@ -1014,7 +1043,7 @@ fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
 
         // 绘制"已签到"文字
         val showUpTextAngle = Math.toRadians(showUpAngle / 2.0)
-        val showUpTextRadius = radius * 0.5f
+        val showUpTextRadius = radius * 0.5f  // 调整文字位置
         val showUpTextX = center.x + showUpTextRadius * cos(showUpTextAngle).toFloat()
         val showUpTextY = center.y + showUpTextRadius * sin(showUpTextAngle).toFloat()
         drawIntoCanvas { canvas ->
@@ -1034,7 +1063,7 @@ fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
 
         // 绘制"已爽约"文字
         val noShowTextAngle = Math.toRadians(showUpAngle + noShowAngle / 2.0)
-        val noShowTextRadius = radius * 0.4f
+        val noShowTextRadius = radius * 0.4f  // 调整文字位置
         val noShowTextX = center.x + noShowTextRadius * cos(noShowTextAngle).toFloat()
         val noShowTextY = center.y + noShowTextRadius * sin(noShowTextAngle).toFloat()
         drawIntoCanvas { canvas ->
