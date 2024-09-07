@@ -53,7 +53,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
@@ -472,9 +474,9 @@ fun SignInTimeStatisticsChart(signInTimeDifferences: List<Int>) {
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
             )
             drawIntoCanvas { canvas ->
-                val paint = Paint().apply {
+                val paint = android.graphics.Paint().apply {
                     color = Color.Gray.toArgb()
-                    textAlign = Paint.Align.RIGHT
+                    textAlign = android.graphics.Paint.Align.RIGHT
                     textSize = 24f
                 }
                 canvas.nativeCanvas.drawText(
@@ -500,9 +502,9 @@ fun SignInTimeStatisticsChart(signInTimeDifferences: List<Int>) {
         }
 
         // 绘制x轴刻度
-        val paint = Paint().apply {
+        val paint = android.graphics.Paint().apply {
             color = Color.Black.toArgb()
-            textAlign = Paint.Align.CENTER
+            textAlign = android.graphics.Paint.Align.CENTER
             textSize = 24f
         }
 
@@ -598,10 +600,10 @@ fun RideTimeStatisticsChart(
         val barWidth = canvasWidth / 17  // 6点到22点，共17个小时
         val centerY = canvasHeight / 2
 
-        val paint = Paint().apply {
+        val paint = android.graphics.Paint().apply {
             textSize = 24f
             typeface = Typeface.DEFAULT
-            textAlign = Paint.Align.RIGHT
+            textAlign = android.graphics.Paint.Align.RIGHT
         }
 
         // 绘制y轴刻度和标签
@@ -662,7 +664,7 @@ fun RideTimeStatisticsChart(
                         String.format("%02d:00", hour),
                         x + barWidth / 2 + 5f,  // 将x轴标签向右移动
                         canvasHeight + 30f,
-                        paint.apply { textAlign = Paint.Align.CENTER }
+                        paint.apply { textAlign = android.graphics.Paint.Align.CENTER }
                     )
                 }
                 // 绘制垂直虚线，延长至超过横线
@@ -709,7 +711,7 @@ fun RideTimeLegend(toYanyuanColor: Color, toChangpingColor: Color) {
     }
 }
 
-// 新增爽约分析卡片组件
+
 @Composable
 fun NoShowAnalysisCard(rideInfoList: List<RideInfo>) {
     val validRideCount = rideInfoList.size
@@ -720,31 +722,37 @@ fun NoShowAnalysisCard(rideInfoList: List<RideInfo>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp)
+            .height(220.dp)
             .padding(vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
             Text(
                 text = "爽约分析",
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(
-                text = if (noShowRate > 0.3) {
-                    "你爽约了${validRideCount}次预约中的${noShowCount}次。咕咕咕？"
-                } else {
-                    "你在${validRideCount}次预约中只爽约了${noShowCount}次。很有精神！"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = if (noShowRate > 0.3) {
+                        "你爽约了${validRideCount}次预约中的${noShowCount}次。咕咕咕？"
+                    } else {
+                        "你在${validRideCount}次预约中只爽约了${noShowCount}次。很有精神！"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
                 NoShowPieChart(showUpCount, noShowCount)
-                NoShowLegend()
             }
         }
     }
@@ -753,12 +761,12 @@ fun NoShowAnalysisCard(rideInfoList: List<RideInfo>) {
 @Composable
 fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
     val showUpColor = MaterialTheme.colorScheme.primary
-    val noShowColor = MaterialTheme.colorScheme.error
+    val noShowColor = MaterialTheme.colorScheme.secondary
 
-    Canvas(modifier = Modifier.size(150.dp)) {
+    Canvas(modifier = Modifier.size(220.dp)) {
         val canvasWidth = size.width
         val canvasHeight = size.height
-        val radius = min(canvasWidth, canvasHeight) / 2 * 0.8f
+        val radius = min(canvasWidth, canvasHeight) / 2 * 1.1f
         val center = Offset(canvasWidth / 2, canvasHeight / 2)
         
         val total = showUpCount + noShowCount
@@ -790,41 +798,55 @@ fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
             center = center,
             style = Stroke(width = 2.dp.toPx())
         )
-    }
-}
 
-@Composable
-fun NoShowLegend() {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.Start
-    ) {
-        LegendItem(
-            color = MaterialTheme.colorScheme.primary,
-            text = "已签到"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        LegendItem(
-            color = MaterialTheme.colorScheme.error,
-            text = "已爽约"
-        )
-    }
-}
+        // 添加文字
+        val paint = android.graphics.Paint().apply {
+            color = Color.White.toArgb()
+            textAlign = android.graphics.Paint.Align.CENTER
+            textSize = 14.dp.toPx()
+        }
 
-@Composable
-fun LegendItem(color: Color, text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .background(color, shape = CircleShape)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        val textHeight = paint.fontSpacing
+        val lineSpacing = 4.dp.toPx()
+
+        // 绘制"已签到"文字
+        val showUpTextAngle = Math.toRadians(showUpAngle / 2.0)
+        val showUpTextRadius = radius * 0.5f
+        val showUpTextX = center.x + showUpTextRadius * cos(showUpTextAngle).toFloat()
+        val showUpTextY = center.y + showUpTextRadius * sin(showUpTextAngle).toFloat()
+        drawIntoCanvas { canvas ->
+            canvas.nativeCanvas.drawText(
+                "已签到",
+                showUpTextX,
+                showUpTextY - textHeight / 2 - lineSpacing / 2,
+                paint
+            )
+            canvas.nativeCanvas.drawText(
+                "$showUpCount",
+                showUpTextX,
+                showUpTextY + textHeight / 2 + lineSpacing / 2,
+                paint
+            )
+        }
+
+        // 绘制"已爽约"文字
+        val noShowTextAngle = Math.toRadians(showUpAngle + noShowAngle / 2.0)
+        val noShowTextRadius = radius * 0.4f
+        val noShowTextX = center.x + noShowTextRadius * cos(noShowTextAngle).toFloat()
+        val noShowTextY = center.y + noShowTextRadius * sin(noShowTextAngle).toFloat()
+        drawIntoCanvas { canvas ->
+            canvas.nativeCanvas.drawText(
+                "已爽约",
+                noShowTextX,
+                noShowTextY - textHeight / 2 - lineSpacing / 2,
+                paint
+            )
+            canvas.nativeCanvas.drawText(
+                "$noShowCount",
+                noShowTextX,
+                noShowTextY + textHeight / 2 + lineSpacing / 2,
+                paint
+            )
+        }
     }
 }
