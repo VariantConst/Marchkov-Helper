@@ -42,12 +42,18 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.toArgb
 import kotlin.math.absoluteValue
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.math.abs
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.min
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalPagerApi::class)
@@ -330,9 +336,12 @@ fun ReservationHistoryScreen(
     isLoading: Boolean,
     onRefresh: () -> Unit
 ) {
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
         Row(
@@ -363,7 +372,7 @@ fun ReservationHistoryScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         } else if (reservationHistory == null) {
@@ -382,14 +391,155 @@ fun ReservationHistoryScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 原有的预约历史列表
-            LazyColumn {
-                items(reservationHistory) { ride ->
-                    RideInfoItem(ride)
+            // 添加签到时间差统计卡片
+            SignInTimeStatisticsCard(reservationHistory)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 添加爽约分析卡片
+            NoShowAnalysisCard(reservationHistory)
+        }
+    }
+}
+
+@Composable
+fun SignInTimeStatisticsCard(rideInfoList: List<RideInfo>) {
+    val signInTimeDifferences = calculateSignInTimeDifferences(rideInfoList)
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "签到时间差统计",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SignInTimeStatisticsChart(signInTimeDifferences)
+        }
+    }
+}
+
+@Composable
+fun SignInTimeStatisticsChart(signInTimeDifferences: List<Int>) {
+    val sortedDifferences = signInTimeDifferences.sorted()
+    val totalCount = sortedDifferences.size
+    var lowerBound = 0
+    var upperBound = 0
+    var coveredCount = sortedDifferences.count { it == 0 }
+
+    while (coveredCount.toFloat() / totalCount < 0.95) {
+        lowerBound--
+        upperBound++
+        coveredCount = sortedDifferences.count { it in lowerBound..upperBound }
+    }
+
+    val trimmedDifferences = sortedDifferences.filter { it in lowerBound..upperBound }
+    val frequencyMap = trimmedDifferences.groupingBy { it }.eachCount()
+    val maxFrequency = frequencyMap.values.maxOrNull() ?: 0
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(200.dp)
+    ) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val barWidth = canvasWidth / (upperBound - lowerBound + 3) // 给两边留一些空间
+        
+        // 绘制x轴
+        drawLine(
+            color = Color.Gray,
+            start = Offset(0f, canvasHeight - 20f),
+            end = Offset(canvasWidth, canvasHeight - 20f),
+            strokeWidth = 2f
+        )
+
+        // 绘制横向虚线和y轴标签
+        val yAxisSteps = 5
+        for (i in 1..yAxisSteps) {
+            val y = canvasHeight - 20f - (i.toFloat() / yAxisSteps) * (canvasHeight - 40f)
+            drawLine(
+                color = Color.LightGray,
+                start = Offset(0f, y),
+                end = Offset(canvasWidth, y),
+                strokeWidth = 1f,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+            )
+            drawIntoCanvas { canvas ->
+                val paint = Paint().apply {
+                    color = Color.Gray.toArgb()
+                    textAlign = Paint.Align.RIGHT
+                    textSize = 24f
                 }
+                canvas.nativeCanvas.drawText(
+                    "${(i.toFloat() / yAxisSteps * maxFrequency).toInt()}",
+                    40f,
+                    y - 5f,
+                    paint
+                )
+            }
+        }
+
+        // 绘制柱状图
+        frequencyMap.forEach { (difference, frequency) ->
+            val x = (difference - lowerBound + 1) * barWidth
+            val barHeight = (frequency.toFloat() / maxFrequency) * (canvasHeight - 40f)
+            
+            drawRect(
+                color = primaryColor,
+                topLeft = Offset(x, canvasHeight - 20f - barHeight),
+                size = Size(barWidth * 0.8f, barHeight),
+                alpha = 0.7f
+            )
+        }
+
+        // 绘制x轴刻度
+        val paint = Paint().apply {
+            color = Color.Black.toArgb()
+            textAlign = Paint.Align.CENTER
+            textSize = 24f
+        }
+
+        for (diff in lowerBound..upperBound step 5) {
+            val x = (diff - lowerBound + 1) * barWidth + barWidth / 2
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.drawText(
+                    "$diff",
+                    x,
+                    canvasHeight,
+                    paint
+                )
             }
         }
     }
+}
+
+fun calculateSignInTimeDifferences(rideInfoList: List<RideInfo>): List<Int> {
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    val appointmentFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+
+    return rideInfoList
+        .filter { it.appointmentSignTime?.isNotBlank() == true }
+        .mapNotNull { rideInfo ->
+            try {
+                val signInTime = dateFormat.parse(rideInfo.appointmentSignTime!!)
+                val appointmentTime = appointmentFormat.parse(rideInfo.appointmentTime.trim())
+                
+                if (signInTime != null && appointmentTime != null) {
+                    ((signInTime.time - appointmentTime.time) / (60 * 1000)).toInt()
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
 }
 
 @Composable
@@ -559,43 +709,122 @@ fun RideTimeLegend(toYanyuanColor: Color, toChangpingColor: Color) {
     }
 }
 
+// 新增爽约分析卡片组件
 @Composable
-fun RideInfoItem(ride: RideInfo) {
+fun NoShowAnalysisCard(rideInfoList: List<RideInfo>) {
+    val validRideCount = rideInfoList.size
+    val noShowCount = rideInfoList.count { it.statusName == "已预约" }
+    val showUpCount = validRideCount - noShowCount
+    val noShowRate = noShowCount.toFloat() / validRideCount
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(300.dp)
             .padding(vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = ride.resourceName,
+                text = "爽约分析",
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "预约时间: ${ride.appointmentTime}",
-                style = MaterialTheme.typography.bodyMedium
+                text = if (noShowRate > 0.3) {
+                    "你爽约了${validRideCount}次预约中的${noShowCount}次。咕咕咕？"
+                } else {
+                    "你在${validRideCount}次预约中只爽约了${noShowCount}次。很有精神！"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                text = "状态: ${ride.statusName}",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = Icons.Default.AccessTime,
-                    contentDescription = "签到时间",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = ride.appointmentSignTime?.let { "签到时间: $it" } ?: "未签到",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (ride.appointmentSignTime != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                )
+                NoShowPieChart(showUpCount, noShowCount)
+                NoShowLegend()
             }
         }
+    }
+}
+
+@Composable
+fun NoShowPieChart(showUpCount: Int, noShowCount: Int) {
+    val showUpColor = MaterialTheme.colorScheme.primary
+    val noShowColor = MaterialTheme.colorScheme.error
+
+    Canvas(modifier = Modifier.size(150.dp)) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val radius = min(canvasWidth, canvasHeight) / 2 * 0.8f
+        val center = Offset(canvasWidth / 2, canvasHeight / 2)
+        
+        val total = showUpCount + noShowCount
+        val showUpAngle = 360f * showUpCount / total
+        val noShowAngle = 360f * noShowCount / total
+
+        drawArc(
+            color = showUpColor,
+            startAngle = 0f,
+            sweepAngle = showUpAngle,
+            useCenter = true,
+            topLeft = Offset(center.x - radius, center.y - radius),
+            size = Size(radius * 2, radius * 2)
+        )
+
+        drawArc(
+            color = noShowColor,
+            startAngle = showUpAngle,
+            sweepAngle = noShowAngle,
+            useCenter = true,
+            topLeft = Offset(center.x - radius, center.y - radius),
+            size = Size(radius * 2, radius * 2)
+        )
+
+        // 添加白色边框
+        drawCircle(
+            color = Color.White,
+            radius = radius,
+            center = center,
+            style = Stroke(width = 2.dp.toPx())
+        )
+    }
+}
+
+@Composable
+fun NoShowLegend() {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.Start
+    ) {
+        LegendItem(
+            color = MaterialTheme.colorScheme.primary,
+            text = "已签到"
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        LegendItem(
+            color = MaterialTheme.colorScheme.error,
+            text = "已爽约"
+        )
+    }
+}
+
+@Composable
+fun LegendItem(color: Color, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .background(color, shape = CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
