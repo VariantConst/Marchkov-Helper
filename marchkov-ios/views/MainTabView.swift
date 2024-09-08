@@ -40,7 +40,7 @@ struct MainTabView: View {
         }
     }
     
-    @State private var availableBuses: [String: [String]] = [:]
+    @State private var availableBuses: [String: [BusInfo]] = [:]
     @State private var token: String?
     
     var body: some View {
@@ -211,7 +211,7 @@ struct MainTabView: View {
     
     private func fetchAvailableBuses() {
         guard let credentials = UserDataManager.shared.getUserCredentials() else {
-            LogManager.shared.addLog("获取班车信息失败：未找到用户凭证")
+            LogManager.shared.addLog("获取班车信息失：未找用户凭证")
             return
         }
 
@@ -242,29 +242,36 @@ struct MainTabView: View {
     }
 
     private func parseAvailableBuses(resources: [LoginService.Resource]) {
-        var toYanyuan: [String] = []
-        var toChangping: [String] = []
+        var toYanyuan: [BusInfo] = []
+        var toChangping: [BusInfo] = []
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let today = dateFormatter.string(from: Date())
         
         for resource in resources {
+            LogManager.shared.addLog("处理资源: ID = \(resource.id), 名称 = \(resource.name)")
             for busInfo in resource.busInfos where busInfo.date == today && busInfo.margin > 0 {
                 let time = busInfo.yaxis
+                let direction: String
                 if resource.id == 2 || resource.id == 4 {
-                    toYanyuan.append(time)
+                    direction = "去燕园"
+                    toYanyuan.append(BusInfo(time: time, direction: direction, margin: busInfo.margin, resourceName: resource.name))
+                    LogManager.shared.addLog("添加去燕园班车: \(time), 余票: \(busInfo.margin)")
                 } else if resource.id == 5 || resource.id == 6 || resource.id == 7 {
-                    toChangping.append(time)
+                    direction = "去昌平"
+                    toChangping.append(BusInfo(time: time, direction: direction, margin: busInfo.margin, resourceName: resource.name))
+                    LogManager.shared.addLog("添加去昌平班车: \(time), 余票: \(busInfo.margin)")
                 }
             }
         }
         
         DispatchQueue.main.async {
             self.availableBuses = [
-                "去燕园": toYanyuan.sorted(),
-                "去昌平": toChangping.sorted()
+                "去燕园": toYanyuan.sorted { $0.time < $1.time },
+                "去昌平": toChangping.sorted { $0.time < $1.time }
             ]
+            LogManager.shared.addLog("更新可用班车: 去燕园 \(toYanyuan.count) 辆, 去昌平 \(toChangping.count) 辆")
         }
     }
 }
@@ -407,30 +414,5 @@ extension Color {
             blue:  Double(b) / 255,
             opacity: Double(a) / 255
         )
-    }
-}
-
-struct ReservationView: View {
-    @Binding var availableBuses: [String: [String]]
-    @Environment(\.colorScheme) private var colorScheme
-    var refreshAction: () -> Void  // 添加这个属性
-
-    var body: some View {
-        NavigationView {
-            List {
-                ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                    Section(header: Text(direction)) {
-                        ForEach(availableBuses[direction] ?? [], id: \.self) { time in
-                            Text(time)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("今日可预约班车")
-            .background(gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all))
-            .refreshable {
-                refreshAction()  // 调用刷新动作
-            }
-        }
     }
 }

@@ -88,10 +88,26 @@ struct RideHistoryView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     rideCalendarView
-                    timeStatsView
-                    signInTimeStatsView
-                    statusStatsView
-                    routeStatsView
+                    if !timeStats.isEmpty {
+                        timeStatsView
+                    } else {
+                        noDataView(title: "乘车时间统计")
+                    }
+                    if !signInTimeStats.isEmpty {
+                        signInTimeStatsView
+                    } else {
+                        noDataView(title: "签到时间差")
+                    }
+                    if !statusStats.isEmpty {
+                        statusStatsView
+                    } else {
+                        noDataView(title: "爽约分析")
+                    }
+                    if !resourceNameStats.isEmpty {
+                        routeStatsView
+                    } else {
+                        noDataView(title: "路线统计")
+                    }
                 }
                 .padding()
             }
@@ -103,6 +119,18 @@ struct RideHistoryView: View {
             Text("暂无数据")
                 .foregroundColor(textColor)
                 .padding()
+        }
+    }
+    
+    // 添加一个通用的无数据视图
+    private func noDataView(title: String) -> some View {
+        CardView {
+            VStack(alignment: .leading, spacing: 10) {
+                cardTitle(title)
+                Text("暂无足够数据")
+                    .font(.subheadline)
+                    .foregroundColor(textColor)
+            }
         }
     }
     
@@ -150,41 +178,59 @@ struct RideHistoryView: View {
         }
     }
     
-    // 添加 timeStatsView
+    // 添加新的方法来计算乘车日历的副标题
+    private func getRideCalendarSubtitle() -> String {
+        let calendar = Calendar.current
+        let today = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: today)!
+        let sixtyDaysAgo = calendar.date(byAdding: .day, value: -60, to: today)!
+        
+        let last30DaysRides = calendarDates.filter { $0 >= thirtyDaysAgo && $0 <= today }
+        let previous30DaysRides = calendarDates.filter { $0 >= sixtyDaysAgo && $0 < thirtyDaysAgo }
+        
+        let last30DaysRideCount = last30DaysRides.count
+        let last30DaysPercentage = Double(last30DaysRideCount) / 30.0 * 100
+        
+        if last30DaysPercentage > 60 {
+            return String(format: "刻苦如你，过去30天有%.1f%%的天数乘坐了班车。", last30DaysPercentage)
+        } else if last30DaysRideCount > 0 {
+            let comparisonText = last30DaysRideCount > previous30DaysRides.count ? "多" : "少"
+            let encouragementText = comparisonText == "多" ? "辛苦！" : "馨园吃腻了吗？"
+            return "你最近乘坐班车比以前更\(comparisonText)了。\(encouragementText)"
+        } else {
+            return "过去一个月你一次班车都没坐过。开摆！"
+        }
+    }
+    
+    // 修改 timeStatsView
     private var timeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 cardTitle("乘车时间统计")
-                cardSubtitle(getTimeStatsSubtitle())
-                timeStatsChart
+                if !timeStats.isEmpty {
+                    cardSubtitle(getTimeStatsSubtitle())
+                    timeStatsChart
+                } else {
+                    Text("暂无足够数据")
+                        .font(.subheadline)
+                        .foregroundColor(textColor)
+                }
             }
         }
     }
     
-    // 添加 getTimeStatsSubtitle 方法
     private func getTimeStatsSubtitle() -> String {
-        if let maxStat = timeStats.max(by: { $0.countToChangping + $0.countToYanyuan < $1.countToChangping + $1.countToYanyuan }) {
-            return "你最常乘车的时间是 \(maxStat.hour):00。"
-        }
-        return " " // 如果没有数据，返回空行
-    }
-    
-    // 添加 getRideCalendarSubtitle 方法
-    private func getRideCalendarSubtitle() -> String {
-        let totalDays = calendarDates.count
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let daysInYear = Calendar.current.range(of: .day, in: .year, for: Date())?.count ?? 365
+        let maxToYanyuan = timeStats.max(by: { $0.countToYanyuan < $1.countToYanyuan })
+        let maxToChangping = timeStats.max(by: { $0.countToChangping < $1.countToChangping })
         
-        let frequency = Double(totalDays) / Double(daysInYear)
-        
-        if frequency >= 0.8 {
-            return "你是个勤奋的乘客，今年几乎天天都在坐班车！"
-        } else if frequency >= 0.5 {
-            return "你是个常客，今年有一半以上的日子都乘坐了班车。"
-        } else if frequency >= 0.3 {
-            return "你是个普通乘客，今年有三分之一的日子乘坐了班车。"
+        if let maxYanyuan = maxToYanyuan, (11...17).contains(maxYanyuan.hour) {
+            return "你习惯日上三竿时再去燕园。年轻人要少熬夜。"
+        } else if let maxChangping = maxToChangping, maxChangping.hour >= 21 {
+            return "你习惯工作到深夜才休息。真是个卷王！"
+        } else if let maxYanyuan = maxToYanyuan, maxYanyuan.hour < 10 {
+            return "你习惯早起去燕园工作。早起的鸟儿有丹炼！"
         } else {
-            return "你是个偶尔乘车的乘客，今年乘车次数不多。"
+            return " " // 空行
         }
     }
     
@@ -253,9 +299,15 @@ struct RideHistoryView: View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 cardTitle("签到时间差")
-                cardSubtitle(getSignInTimeStatsSubtitle())
-                signInTimeStatsChart
-                signInTimeStatsFooter
+                if !signInTimeStats.isEmpty {
+                    cardSubtitle(getSignInTimeStatsSubtitle())
+                    signInTimeStatsChart
+                    signInTimeStatsFooter
+                } else {
+                    Text("暂无足够数据")
+                        .font(.subheadline)
+                        .foregroundColor(textColor)
+                }
             }
         }
     }
@@ -315,24 +367,30 @@ struct RideHistoryView: View {
     // 修改 statusStatsView
     private var statusStatsView: some View {
         CardView {
-            HStack(alignment: .top, spacing: 20) {
-                VStack(alignment: .center, spacing: 30) { // 将 alignment 改为 .center
-                    cardTitle("爽约分析")
-                        .frame(maxWidth: .infinity, alignment: .leading) // 保持标题左对齐
-                    
-                    let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
-                    let noShowRate = Double(noShowCount) / Double(validRideCount)
-                    
-                    if noShowRate > 0.3 {
-                        cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
-                    } else {
-                        cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+            VStack(alignment: .leading, spacing: 0) {
+                cardTitle("爽约分析")
+                if !statusStats.isEmpty && validRideCount > 0 {
+                    HStack(alignment: .center, spacing: 20) {
+                        VStack(alignment: .center, spacing: 30) {
+                            let noShowCount = statusStats.first(where: { $0.status == "已预约" })?.count ?? 0
+                            let noShowRate = Double(noShowCount) / Double(validRideCount)
+                            
+                            if noShowRate > 0.3 {
+                                cardSubtitle("你爽约了\(validRideCount)次预约中的\(noShowCount)次。咕咕咕？")
+                            } else {
+                                cardSubtitle("你在\(validRideCount)次预约中只爽约了\(noShowCount)次。很有精神！")
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        
+                        PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
+                            .frame(width: 150, height: 150)
                     }
+                } else {
+                    Text("暂无足够数据")
+                        .font(.subheadline)
+                        .foregroundColor(textColor)
                 }
-                .frame(maxWidth: .infinity) // 让 VStack 占据所有可用空间
-                
-                PieChartView(data: statusStats, highlightedSlice: $highlightedSlice, accentColor: accentColor)
-                    .frame(width: 150, height: 150)
             }
         }
     }
@@ -342,33 +400,39 @@ struct RideHistoryView: View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
                 cardTitle("路线统计")
-                if let mostFrequentRoute = resourceNameStats.first {
-                    cardSubtitle("你最常坐的路线是: \(mostFrequentRoute.route)")
-                }
-                Chart(resourceNameStats) {
-                    BarMark(
-                        x: .value("次数", $0.count),
-                        y: .value("路线", $0.route)
-                    )
-                    .foregroundStyle(accentColor.gradient)
-                    .cornerRadius(5)
-                }
-                .frame(height: CGFloat(resourceNameStats.count * 30))
-                .chartXAxis {
-                    AxisMarks(position: .bottom) {
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel()
+                if !resourceNameStats.isEmpty {
+                    if let mostFrequentRoute = resourceNameStats.first {
+                        cardSubtitle("你最常坐的路线是: \(mostFrequentRoute.route)")
                     }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .leading) {
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel()
+                    Chart(resourceNameStats) {
+                        BarMark(
+                            x: .value("次数", $0.count),
+                            y: .value("路线", $0.route)
+                        )
+                        .foregroundStyle(accentColor.gradient)
+                        .cornerRadius(5)
                     }
+                    .frame(height: CGFloat(resourceNameStats.count * 30))
+                    .chartXAxis {
+                        AxisMarks(position: .bottom) {
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel()
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading) {
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel()
+                        }
+                    }
+                    .chartXScale(domain: 0...(maxRouteCount * 1.1))
+                } else {
+                    Text("暂无足够数据")
+                        .font(.subheadline)
+                        .foregroundColor(textColor)
                 }
-                .chartXScale(domain: 0...(maxRouteCount * 1.1))
             }
         }
     }
@@ -436,6 +500,13 @@ struct RideHistoryView: View {
         
         // 处理日历数据
         var allDates: [Date] = []
+        var signInTimeDiffs: [Int] = []
+        let appointmentFormatter = DateFormatter()
+        appointmentFormatter.dateFormat = "yyyy-MM-dd HH:mm"
+        
+        let signFormatter = DateFormatter()
+        signFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        
         for ride in rides {
             if ride.statusName != "已撤销" {
                 validRideCount += 1
@@ -444,7 +515,7 @@ struct RideHistoryView: View {
                 
                 statusDict[ride.statusName, default: 0] += 1
                 
-                if let date = Self.appointmentDateFormatter.date(from: ride.appointmentTime) {
+                if let date = appointmentFormatter.date(from: ride.appointmentTime) {
                     let hour = Calendar.current.component(.hour, from: date)
                     if hour >= 5 && hour <= 23 {
                         let isToChangping = isRouteToChangping(ride.resourceName)
@@ -458,6 +529,13 @@ struct RideHistoryView: View {
                     let startOfDay = Calendar.current.startOfDay(for: date)
                     calendarDates.insert(startOfDay)
                     allDates.append(startOfDay)
+                }
+                
+                if let signTime = ride.appointmentSignTime, !signTime.isEmpty,
+                   let appointmentDate = appointmentFormatter.date(from: ride.appointmentTime.trimmingCharacters(in: .whitespaces)),
+                   let signDate = signFormatter.date(from: signTime) {
+                    let diff = Int(signDate.timeIntervalSince(appointmentDate) / 60)
+                    signInTimeDiffs.append(diff)
                 }
             }
         }
@@ -476,44 +554,33 @@ struct RideHistoryView: View {
         statusStats = statusDict.map { StatusStats(status: $0.key, count: $0.value) }
         
         // 处理签到时间差
-        var signInTimeDiffs: [Int] = []
-        let appointmentFormatter = DateFormatter()
-        appointmentFormatter.dateFormat = "yyyy-MM-dd HH:mm"
-        
-        let signFormatter = DateFormatter()
-        signFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        
-        for ride in rides {
-            if let signTime = ride.appointmentSignTime, !signTime.isEmpty,
-               let appointmentDate = appointmentFormatter.date(from: ride.appointmentTime.trimmingCharacters(in: .whitespaces)),
-               let signDate = signFormatter.date(from: signTime) {
-                let diff = Int(signDate.timeIntervalSince(appointmentDate) / 60)
-                signInTimeDiffs.append(diff)
-            }
+        if !signInTimeDiffs.isEmpty {
+            // 计算95%的数据围
+            let sortedDiffs = signInTimeDiffs.sorted()
+            let lowerIndex = Int(Double(sortedDiffs.count) * 0.025)
+            let upperIndex = Int(Double(sortedDiffs.count) * 0.975)
+            var lowerBound = sortedDiffs[lowerIndex]
+            var upperBound = sortedDiffs[upperIndex]
+            
+            // 确保0居中，并向两边扩展
+            let maxAbsValue = max(abs(lowerBound), abs(upperBound))
+            lowerBound = -maxAbsValue
+            upperBound = maxAbsValue
+            
+            // 两边各延长2分钟
+            lowerBound -= 2
+            upperBound += 2
+            
+            signInTimeRange = (lowerBound, upperBound)
+            
+            // 统计签到时间差
+            let groupedDiffs = Dictionary(grouping: signInTimeDiffs, by: { max(min($0, upperBound), lowerBound) })
+            signInTimeStats = groupedDiffs.map { SignInTimeStats(timeDiff: $0.key, count: $0.value.count) }
+                .sorted { $0.timeDiff < $1.timeDiff }
+        } else {
+            signInTimeStats = []
+            signInTimeRange = (0, 0)
         }
-        
-        // 计算95%的数据围
-        let sortedDiffs = signInTimeDiffs.sorted()
-        let lowerIndex = Int(Double(sortedDiffs.count) * 0.025)
-        let upperIndex = Int(Double(sortedDiffs.count) * 0.975)
-        var lowerBound = sortedDiffs[lowerIndex]
-        var upperBound = sortedDiffs[upperIndex]
-        
-        // 确保0居中，并向两边扩展
-        let maxAbsValue = max(abs(lowerBound), abs(upperBound))
-        lowerBound = -maxAbsValue
-        upperBound = maxAbsValue
-        
-        // 两边各延长2分钟
-        lowerBound -= 2
-        upperBound += 2
-        
-        signInTimeRange = (lowerBound, upperBound)
-        
-        // 统计签到时间差
-        let groupedDiffs = Dictionary(grouping: signInTimeDiffs, by: { max(min($0, upperBound), lowerBound) })
-        signInTimeStats = groupedDiffs.map { SignInTimeStats(timeDiff: $0.key, count: $0.value.count) }
-            .sorted { $0.timeDiff < $1.timeDiff }
         
         isDataReady = true // 数据处理完成，标记为准备就绪
     }
@@ -887,4 +954,3 @@ struct CardView<Content: View>: View {
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
     }
 }
-

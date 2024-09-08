@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F5084CA92C8D6E2F0033FC0A /* ReservationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5084CA82C8D6E2F0033FC0A /* ReservationView.swift */; };
 		F50AFC762C4BDEB3009BDF31 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */; };
 		F50AFC782C4BEC3D009BDF31 /* SuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */; };
 		F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55F58122C482AED002E65F0 /* UserInfoCard.swift */; };
@@ -50,6 +51,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F5084CA82C8D6E2F0033FC0A /* ReservationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReservationView.swift; sourceTree = "<group>"; };
 		F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessView.swift; sourceTree = "<group>"; };
 		F55F58122C482AED002E65F0 /* UserInfoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserInfoCard.swift; sourceTree = "<group>"; };
 		F5AAEB872C8A0998008F4A26 /* RideHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideHistoryView.swift; sourceTree = "<group>"; };
@@ -212,6 +214,7 @@
 				F5D8A7192C463AD4001E0280 /* LogView.swift */,
 				F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */,
 				F5AAEB872C8A0998008F4A26 /* RideHistoryView.swift */,
+				F5084CA82C8D6E2F0033FC0A /* ReservationView.swift */,
 			);
 			path = views;
 			sourceTree = "<group>";
@@ -353,6 +356,7 @@
 			files = (
 				F50AFC782C4BEC3D009BDF31 /* SuccessView.swift in Sources */,
 				F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */,
+				F5084CA92C8D6E2F0033FC0A /* ReservationView.swift in Sources */,
 				F5FD0D852C522E47006BF85E /* BrightnessManager.swift in Sources */,
 				F5D8A7282C46407C001E0280 /* InfoRow.swift in Sources */,
 				F5D8A71C2C463C7C001E0280 /* QRCode.swift in Sources */,
