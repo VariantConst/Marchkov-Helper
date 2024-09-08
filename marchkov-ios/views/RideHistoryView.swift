@@ -122,7 +122,7 @@ struct RideHistoryView: View {
         }
     }
     
-    // 添加一个通用的无数据视图
+    // 修改 noDataView 函数
     private func noDataView(title: String) -> some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
@@ -130,8 +130,11 @@ struct RideHistoryView: View {
                 Text("暂无足够数据")
                     .font(.subheadline)
                     .foregroundColor(textColor)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: 200) // 添加一个固定高度
             }
         }
+        .frame(maxWidth: .infinity) // 确保卡片占据全宽
     }
     
     private var loadingView: some View {
