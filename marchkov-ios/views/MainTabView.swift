@@ -395,10 +395,8 @@ struct HorseButtonView: View {
             .buttonStyle(ScaleButtonStyle())
             
             HStack(spacing: 10) {
-                Image(systemName: "hand.tap")
-                Text("或")
                 Image(systemName: "iphone.radiowaves.left.and.right")
-                Text("马上马池口！")
+                Text("摇一摇跳转到马池口")
             }
             .font(.system(size: 16, weight: .medium))
             .foregroundColor(accentColor)

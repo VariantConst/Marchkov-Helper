@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreHaptics
 
 struct SuccessView: View {
     let result: ReservationResult
@@ -6,6 +7,7 @@ struct SuccessView: View {
     @Binding var showLogs: Bool
     @State private var isReverseReserving: Bool = false
     @State private var showReverseReservationError: Bool = false
+    @State private var reverseReservationErrorMessage: String = ""
     @Binding var reservationResult: ReservationResult?
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var brightnessManager: BrightnessManager
@@ -14,6 +16,9 @@ struct SuccessView: View {
     @State private var isCancelling: Bool = false
     @State private var showCancellationError: Bool = false
     @Binding var showHorseButton: Bool
+    @State private var reverseButtonText: String = "预约反向班车"
+    @State private var isReverseButtonDisabled: Bool = false
+    @State private var engine: CHHapticEngine?
 
     private var mainColor: Color {
         result.isPastBus ?
@@ -104,7 +109,7 @@ struct SuccessView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .imageScale(.small)
-                                Text(isReverseReserving ? "预约中..." : "预约反向班车")
+                                Text(isReverseReserving ? "预约中..." : reverseButtonText)
                                     .fontWeight(.semibold)
                             }
                             .font(.system(size: 16))
@@ -112,12 +117,12 @@ struct SuccessView: View {
                             .padding(.vertical, 14)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(isReverseReserving ? Color.gray.opacity(0.05) : accentColor.opacity(0.08))
+                                    .fill(isReverseButtonDisabled ? Color.gray.opacity(0.05) : accentColor.opacity(0.08))
                             )
-                            .foregroundColor(isReverseReserving ? Color.gray : accentColor)
-                            .animation(.easeInOut(duration: 0.2), value: isReverseReserving)
+                            .foregroundColor(isReverseButtonDisabled ? Color.gray : accentColor)
+                            .animation(.easeInOut(duration: 0.2), value: isReverseButtonDisabled)
                         }
-                        .disabled(isReverseReserving)
+                        .disabled(isReverseButtonDisabled)
                         .padding(.horizontal, 26)
                         .padding(.vertical, 10)
                     }
@@ -135,6 +140,7 @@ struct SuccessView: View {
             brightnessManager.captureCurrentBrightness()
             brightnessManager.isShowingQRCode = true
             brightnessManager.setMaxBrightness()
+            prepareHaptics()
         }
         .onDisappear {
             brightnessManager.isShowingQRCode = false
@@ -149,7 +155,7 @@ struct SuccessView: View {
         .alert(isPresented: $showReverseReservationError) {
             Alert(
                 title: Text("反向预约失败"),
-                message: Text("反向无车可坐"),
+                message: Text(reverseReservationErrorMessage),
                 dismissButton: .default(Text("确定"))
             )
         }
@@ -170,16 +176,62 @@ struct SuccessView: View {
     
     private func reverseReservation() {
         isReverseReserving = true
+        isReverseButtonDisabled = true
+        LogManager.shared.addLog("开始尝试反向预约")
         LoginService.shared.reverseReservation(currentResult: result) { result in
             DispatchQueue.main.async {
                 isReverseReserving = false
                 switch result {
                 case .success(let newReservation):
+                    LogManager.shared.addLog("反向预约成功：\(newReservation.name) \(newReservation.yaxis)")
                     reservationResult = newReservation
-                case .failure:
-                    showReverseReservationError = true
+                    isReverseButtonDisabled = false
+                case .failure(let error):
+                    LogManager.shared.addLog("反向预约失败：\(error.localizedDescription)")
+                    reverseButtonText = "反向无车可坐"
+                    
+                    // 触发连续震动反馈
+                    complexFailureHaptic()
+                    
+                    // 2秒后恢复按钮文字和状态
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        reverseButtonText = "预约反向班车"
+                        isReverseButtonDisabled = false
+                    }
                 }
             }
+        }
+    }
+    
+    private func prepareHaptics() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        do {
+            engine = try CHHapticEngine()
+            try engine?.start()
+        } catch {
+            print("There was an error creating the engine: \(error.localizedDescription)")
+        }
+    }
+    
+    private func complexFailureHaptic() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        var events = [CHHapticEvent]()
+        
+        for i in stride(from: 0, to: 1.0, by: 0.1) {
+            let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(1 - i))
+            let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: Float(1 - i))
+            let event = CHHapticEvent(eventType: .hapticTransient, parameters: [intensity, sharpness], relativeTime: i)
+            events.append(event)
+        }
+        
+        do {
+            let pattern = try CHHapticPattern(events: events, parameters: [])
+            let player = try engine?.makePlayer(with: pattern)
+            try player?.start(atTime: 0)
+        } catch {
+            print("Failed to play pattern: \(error.localizedDescription).")
         }
     }
     

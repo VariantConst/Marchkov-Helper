@@ -496,7 +496,7 @@ struct LoginService {
                     case .success(let newResult):
                         if !currentResult.isPastBus {
                             guard let appointmentId = currentResult.appointmentId, let appAppointmentId = currentResult.appAppointmentId else {
-                                LogManager.shared.addLog("取原有预约失败：缺少 appointmentId 或 appAppointmentId")
+                                LogManager.shared.addLog("取消原有预约失败：缺少 appointmentId 或 appAppointmentId")
                                 completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing appointmentId or appAppointmentId"])))
                                 return
                             }
@@ -516,7 +516,12 @@ struct LoginService {
                         }
 
                     case .failure(let error):
-                        completion(.failure(error))
+                        LogManager.shared.addLog("反向预约失败：\(error.localizedDescription)")
+                        if (error as NSError).domain == "No suitable bus found" {
+                            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "反向无车可坐"])))
+                        } else {
+                            completion(.failure(error))
+                        }
                     }
                 }
             case .failure(let error):
