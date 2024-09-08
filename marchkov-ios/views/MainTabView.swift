@@ -360,27 +360,56 @@ struct HorseButtonView: View {
     let refresh: () async -> Void
     @Binding var showHorseButton: Bool
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isAnimating = false
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 80/255, green: 180/255, blue: 255/255) : Color(hex: "519CAB")
     }
     
     var body: some View {
-        Button(action: {
-            Task {
-                await refresh()
-                showHorseButton = false
+        VStack(spacing: 20) {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                Task {
+                    await refresh()
+                    showHorseButton = false
+                }
+            }) {
+                ZStack {
+                    // 背景圆圈
+                    Circle()
+                        .fill(accentColor.opacity(0.1))
+                        .frame(width: 200, height: 200)
+                    
+                    // 动画波纹
+                    Circle()
+                        .stroke(accentColor.opacity(0.5), lineWidth: 2)
+                        .frame(width: 200, height: 200)
+                        .scaleEffect(isAnimating ? 1.5 : 1.0)
+                        .opacity(isAnimating ? 0 : 1)
+                    
+                    // 马emoji
+                    Text("🐴")
+                        .font(.system(size: 100))
+                }
+                .frame(width: 300, height: 300)
             }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(accentColor.opacity(0.1))
-                    .frame(width: 200, height: 200)
-                Text("🐴")
-                    .font(.system(size: 100))
+            .buttonStyle(ScaleButtonStyle())
+            
+            HStack(spacing: 10) {
+                Image(systemName: "hand.tap")
+                Text("或")
+                Image(systemName: "iphone.radiowaves.left.and.right")
+                Text("换行，马上马池口！")
+            }
+            .font(.system(size: 16, weight: .medium))
+            .foregroundColor(accentColor)
+        }
+        .onAppear {
+            withAnimation(Animation.easeInOut(duration: 2).repeatForever(autoreverses: false)) {
+                isAnimating = true
             }
         }
-        .buttonStyle(ScaleButtonStyle())
     }
 }
 
