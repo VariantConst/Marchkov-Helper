@@ -19,12 +19,11 @@ struct SettingsView: View {
     @AppStorage("criticalTime") private var criticalTime: Int = UserDataManager.shared.getCriticalTime()
     @State private var flagMorningToYanyuan: Bool = UserDataManager.shared.getFlagMorningToYanyuan()
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
-    @AppStorage("showAdvancedOptions") private var showAdvancedOptions: Bool = false
-    
     @State private var showLogoutConfirmation = false
     @State private var showResetConfirmation = false
     @Environment(\.colorScheme) private var colorScheme
     @State private var animationDuration: Double = 0.3
+    @State private var showSettingsInfo = false
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
@@ -77,11 +76,11 @@ struct SettingsView: View {
         }
         .confirmationDialog("确认重置设置", isPresented: $showResetConfirmation, titleVisibility: .visible) {
             Button("重置", role: .destructive) {
-                resetToDefaultSettings()
+                resetBusSettings()
             }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("您确定要恢复默认设置吗？这将重置所有设置项并清空历史缓存。")
+            Text("您确定要恢复默认班车设置吗？")
         }
     }
     
@@ -96,8 +95,20 @@ struct SettingsView: View {
     
     private var busSettingsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeader(title: "班车设置")
-                .padding(.bottom, 15)
+            HStack {
+                SectionHeader(title: "班车设置")
+                Button(action: { showSettingsInfo = true }) {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundColor(accentColor)
+                        .font(.system(size: 18))
+                }
+                Spacer()
+                Button(action: { showResetConfirmation = true }) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .foregroundColor(accentColor)
+                }
+            }
+            .padding(.bottom, 15)
 
             HStack {
                 Text("通勤方向")
@@ -105,7 +116,7 @@ struct SettingsView: View {
                     .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
                 Spacer()
                 Picker("通勤方向", selection: $flagMorningToYanyuan.onChange { newValue in
-                    hapticFeedback()  // 添加震动反馈
+                    hapticFeedback()
                     UserDefaults.standard.set(newValue, forKey: "flagMorningToYanyuan")
                 }) {
                     Text("上午去燕园").tag(true)
@@ -114,29 +125,20 @@ struct SettingsView: View {
                 .pickerStyle(SegmentedPickerStyle())
                 .frame(width: 200)
             }
-            .padding(.bottom, showAdvancedOptions ? 15 : 0)
+            .padding(.bottom, 15)
 
-            if showAdvancedOptions {
-                VStack(spacing: 15) {
-                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
-                    ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
-                    ElegantSlider(
-                        value: $criticalTime,
-                        title: "临界时刻",
-                        range: 360...1320,  // 调整范围
-                        unit: "",
-                        step: 60,  // 设置步长为 60 分钟
-                        formatter: minutesToTimeString,
-                        valueConverter: { Double($0) },
-                        valueReverter: { Int($0) }
-                    )
-                }
-                .padding(.top, 15)
-                .transition(
-                    .asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.95, anchor: .top)).combined(with: .offset(y: -10)),
-                        removal: .opacity
-                    )
+            VStack(spacing: 15) {
+                ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
+                ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
+                ElegantSlider(
+                    value: $criticalTime,
+                    title: "临界时刻",
+                    range: 360...1320,
+                    unit: "",
+                    step: 60,
+                    formatter: minutesToTimeString,
+                    valueConverter: { Double($0) },
+                    valueReverter: { Int($0) }
                 )
             }
         }
@@ -144,7 +146,9 @@ struct SettingsView: View {
         .background(BlurView(style: .systemMaterial))
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
-        .animation(.easeInOut(duration: animationDuration), value: showAdvancedOptions)
+        .sheet(isPresented: $showSettingsInfo) {
+            BusSettingsInfoView()
+        }
     }
 
     private var generalSettingsSection: some View {
@@ -157,7 +161,7 @@ struct SettingsView: View {
                     .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
                 Spacer()
                 Picker("", selection: $themeMode.onChange { newValue in
-                    hapticFeedback()  // 添加震动反馈
+                    hapticFeedback()
                 }) {
                     ForEach(ThemeMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
@@ -168,53 +172,32 @@ struct SettingsView: View {
             }
             
             ElegantToggle(isOn: $isDeveloperMode.onChange { newValue in
-                hapticFeedback()  // 添加震动反馈
+                hapticFeedback()
             }, title: "显示日志")
-            
-            ElegantToggle(isOn: Binding(
-                get: { showAdvancedOptions },
-                set: { newValue in
-                    hapticFeedback()  // 添加震动反馈
-                    withAnimation(newValue ? .spring(response: 0.35, dampingFraction: 0.7) : .none) {
-                        showAdvancedOptions = newValue
-                    }
-                    animationDuration = newValue ? 0.35 : 0
-                }
-            ), title: "显示高级选项")
         }
         .padding(25)
         .background(BlurView(style: .systemMaterial))
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
     }
-
     
-    private func resetToDefaultSettings() {
+    private func resetBusSettings() {
         UserDataManager.shared.resetToDefaultSettings()
         prevInterval = UserDataManager.shared.getPrevInterval()
         nextInterval = UserDataManager.shared.getNextInterval()
         criticalTime = UserDataManager.shared.getCriticalTime()
         flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
-        isDeveloperMode = false
-        themeMode = .system
         
         // 清空历史缓存
         UserDefaults.standard.removeObject(forKey: "cachedBusInfo")
         UserDefaults.standard.removeObject(forKey: "cachedRideHistory")
         
         // 可选：添加日志
-        LogManager.shared.addLog("已重置所有设置并清空历史缓存")
+        LogManager.shared.addLog("已重置班车设置并清空历史缓存")
     }
     
     private var actionButtonsSection: some View {
         VStack(spacing: 20) {
-            if showAdvancedOptions {
-                Button(action: { showResetConfirmation = true }) {
-                    buttonContent(icon: "arrow.counterclockwise", text: "恢复默认设置")
-                }
-                .buttonStyle(FlatButtonStyle(isAccent: false))
-            }
-
             Link(destination: URL(string: "https://github.com/VariantConst/3-2-1-Marchkov")!) {
                 buttonContent(icon: "link", text: "审查应用源码")
             }
@@ -422,4 +405,96 @@ struct BlurView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+}
+
+struct BusSettingsInfoView: View {
+    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.1) : Color(red: 0.95, green: 0.95, blue: 0.95)
+    }
+    
+    private var textColor: Color {
+        colorScheme == .dark ? Color.white : Color.black
+    }
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                backgroundColor.edgesIgnoringSafeArea(.all)
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        infoSection(title: "通勤方向", description: "选择您的主要通勤方向。默认设置为'上午去燕园'，即14点前去燕园，14点后回昌平。", example: "如果您选择'上午回昌平'，则会相反。")
+                        infoSection(title: "过期班车追溯", description: "设置可查看多久之前的过期班车。默认为10分钟，范围：1-114分钟。", example: "例如，设置为30分钟时，您可以查看半小时内已经发车的班车信息。")
+                        infoSection(title: "未来班车预约", description: "设置可预约多久之后的未来班车。默认为60分钟，范围：1-514分钟。", example: "例如，设置为120分钟时，您可以预约两小时内即将发车的班车。")
+                        infoSection(title: "临界时刻", description: "设置一天中转换通勤方向的时间点。默认为14:00，范围：06:00-22:00。", example: "例如，如果您设置为12:00，则在中午12点前的班车被视为去程，12点后的班车被视为返程。")
+                        
+                        defaultSettingTip
+                    }
+                    .padding()
+                }
+            }
+            .navigationBarTitle("班车设置说明", displayMode: .inline)
+            .navigationBarItems(trailing: Button("关闭") {
+                presentationMode.wrappedValue.dismiss()
+            })
+        }
+        .accentColor(accentColor)
+    }
+    
+    private func infoSection(title: String, description: String, example: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(accentColor)
+            
+            Text(description)
+                .font(.body)
+                .foregroundColor(textColor.opacity(0.8))
+            
+            exampleView(example)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        )
+    }
+    
+    private func exampleView(_ text: String) -> some View {
+        Text(text)
+            .font(.subheadline)
+            .foregroundColor(accentColor.opacity(0.8))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(accentColor.opacity(0.1))
+            )
+    }
+    
+    private var defaultSettingTip: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lightbulb")
+                .foregroundColor(accentColor)
+            Text("提示：如果不确定如何设置，建议保留默认设置。")
+                .font(.footnote)
+                .foregroundColor(textColor.opacity(0.7))
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .stroke(accentColor.opacity(0.3), lineWidth: 1)
+        )
+    }
 }
