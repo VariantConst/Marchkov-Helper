@@ -57,11 +57,11 @@ struct MainTabView: View {
             }
             .tag(0)
 
-            ReservationView(availableBuses: $availableBuses, refreshAction: fetchAvailableBuses)
-                .tabItem {
-                    Label("预约", systemImage: "calendar")
-                }
-                .tag(1)
+            // ReservationView(availableBuses: $availableBuses, refreshAction: fetchAvailableBuses)
+            //     .tabItem {
+            //         Label("预约", systemImage: "calendar")
+            //     }
+            //     .tag(1)
 
             RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading)
                 .tabItem {
