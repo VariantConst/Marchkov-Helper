@@ -57,11 +57,11 @@ struct MainTabView: View {
             }
             .tag(0)
 
-            // ReservationView(availableBuses: $availableBuses, refreshAction: fetchAvailableBuses)
-            //     .tabItem {
-            //         Label("预约", systemImage: "calendar")
-            //     }
-            //     .tag(1)
+            ReservationView(availableBuses: $availableBuses, refreshAction: fetchAvailableBuses)
+                .tabItem {
+                    Label("预约", systemImage: "calendar")
+                }
+                .tag(1)
 
             RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading)
                 .tabItem {
@@ -296,6 +296,7 @@ struct ReservationResultView: View {
     @Binding var resources: [LoginService.Resource]
     @State private var showLogs: Bool = false
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
+    @State private var showHorseButton: Bool = false
     let refresh: () async -> Void
     @Environment(\.colorScheme) private var colorScheme
     
@@ -317,7 +318,9 @@ struct ReservationResultView: View {
                                 if !errorMessage.isEmpty {
                                     ErrorView(errorMessage: errorMessage, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
                                 } else if let result = reservationResult {
-                                    SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult)
+                                    SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult, refresh: refresh, showHorseButton: $showHorseButton)
+                                } else if showHorseButton {
+                                    HorseButtonView(refresh: refresh, showHorseButton: $showHorseButton)
                                 } else {
                                     NoResultView()
                                 }
@@ -332,7 +335,6 @@ struct ReservationResultView: View {
                             await refresh()
                         }
                         .scrollIndicators(.hidden)
-
                     }
                     
                     VStack {
@@ -354,6 +356,33 @@ struct ReservationResultView: View {
     }
 }
 
+struct HorseButtonView: View {
+    let refresh: () async -> Void
+    @Binding var showHorseButton: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 80/255, green: 180/255, blue: 255/255) : Color(hex: "519CAB")
+    }
+    
+    var body: some View {
+        Button(action: {
+            Task {
+                await refresh()
+                showHorseButton = false
+            }
+        }) {
+            ZStack {
+                Circle()
+                    .fill(accentColor.opacity(0.1))
+                    .frame(width: 200, height: 200)
+                Text("🐴")
+                    .font(.system(size: 100))
+            }
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+}
 
 struct NoResultView: View {
     @Environment(\.colorScheme) private var colorScheme

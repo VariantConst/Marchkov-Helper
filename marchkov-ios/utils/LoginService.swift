@@ -526,7 +526,7 @@ struct LoginService {
         }
     }
 
-    private func cancelReservation(appointmentId: Int, appAppointmentId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+    func cancelReservation(appointmentId: Int, appAppointmentId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/single-time-cancel")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -535,12 +535,12 @@ struct LoginService {
         let bodyData = "appointment_id=\(appointmentId)&data_id[0]=\(appAppointmentId)"
         request.httpBody = bodyData.data(using: .utf8)
 
-        LogManager.shared.addLog("取消预 - URL: \(url.absoluteString)")
+        LogManager.shared.addLog("取消预约 - URL: \(url.absoluteString)")
         LogManager.shared.addLog("取消预约 - 请求体: \(bodyData)")
 
         session.dataTask(with: request) { data, response, error in
             if let error = error {
-                LogManager.shared.addLog("取消���约失败: \(error.localizedDescription)")
+                LogManager.shared.addLog("取消预约失败: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
@@ -582,7 +582,7 @@ struct LoginService {
             }
 
             if let httpResponse = response as? HTTPURLResponse {
-                LogManager.shared.addLog("获取预约二维码 - ��态码: \(httpResponse.statusCode)")
+                LogManager.shared.addLog("获取预约二维码 - 状态码: \(httpResponse.statusCode)")
             }
 
             guard let data = data else {
@@ -790,7 +790,7 @@ struct LoginService {
             
             // 记录完整的响应文本
             if let responseText = String(data: data, encoding: .utf8) {
-                LogManager.shared.addLog("乘车历史响应：\(responseText)")
+                LogManager.shared.addLog("获取了 \(responseText.count) 条乘车历史")
             }
             
             do {
