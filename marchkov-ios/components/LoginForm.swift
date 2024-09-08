@@ -23,7 +23,7 @@ struct LoginFormView: View {
                         HStack {
                             Image(systemName: "person.fill")
                                 .foregroundColor(.gray)
-                            TextField("用户名", text: $username)
+                            TextField("学号/职工号/手机号", text: $username)
                                 .autocapitalization(.none)
                         }
                         .padding()
