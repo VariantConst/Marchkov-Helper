@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Charts
+import CoreMotion
 
 struct MainTabView: View {
     @Binding var currentTab: Int
@@ -361,6 +362,7 @@ struct HorseButtonView: View {
     @Binding var showHorseButton: Bool
     @Environment(\.colorScheme) private var colorScheme
     @State private var isAnimating = false
+    @StateObject private var motionManager = MotionManager()
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 80/255, green: 180/255, blue: 255/255) : Color(hex: "519CAB")
@@ -369,11 +371,7 @@ struct HorseButtonView: View {
     var body: some View {
         VStack(spacing: 20) {
             Button(action: {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                Task {
-                    await refresh()
-                    showHorseButton = false
-                }
+                performRefresh()
             }) {
                 ZStack {
                     // 背景圆圈
@@ -400,7 +398,7 @@ struct HorseButtonView: View {
                 Image(systemName: "hand.tap")
                 Text("或")
                 Image(systemName: "iphone.radiowaves.left.and.right")
-                Text("换行，马上马池口！")
+                Text("马上马池口！")
             }
             .font(.system(size: 16, weight: .medium))
             .foregroundColor(accentColor)
@@ -409,7 +407,54 @@ struct HorseButtonView: View {
             withAnimation(Animation.easeInOut(duration: 2).repeatForever(autoreverses: false)) {
                 isAnimating = true
             }
+            motionManager.startMonitoring()
         }
+        .onDisappear {
+            motionManager.stopMonitoring()
+        }
+        .onReceive(motionManager.$isShaking) { isShaking in
+            if isShaking {
+                performRefresh()
+            }
+        }
+    }
+    
+    private func performRefresh() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Task {
+            await refresh()
+            showHorseButton = false
+        }
+    }
+}
+
+class MotionManager: ObservableObject {
+    private let motionManager = CMMotionManager()
+    private let queue = OperationQueue()
+    @Published var isShaking = false
+    
+    func startMonitoring() {
+        guard motionManager.isAccelerometerAvailable else { return }
+        
+        motionManager.accelerometerUpdateInterval = 0.1
+        motionManager.startAccelerometerUpdates(to: queue) { [weak self] (data, error) in
+            guard let data = data else { return }
+            let threshold: Double = 2.0
+            
+            if abs(data.acceleration.x) > threshold || abs(data.acceleration.y) > threshold || abs(data.acceleration.z) > threshold {
+                DispatchQueue.main.async {
+                    self?.isShaking = true
+                    // 重置晃动状态,为下一次晃动做准备
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        self?.isShaking = false
+                    }
+                }
+            }
+        }
+    }
+    
+    func stopMonitoring() {
+        motionManager.stopAccelerometerUpdates()
     }
 }
 

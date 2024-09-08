@@ -52,6 +52,8 @@ struct SuccessView: View {
                             .foregroundColor(accentColor)
                         Spacer()
                         Button(action: {
+                            // 添加震动反馈
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             handleCancellation()
                         }) {
                             HStack {
@@ -182,6 +184,9 @@ struct SuccessView: View {
     }
     
     private func handleCancellation() {
+        // 添加震动反馈
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        
         if result.isPastBus {
             // 如果是临时码，直接切换到🐴按钮视图
             withAnimation {
