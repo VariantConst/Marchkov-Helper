@@ -40,6 +40,9 @@ struct MainTabView: View {
         }
     }
     
+    @State private var availableBuses: [String: [String]] = [:]
+    @State private var token: String?
+    
     var body: some View {
         TabView(selection: $currentTab) {
             ReservationResultView(
@@ -54,11 +57,17 @@ struct MainTabView: View {
             }
             .tag(0)
 
+            ReservationView(availableBuses: $availableBuses, refreshAction: fetchAvailableBuses)
+                .tabItem {
+                    Label("预约", systemImage: "calendar")
+                }
+                .tag(1)
+
             RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading)
                 .tabItem {
                     Label("历史", systemImage: "clock.fill")
                 }
-                .tag(1)
+                .tag(2)
                 .onChange(of: isRideHistoryDataReady) { _, newValue in
                     if newValue {
                         isRideHistoryLoading = false
@@ -69,7 +78,7 @@ struct MainTabView: View {
                 .tabItem {
                     Label("设置", systemImage: "gearshape.fill")
                 }
-                .tag(2)
+                .tag(3)
         }
         .accentColor(accentColor)
         .background(gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all))
@@ -92,6 +101,7 @@ struct MainTabView: View {
             if rideHistory == nil {
                 fetchRideHistory()
             }
+            fetchAvailableBuses()
         }
     }
     
@@ -196,6 +206,65 @@ struct MainTabView: View {
                     self.isRideHistoryLoading = false
                 }
             }
+        }
+    }
+    
+    private func fetchAvailableBuses() {
+        guard let credentials = UserDataManager.shared.getUserCredentials() else {
+            LogManager.shared.addLog("获取班车信息失败：未找到用户凭证")
+            return
+        }
+
+        LoginService.shared.login(username: credentials.username, password: credentials.password) { result in
+            switch result {
+            case .success(let loginResponse):
+                if loginResponse.success, let token = loginResponse.token {
+                    self.token = token
+                    self.getResources(token: token)
+                } else {
+                    LogManager.shared.addLog("登录失败：用户名或密码无效")
+                }
+            case .failure(let error):
+                LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func getResources(token: String) {
+        LoginService.shared.getResources(token: token) { result in
+            switch result {
+            case .success(let resources):
+                self.parseAvailableBuses(resources: resources)
+            case .failure(let error):
+                LogManager.shared.addLog("获取资源失败：\(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func parseAvailableBuses(resources: [LoginService.Resource]) {
+        var toYanyuan: [String] = []
+        var toChangping: [String] = []
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let today = dateFormatter.string(from: Date())
+        
+        for resource in resources {
+            for busInfo in resource.busInfos where busInfo.date == today && busInfo.margin > 0 {
+                let time = busInfo.yaxis
+                if resource.id == 2 || resource.id == 4 {
+                    toYanyuan.append(time)
+                } else if resource.id == 5 || resource.id == 6 || resource.id == 7 {
+                    toChangping.append(time)
+                }
+            }
+        }
+        
+        DispatchQueue.main.async {
+            self.availableBuses = [
+                "去燕园": toYanyuan.sorted(),
+                "去昌平": toChangping.sorted()
+            ]
         }
     }
 }
@@ -338,5 +407,30 @@ extension Color {
             blue:  Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+struct ReservationView: View {
+    @Binding var availableBuses: [String: [String]]
+    @Environment(\.colorScheme) private var colorScheme
+    var refreshAction: () -> Void  // 添加这个属性
+
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(["去燕园", "去昌平"], id: \.self) { direction in
+                    Section(header: Text(direction)) {
+                        ForEach(availableBuses[direction] ?? [], id: \.self) { time in
+                            Text(time)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("今日可预约班车")
+            .background(gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all))
+            .refreshable {
+                refreshAction()  // 调用刷新动作
+            }
+        }
     }
 }

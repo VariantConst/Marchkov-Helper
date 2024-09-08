@@ -150,31 +150,7 @@ struct RideHistoryView: View {
         }
     }
     
-    // 添加新的方法来计算乘车日历的副标题
-    private func getRideCalendarSubtitle() -> String {
-        let calendar = Calendar.current
-        let today = Date()
-        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: today)!
-        let sixtyDaysAgo = calendar.date(byAdding: .day, value: -60, to: today)!
-        
-        let last30DaysRides = calendarDates.filter { $0 >= thirtyDaysAgo && $0 <= today }
-        let previous30DaysRides = calendarDates.filter { $0 >= sixtyDaysAgo && $0 < thirtyDaysAgo }
-        
-        let last30DaysRideCount = last30DaysRides.count
-        let last30DaysPercentage = Double(last30DaysRideCount) / 30.0 * 100
-        
-        if last30DaysPercentage > 60 {
-            return String(format: "刻苦如你，过去30天有%.1f%%的天数乘坐了班车。", last30DaysPercentage)
-        } else if last30DaysRideCount > 0 {
-            let comparisonText = last30DaysRideCount > previous30DaysRides.count ? "多" : "少"
-            let encouragementText = comparisonText == "多" ? "辛苦！" : "馨园吃腻了吗？"
-            return "你最近乘坐班车比以前更\(comparisonText)了。\(encouragementText)"
-        } else {
-            return "过去一个月你一次班车都没坐过。开摆！"
-        }
-    }
-    
-    // 修改 timeStatsView
+    // 添加 timeStatsView
     private var timeStatsView: some View {
         CardView {
             VStack(alignment: .leading, spacing: 10) {
@@ -185,18 +161,30 @@ struct RideHistoryView: View {
         }
     }
     
+    // 添加 getTimeStatsSubtitle 方法
     private func getTimeStatsSubtitle() -> String {
-        let maxToYanyuan = timeStats.max(by: { $0.countToYanyuan < $1.countToYanyuan })
-        let maxToChangping = timeStats.max(by: { $0.countToChangping < $1.countToChangping })
+        if let maxStat = timeStats.max(by: { $0.countToChangping + $0.countToYanyuan < $1.countToChangping + $1.countToYanyuan }) {
+            return "你最常乘车的时间是 \(maxStat.hour):00。"
+        }
+        return " " // 如果没有数据，返回空行
+    }
+    
+    // 添加 getRideCalendarSubtitle 方法
+    private func getRideCalendarSubtitle() -> String {
+        let totalDays = calendarDates.count
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let daysInYear = Calendar.current.range(of: .day, in: .year, for: Date())?.count ?? 365
         
-        if let maxYanyuan = maxToYanyuan, (11...17).contains(maxYanyuan.hour) {
-            return "你习惯日上三竿时再去燕园。年轻人要少熬夜。"
-        } else if let maxChangping = maxToChangping, maxChangping.hour >= 21 {
-            return "你习惯工作到深夜才休息。真是个卷王！"
-        } else if let maxYanyuan = maxToYanyuan, maxYanyuan.hour < 10 {
-            return "你习惯早起去燕园工作。早起的鸟儿有丹炼！"
+        let frequency = Double(totalDays) / Double(daysInYear)
+        
+        if frequency >= 0.8 {
+            return "你是个勤奋的乘客，今年几乎天天都在坐班车！"
+        } else if frequency >= 0.5 {
+            return "你是个常客，今年有一半以上的日子都乘坐了班车。"
+        } else if frequency >= 0.3 {
+            return "你是个普通乘客，今年有三分之一的日子乘坐了班车。"
         } else {
-            return " " // 空行
+            return "你是个偶尔乘车的乘客，今年乘车次数不多。"
         }
     }
     
@@ -395,7 +383,7 @@ struct RideHistoryView: View {
         showLongLoadingMessage = false
         isDataReady = false // 重置数据准备状态
         
-        // 设置一个3秒后显示长时间加载消���的计时器
+        // 设置一个3秒后显示长时间加载消的计时器
         loadingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
             DispatchQueue.main.async {
                 if self.isLoading {
