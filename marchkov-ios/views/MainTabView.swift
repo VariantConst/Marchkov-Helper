@@ -74,7 +74,7 @@ struct MainTabView: View {
                     }
                 }
 
-            SettingsView(logout: logout, themeMode: $themeMode)
+            SettingsView(logout: performLogout, themeMode: $themeMode)
                 .tabItem {
                     Label("设置", systemImage: "gearshape.fill")
                 }
@@ -273,6 +273,19 @@ struct MainTabView: View {
             ]
             LogManager.shared.addLog("更新可用班车: 去燕园 \(toYanyuan.count) 辆, 去昌平 \(toChangping.count) 辆")
         }
+    }
+    
+    private func performLogout() {
+        // 清除乘车历史记录和相关日期
+        UserDataManager.shared.clearRideHistory()
+        
+        // 重置相关状态
+        rideHistory = nil
+        isRideHistoryLoading = true
+        isRideHistoryDataReady = false
+        
+        // 调用原来的 logout 函数
+        logout()
     }
 }
 

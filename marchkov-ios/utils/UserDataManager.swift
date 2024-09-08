@@ -82,4 +82,10 @@ class UserDataManager {
         UserDefaults.standard.set(defaultCriticalTime, forKey: "criticalTime")
         UserDefaults.standard.set(defaultFlagMorningToYanyuan, forKey: "flagMorningToYanyuan")
     }
+    
+    // 添加新方法
+    func clearRideHistory() {
+        UserDefaults.standard.removeObject(forKey: "cachedRideHistory")
+        UserDefaults.standard.removeObject(forKey: "lastRideHistoryFetchDate")
+    }
 }
