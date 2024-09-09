@@ -23,6 +23,8 @@ struct ReservationView: View {
     @State private var isRefreshing = false
     @GestureState private var dragOffset: CGFloat = 0
     @State private var currentPage = 0 // 0 表示今天，1 表示明天
+    @State private var showTutorial = true
+    @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
     
     var body: some View {
         NavigationView {
@@ -30,27 +32,9 @@ struct ReservationView: View {
                 if isLoading {
                     ProgressView("加载中...")
                 } else {
-                    VStack {
-                        // 替换 Picker 为自定义的日期选择器
-                        HStack {
-                            Text("今天")
-                                .fontWeight(currentPage == 0 ? .bold : .regular)
-                                .foregroundColor(currentPage == 0 ? .primary : .secondary)
-                            Spacer()
-                            Text("明天")
-                                .fontWeight(currentPage == 1 ? .bold : .regular)
-                                .foregroundColor(currentPage == 1 ? .primary : .secondary)
-                        }
-                        .padding()
-                        .background(
-                            GeometryReader { geometry in
-                                Rectangle()
-                                    .fill(Color.accentColor)
-                                    .frame(width: geometry.size.width / 2)
-                                    .offset(x: CGFloat(currentPage) * geometry.size.width / 2)
-                            }
-                        )
-                        .animation(.spring(), value: currentPage)
+                    VStack(spacing: 0) {
+                        // 更新的日期选择器
+                        DateSelectorView(currentPage: $currentPage)
                         
                         // 使用 TabView 来实现滑动效果
                         TabView(selection: $currentPage) {
@@ -60,22 +44,18 @@ struct ReservationView: View {
                         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                         .gesture(
                             DragGesture()
-                                .updating($dragOffset) { value, state, _ in
-                                    state = value.translation.width
-                                }
                                 .onEnded { value in
                                     let threshold: CGFloat = 50
                                     if value.translation.width > threshold {
-                                        currentPage = max(0, currentPage - 1)
+                                        withAnimation { currentPage = max(0, currentPage - 1) }
                                     } else if value.translation.width < -threshold {
-                                        currentPage = min(1, currentPage + 1)
+                                        withAnimation { currentPage = min(1, currentPage + 1) }
                                     }
                                 }
                         )
                     }
                 }
             }
-            .navigationTitle("可预约班车")
             .background(gradientBackground.edgesIgnoringSafeArea(.all))
             .onAppear(perform: {
                 loadCachedBusInfo()
@@ -89,6 +69,9 @@ struct ReservationView: View {
                         }
                     }
                 }
+                if !hasSeenTutorial {
+                    showTutorial = true
+                }
             })
             .refreshable {
                 await refreshReservationStatus()
@@ -96,6 +79,13 @@ struct ReservationView: View {
             .alert(isPresented: $showAlert) {
                 Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
             }
+            .overlay(
+                Group {
+                    if showTutorial {
+                        TutorialView(showTutorial: $showTutorial)
+                    }
+                }
+            )
         }
     }
     
@@ -356,15 +346,58 @@ struct ReservationView: View {
     }
     
     private func busListView(for date: Date) -> some View {
-        List {
-            ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                Section(header: Text(direction)) {
-                    ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
-                        BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+        ScrollView {
+            VStack(spacing: 16) {
+                ForEach(["去燕园", "去昌平"], id: \.self) { direction in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(direction)
+                            .font(.headline)
+                            .padding(.leading)
+                        
+                        ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
+                            BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+                        }
                     }
                 }
             }
+            .padding()
         }
+    }
+}
+
+struct DateSelectorView: View {
+    @Binding var currentPage: Int
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            dateButton(title: "今天", tag: 0)
+            dateButton(title: "明天", tag: 1)
+        }
+        .padding(4)
+        .background(Color(.systemBackground).opacity(0.8))
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .padding(.horizontal)
+        .padding(.top)
+    }
+    
+    private func dateButton(title: String, tag: Int) -> some View {
+        Button(action: {
+            withAnimation(.spring()) {
+                currentPage = tag
+            }
+        }) {
+            Text(title)
+                .fontWeight(.medium)
+                .foregroundColor(currentPage == tag ? .white : .primary)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 20)
+                .background(
+                    Capsule()
+                        .fill(currentPage == tag ? Color.accentColor : Color.clear)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -373,34 +406,50 @@ struct BusButton: View {
     let reserveAction: (BusInfo) -> Void
     let cancelAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @GestureState private var isDetectingLongPress = false
+    @State private var completedLongPress = false
 
     var body: some View {
         Button(action: {
             if busInfo.isReserved {
                 cancelAction(busInfo)
-            } else {
-                reserveAction(busInfo)
             }
-            playHaptic()
         }) {
             HStack {
-                Text(busInfo.time)
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(busInfo.time)
+                        .font(.headline)
+                    Text(getBusRoute(for: busInfo.direction))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
                 Spacer()
-                Text(getBusRoute(for: busInfo.direction))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
                 if busInfo.isReserved {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("已预约")
-                        .font(.caption)
-                        .foregroundColor(.green)
+                    VStack(spacing: 2) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("已预约")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
                 }
             }
-            .padding(.vertical, 8)
+            .padding()
         }
-        .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved))
+        .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved, isPressed: isDetectingLongPress))
+        .gesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .updating($isDetectingLongPress) { currentState, gestureState, _ in
+                    gestureState = currentState
+                }
+                .onEnded { _ in
+                    if !busInfo.isReserved {
+                        completedLongPress = true
+                        reserveAction(busInfo)
+                    }
+                }
+        )
+        .animation(.easeInOut, value: isDetectingLongPress)
     }
 
     private func getBusRoute(for direction: String) -> String {
@@ -423,19 +472,24 @@ struct BusButton: View {
 struct BusButtonStyle: ButtonStyle {
     let colorScheme: ColorScheme
     let isReserved: Bool
+    let isPressed: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.horizontal)
             .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.clear)
+                RoundedRectangle(cornerRadius: 15)
+                    .fill(backgroundColor)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 15)
                     .stroke(borderColor, lineWidth: 1)
             )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .shadow(color: shadowColor, radius: 3, x: 0, y: 2)
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+    }
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color.white
     }
     
     private var borderColor: Color {
@@ -444,6 +498,10 @@ struct BusButtonStyle: ButtonStyle {
         } else {
             return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
         }
+    }
+    
+    private var shadowColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.1)
     }
 }
 
@@ -469,4 +527,41 @@ struct PeriodInfo: Codable {
     let id: Int
     let time: String
     let status: Int
+}
+
+struct TutorialView: View {
+    @Binding var showTutorial: Bool
+    @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.7)
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 20) {
+                Text("如何预约班车")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text("长按班车按钮进行预约")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Image(systemName: "hand.tap.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.white)
+                
+                Button("我知道了") {
+                    showTutorial = false
+                    hasSeenTutorial = true
+                }
+                .padding()
+                .background(Color.white)
+                .foregroundColor(.black)
+                .cornerRadius(10)
+            }
+            .padding()
+        }
+    }
 }
