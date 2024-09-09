@@ -196,19 +196,29 @@ struct ReservationView: View {
             DispatchQueue.main.async {
                 if let error = error {
                     self.alertMessage = "预约失败：\(error.localizedDescription)"
+                    self.showAlert = true
+                    self.playErrorHaptic()
                     LogManager.shared.addLog("预约失败：\(error.localizedDescription)")
                 } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    self.alertMessage = "预约结果：\(responseString)"
-                    LogManager.shared.addLog("预约响应：\(responseString)")
+                    if responseString.contains("\"m\":\"操作成功\"") {
+                        self.playSuccessHaptic()
+                        LogManager.shared.addLog("预约成功：\(responseString)")
+                        self.updateBusInfoAfterSuccessfulReservation(busInfo)
+                    } else {
+                        self.alertMessage = "预约失败：\(responseString)"
+                        self.showAlert = true
+                        self.playErrorHaptic()
+                        LogManager.shared.addLog("预约失败：\(responseString)")
+                    }
                 } else {
                     self.alertMessage = "预约失败：未知错误"
+                    self.showAlert = true
+                    self.playErrorHaptic()
                     LogManager.shared.addLog("预约失败：未知错误")
                 }
-                self.showAlert = true
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    self.fetchReservationStatus()
-                }
+                // 无论成功与否，都获取最新的预约状态
+                self.fetchReservationStatus()
             }
         }.resume()
     }
@@ -218,6 +228,7 @@ struct ReservationView: View {
               let hallAppointmentDataId = busInfo.hallAppointmentDataId else {
             self.alertMessage = "取消预约失败：缺少必要信息"
             self.showAlert = true
+            self.playErrorHaptic()
             return
         }
         
@@ -235,20 +246,55 @@ struct ReservationView: View {
             DispatchQueue.main.async {
                 if let error = error {
                     self.alertMessage = "取消预约失败：\(error.localizedDescription)"
+                    self.showAlert = true
+                    self.playErrorHaptic()
                     LogManager.shared.addLog("取消预约失败：\(error.localizedDescription)")
                 } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    self.alertMessage = "取消预约结果：\(responseString)"
-                    LogManager.shared.addLog("取消预约响应：\(responseString)")
+                    if responseString.contains("\"m\":\"操作成功\"") {
+                        self.playSuccessHaptic()
+                        LogManager.shared.addLog("取消预约成功：\(responseString)")
+                        self.updateBusInfoAfterSuccessfulCancellation(busInfo)
+                    } else {
+                        self.alertMessage = "取消预约失败：\(responseString)"
+                        self.showAlert = true
+                        self.playErrorHaptic()
+                        LogManager.shared.addLog("取消预约失败：\(responseString)")
+                    }
                 } else {
                     self.alertMessage = "取消预约失败：未知错误"
+                    self.showAlert = true
+                    self.playErrorHaptic()
                     LogManager.shared.addLog("取消预约失败：未知错误")
                 }
-                self.showAlert = true
                 
-                // 刷新预约状态
+                // 无论成功与否，都获取最新的预约状态
                 self.fetchReservationStatus()
             }
         }.resume()
+    }
+    
+    private func updateBusInfoAfterSuccessfulReservation(_ busInfo: BusInfo) {
+        if let index = availableBuses[busInfo.direction]?.firstIndex(where: { $0.id == busInfo.id }) {
+            availableBuses[busInfo.direction]?[index].isReserved = true
+        }
+    }
+    
+    private func updateBusInfoAfterSuccessfulCancellation(_ busInfo: BusInfo) {
+        if let index = availableBuses[busInfo.direction]?.firstIndex(where: { $0.id == busInfo.id }) {
+            availableBuses[busInfo.direction]?[index].isReserved = false
+            availableBuses[busInfo.direction]?[index].hallAppointmentDataId = nil
+            availableBuses[busInfo.direction]?[index].appointmentId = nil
+        }
+    }
+    
+    private func playSuccessHaptic() {
+        let impact = UIImpactFeedbackGenerator(style: .medium)
+        impact.impactOccurred()
+    }
+    
+    private func playErrorHaptic() {
+        let notificationFeedback = UINotificationFeedbackGenerator()
+        notificationFeedback.notificationOccurred(.error)
     }
 }
 
@@ -265,6 +311,7 @@ struct BusButton: View {
             } else {
                 reserveAction(busInfo)
             }
+            playHaptic()
         }) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -317,6 +364,11 @@ struct BusButton: View {
         default:
             return ""
         }
+    }
+    
+    private func playHaptic() {
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
     }
 }
 
