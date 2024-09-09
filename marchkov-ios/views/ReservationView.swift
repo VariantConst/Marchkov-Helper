@@ -145,9 +145,9 @@ struct ReservationView: View {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
         
-        let resourceId = getResourceId(for: busInfo.direction)
+        // 使用 busInfo.resourceId 替代 getResourceId 函数
+        let resourceId = String(busInfo.resourceId)
         
-        // 使用busInfo.date而不是当前日期
         let data = "[{\"date\": \"\(busInfo.date)\", \"period\": \(busInfo.timeId), \"sub_resource_id\": 0}]"
         
         let postData = "resource_id=\(resourceId)&data=\(data)"
@@ -172,17 +172,6 @@ struct ReservationView: View {
                 self.showAlert = true
             }
         }.resume()
-    }
-    
-    private func getResourceId(for direction: String) -> String {
-        switch direction {
-        case "去燕园":
-            return "2"
-        case "去昌平":
-            return "7"
-        default:
-            return "0"
-        }
     }
 }
 
