@@ -100,12 +100,15 @@ struct SettingsView: View {
                 Button(action: { showSettingsInfo = true }) {
                     Image(systemName: "questionmark.circle")
                         .foregroundColor(accentColor)
-                        .font(.system(size: 18))
+                        .font(.system(size: 22))
+                        .frame(width: 44, height: 44)
                 }
                 Spacer()
                 Button(action: { showResetConfirmation = true }) {
                     Image(systemName: "arrow.counterclockwise")
                         .foregroundColor(accentColor)
+                        .font(.system(size: 22))
+                        .frame(width: 44, height: 44)
                 }
             }
             .padding(.bottom, 15)
