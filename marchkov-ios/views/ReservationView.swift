@@ -33,6 +33,7 @@ struct ReservationView: View {
                     VStack(spacing: 0) {
                         // 自定义的日期选择器
                         DateSelectorView(currentPage: $currentPage)
+                            .padding(.bottom, 8)  // 添加加一些底部间距
                         
                         // 使用 TabView 来实现滑动效果
                         TabView(selection: $currentPage) {
@@ -139,23 +140,38 @@ struct ReservationView: View {
     }
     
     private func filteredBuses(for direction: String, on date: Date) -> [BusInfo] {
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        let timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        calendar.timeZone = timeZone
+        
         let now = Date()
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
         let filteredBuses = availableBuses[direction]?.filter { busInfo in
-            guard let busDate = dateFromString(busInfo.date) else { return false }
-            if calendar.isDateInToday(busDate) {
+            guard let busDate = dateFromString(busInfo.date, in: timeZone) else { return false }
+            
+            if calendar.isDate(date, inSameDayAs: now) {
                 // 对于今天的班车，只显示未过期的
                 let busTime = calendar.date(bySettingHour: Int(busInfo.time.prefix(2)) ?? 0,
                                             minute: Int(busInfo.time.suffix(2)) ?? 0,
                                             second: 0, of: busDate) ?? busDate
-                return busTime > now
+                return busTime > now && busTime >= startOfDay && busTime < endOfDay
             } else {
-                // 对于非今天的班车，保持原有逻辑
-                return calendar.isDate(busDate, inSameDayAs: date)
+                // 对于非今天的班车，确保日期在指定日期范围内
+                return busDate >= startOfDay && busDate < endOfDay
             }
         } ?? []
         
         return filteredBuses.sorted { $0.time < $1.time }
+    }
+    
+    // 更新 dateFromString 函数以支持时区
+    private func dateFromString(_ dateString: String, in timeZone: TimeZone) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = timeZone
+        return formatter.date(from: dateString)
     }
     
     private func refreshReservationStatus() async {
@@ -358,18 +374,19 @@ struct DateSelectorView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        HStack(spacing: 0) {
-            dateButton(title: "今天", tag: 0)
-            dateButton(title: "明天", tag: 1)
+        HStack(spacing: 8) {
+            dateButton(title: "今", tag: 0)
+            dateButton(title: "明", tag: 1)
         }
-        .padding(4)
+        .frame(height: 40)
+        .padding(.horizontal, 12) // 增加平内边距
         .background(
-            Capsule()
+            RoundedRectangle(cornerRadius: 20)
                 .fill(backgroundColor)
                 .shadow(color: shadowColor, radius: 5, x: 0, y: 2)
         )
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 20)
                 .stroke(borderColor, lineWidth: 1)
         )
         .padding(.horizontal)
@@ -385,14 +402,14 @@ struct DateSelectorView: View {
             Text(title)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundColor(currentPage == tag ? .white : textColor)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity) // 使用最大宽度
+                .frame(height: 32)
                 .background(
-                    Capsule()
+                    RoundedRectangle(cornerRadius: 16)
                         .fill(currentPage == tag ? accentColor : Color.clear)
                         .shadow(color: currentPage == tag ? accentColor.opacity(0.3) : Color.clear, radius: 3, x: 0, y: 2)
                 )
-                .contentShape(Capsule())
+                .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -437,7 +454,7 @@ struct BusButton: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(busInfo.time)
                         .font(.headline)
-                    Text(getBusRoute(for: busInfo.direction))
+                    Text(busInfo.resourceName)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -457,17 +474,6 @@ struct BusButton: View {
         .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved))
     }
 
-    private func getBusRoute(for direction: String) -> String {
-        switch direction {
-        case "去燕园":
-            return "昌平 → 燕园"
-        case "去昌平":
-            return "燕园 → 昌平"
-        default:
-            return ""
-        }
-    }
-    
     private func playHaptic() {
         let impact = UIImpactFeedbackGenerator(style: .light)
         impact.impactOccurred()
