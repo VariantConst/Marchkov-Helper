@@ -21,6 +21,7 @@ struct ReservationView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var selectedDate = Date()
+    @State private var isRefreshing = false
     
     var body: some View {
         NavigationView {
@@ -52,10 +53,19 @@ struct ReservationView: View {
             .background(gradientBackground.edgesIgnoringSafeArea(.all))
             .onAppear(perform: {
                 loadCachedBusInfo()
-                fetchReservationStatus()
+                Task {
+                    do {
+                        try await fetchReservationStatus()
+                    } catch {
+                        await MainActor.run {
+                            alertMessage = "获取预约状态失败：\(error.localizedDescription)"
+                            showAlert = true
+                        }
+                    }
+                }
             })
             .refreshable {
-                await refreshBusInfo()
+                await refreshReservationStatus()
             }
             .alert(isPresented: $showAlert) {
                 Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
@@ -137,25 +147,33 @@ struct ReservationView: View {
         }
     }
     
-    private func refreshBusInfo() async {
-        isLoading = true
-        // 这里可以添加刷新逻辑,例如重新从服务器获取数据
-        // 完成后,调用loadCachedBusInfo()来更新视图
-        loadCachedBusInfo()
+    private func refreshReservationStatus() async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        do {
+            try await fetchReservationStatus()
+        } catch {
+            await MainActor.run {
+                alertMessage = "刷新失败：\(error.localizedDescription)"
+                showAlert = true
+            }
+        }
     }
     
-    private func fetchReservationStatus() {
+    private func fetchReservationStatus() async throws {
         guard let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&status=2") else {
-            return
+            throw NSError(domain: "无效的URL", code: 0, userInfo: nil)
         }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data, let reservationInfo = try? JSONDecoder().decode(ReservationResponse.self, from: data) {
-                DispatchQueue.main.async {
-                    self.updateBusInfoWithReservation(reservationInfo)
-                }
-            }
-        }.resume()
+
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let reservationInfo = try JSONDecoder().decode(ReservationResponse.self, from: data)
+
+        await MainActor.run {
+            updateBusInfoWithReservation(reservationInfo)
+        }
+        LogManager.shared.addLog("成功获取预约状态：\(reservationInfo)")
     }
     
     private func updateBusInfoWithReservation(_ reservationInfo: ReservationResponse) {
@@ -169,6 +187,10 @@ struct ReservationView: View {
                     updatedBus.isReserved = true
                     updatedBus.hallAppointmentDataId = matchedReservation.hall_appointment_data_id
                     updatedBus.appointmentId = matchedReservation.id
+                } else {
+                    updatedBus.isReserved = false
+                    updatedBus.hallAppointmentDataId = nil
+                    updatedBus.appointmentId = nil
                 }
                 return updatedBus
             }
@@ -176,6 +198,21 @@ struct ReservationView: View {
     }
     
     private func reserveBus(busInfo: BusInfo) {
+        Task {
+            do {
+                try await performReservation(busInfo: busInfo)
+            } catch {
+                await MainActor.run {
+                    self.alertMessage = "预约失败：\(error.localizedDescription)"
+                    self.showAlert = true
+                    self.playErrorHaptic()
+                }
+                LogManager.shared.addLog("预约失败：\(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func performReservation(busInfo: BusInfo) async throws {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/launch")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -183,53 +220,52 @@ struct ReservationView: View {
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
         
         let resourceId = String(busInfo.resourceId)
-        
         let data = "[{\"date\": \"\(busInfo.date)\", \"period\": \(busInfo.timeId), \"sub_resource_id\": 0}]"
-        
         let postData = "resource_id=\(resourceId)&data=\(data)"
         let encodedPostData = postData.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         request.httpBody = encodedPostData.data(using: .utf8)
         
         LogManager.shared.addLog("发起预约请求（解码后）：URL: \(url.absoluteString), Body: \(postData)")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.alertMessage = "预约失败：\(error.localizedDescription)"
-                    self.showAlert = true
-                    self.playErrorHaptic()
-                    LogManager.shared.addLog("预约失败：\(error.localizedDescription)")
-                } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    if responseString.contains("\"m\":\"操作成功\"") {
-                        self.playSuccessHaptic()
-                        LogManager.shared.addLog("预约成功：\(responseString)")
-                        self.updateBusInfoAfterSuccessfulReservation(busInfo)
-                    } else {
-                        self.alertMessage = "预约失败：\(responseString)"
-                        self.showAlert = true
-                        self.playErrorHaptic()
-                        LogManager.shared.addLog("预约失败：\(responseString)")
-                    }
-                } else {
-                    self.alertMessage = "预约失败：未知错误"
-                    self.showAlert = true
-                    self.playErrorHaptic()
-                    LogManager.shared.addLog("预约失败：未知错误")
+        let (responseData, _) = try await URLSession.shared.data(for: request)
+        
+        if let responseString = String(data: responseData, encoding: .utf8) {
+            if responseString.contains("\"m\":\"操作成功\"") {
+                await MainActor.run {
+                    self.playSuccessHaptic()
+                    self.updateBusInfoAfterSuccessfulReservation(busInfo)
                 }
-                
-                // 无论成功与否，都获取最新的预约状态
-                self.fetchReservationStatus()
+                LogManager.shared.addLog("预约成功：\(responseString)")
+            } else {
+                throw NSError(domain: "预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: responseString])
             }
-        }.resume()
+        } else {
+            throw NSError(domain: "预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法解析响应"])
+        }
+        
+        // 无论成功与否，都获取最新的预约状态
+        try await fetchReservationStatus()
     }
     
     private func cancelReservation(busInfo: BusInfo) {
+        Task {
+            do {
+                try await performCancellation(busInfo: busInfo)
+            } catch {
+                await MainActor.run {
+                    self.alertMessage = "取消预约失败：\(error.localizedDescription)"
+                    self.showAlert = true
+                    self.playErrorHaptic()
+                }
+                LogManager.shared.addLog("取消预约失败：\(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func performCancellation(busInfo: BusInfo) async throws {
         guard let appointmentId = busInfo.appointmentId,
               let hallAppointmentDataId = busInfo.hallAppointmentDataId else {
-            self.alertMessage = "取消预约失败：缺少必要信息"
-            self.showAlert = true
-            self.playErrorHaptic()
-            return
+            throw NSError(domain: "取消预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: "缺少必要信息"])
         }
         
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/single-time-cancel")!
@@ -242,35 +278,24 @@ struct ReservationView: View {
         
         LogManager.shared.addLog("发起取消预约请求：URL: \(url.absoluteString), Body: \(postData)")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.alertMessage = "取消预约失败：\(error.localizedDescription)"
-                    self.showAlert = true
-                    self.playErrorHaptic()
-                    LogManager.shared.addLog("取消预约失败：\(error.localizedDescription)")
-                } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                    if responseString.contains("\"m\":\"操作成功\"") {
-                        self.playSuccessHaptic()
-                        LogManager.shared.addLog("取消预约成功：\(responseString)")
-                        self.updateBusInfoAfterSuccessfulCancellation(busInfo)
-                    } else {
-                        self.alertMessage = "取消预约失败：\(responseString)"
-                        self.showAlert = true
-                        self.playErrorHaptic()
-                        LogManager.shared.addLog("取消预约失败：\(responseString)")
-                    }
-                } else {
-                    self.alertMessage = "取消预约失败：未知错误"
-                    self.showAlert = true
-                    self.playErrorHaptic()
-                    LogManager.shared.addLog("取消预约失败：未知错误")
+        let (data, _) = try await URLSession.shared.data(for: request)
+        
+        if let responseString = String(data: data, encoding: .utf8) {
+            if responseString.contains("\"m\":\"操作成功\"") {
+                await MainActor.run {
+                    self.playSuccessHaptic()
+                    self.updateBusInfoAfterSuccessfulCancellation(busInfo)
                 }
-                
-                // 无论成功与否，都获取最新的预约状态
-                self.fetchReservationStatus()
+                LogManager.shared.addLog("取消预约成功：\(responseString)")
+            } else {
+                throw NSError(domain: "取消预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: responseString])
             }
-        }.resume()
+        } else {
+            throw NSError(domain: "取消预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法解析响应"])
+        }
+        
+        // 无论成功与否，都获取最新的预约状态
+        try await fetchReservationStatus()
     }
     
     private func updateBusInfoAfterSuccessfulReservation(_ busInfo: BusInfo) {
