@@ -6,6 +6,7 @@ struct BusInfo: Identifiable {
     let direction: String
     let margin: Int
     let resourceName: String
+    let date: String  // 新增日期字段
 }
 
 struct ReservationView: View {
@@ -70,8 +71,22 @@ struct ReservationView: View {
     
     private func processBusInfo(resources: [LoginService.Resource], ids: [Int], direction: String) -> [BusInfo] {
         return resources.filter { ids.contains($0.id) }.flatMap { resource in
-            resource.busInfos.map { BusInfo(time: $0.yaxis, direction: direction, margin: $0.margin, resourceName: resource.name) }
+            resource.busInfos.map { 
+                BusInfo(
+                    time: $0.yaxis, 
+                    direction: direction, 
+                    margin: $0.margin, 
+                    resourceName: resource.name,
+                    date: $0.date
+                ) 
+            }
         }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM月dd日"
+        return formatter.string(from: date)
     }
     
     private func refreshBusInfo() async {
@@ -103,9 +118,15 @@ struct BusButton: View {
                 Text(busInfo.resourceName)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Text("余票: \(busInfo.margin)")
-                    .font(.caption)
-                    .foregroundColor(busInfo.margin > 5 ? .green : .orange)
+                HStack {
+                    Text("余票: \(busInfo.margin)")
+                        .font(.caption)
+                        .foregroundColor(busInfo.margin > 5 ? .green : .orange)
+                    Spacer()
+                    Text(busInfo.date)  // 显示日期
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             .padding(.vertical, 8)
         }
