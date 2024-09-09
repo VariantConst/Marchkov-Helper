@@ -9,27 +9,76 @@ struct BusInfo: Identifiable {
 }
 
 struct ReservationView: View {
-    @Binding var availableBuses: [String: [BusInfo]]
+    @State private var availableBuses: [String: [BusInfo]] = [:]
+    @State private var isLoading = true
     @Environment(\.colorScheme) private var colorScheme
-    var refreshAction: () -> Void
-
+    
     var body: some View {
         NavigationView {
-            List {
-                ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                    Section(header: Text(direction)) {
-                        ForEach(availableBuses[direction] ?? [], id: \.id) { busInfo in
-                            BusButton(busInfo: busInfo)
+            Group {
+                if isLoading {
+                    ProgressView("加载中...")
+                } else {
+                    List {
+                        ForEach(["去燕园", "去昌平"], id: \.self) { direction in
+                            Section(header: Text(direction)) {
+                                ForEach(availableBuses[direction] ?? [], id: \.id) { busInfo in
+                                    BusButton(busInfo: busInfo)
+                                }
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("今日可预约班车")
-            .background(gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all))
+            .background(gradientBackground.edgesIgnoringSafeArea(.all))
+            .onAppear(perform: loadCachedBusInfo)
             .refreshable {
-                refreshAction()
+                await refreshBusInfo()
             }
         }
+    }
+    
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    private func loadCachedBusInfo() {
+        if let cachedInfo = LoginService.shared.getCachedBusInfo() {
+            let toYanyuan = processBusInfo(resources: cachedInfo.resources, ids: [2, 4], direction: "去燕园")
+            let toChangping = processBusInfo(resources: cachedInfo.resources, ids: [5, 6, 7], direction: "去昌平")
+            
+            self.availableBuses = [
+                "去燕园": toYanyuan,
+                "去昌平": toChangping
+            ]
+            isLoading = false
+        }
+    }
+    
+    private func processBusInfo(resources: [LoginService.Resource], ids: [Int], direction: String) -> [BusInfo] {
+        return resources.filter { ids.contains($0.id) }.flatMap { resource in
+            resource.busInfos.map { BusInfo(time: $0.yaxis, direction: direction, margin: $0.margin, resourceName: resource.name) }
+        }
+    }
+    
+    private func refreshBusInfo() async {
+        isLoading = true
+        // 这里可以添加刷新逻辑,例如重新从服务器获取数据
+        // 完成后,调用loadCachedBusInfo()来更新视图
+        loadCachedBusInfo()
     }
 }
 

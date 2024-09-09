@@ -245,7 +245,8 @@ struct LoginService {
         task1.resume()
     }
     
-    private func getCachedBusInfo() -> DatedBusInfo? {
+    // 将此方法改为公开
+    public func getCachedBusInfo() -> DatedBusInfo? {
         guard let data = UserDefaults.standard.data(forKey: "cachedBusInfo") else {
             return nil
         }

@@ -58,13 +58,13 @@ struct MainTabView: View {
             }
             .tag(0)
 
-            ReservationView(availableBuses: $availableBuses, refreshAction: fetchAvailableBuses)
+            ReservationView()
                 .tabItem {
                     Label("预约", systemImage: "calendar")
                 }
                 .tag(1)
 
-            RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading)
+            RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading) // 添加 date 参数
                 .tabItem {
                     Label("历史", systemImage: "clock.fill")
                 }
