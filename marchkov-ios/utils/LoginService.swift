@@ -17,6 +17,8 @@ struct LoginService {
         let yaxis: String
         let date: String
         let margin: Int
+        var resourceId: Int?  // 新增字段
+        var resourceName: String?  // 新增字段
         
         enum CodingKeys: String, CodingKey {
             case timeId = "time_id"
@@ -37,6 +39,8 @@ struct LoginService {
             
             let rowContainer = try container.nestedContainer(keyedBy: RowKeys.self, forKey: .row)
             margin = try rowContainer.decode(Int.self, forKey: .margin)
+            
+            // resourceId 和 resourceName 将在 Resource 的 init 中设置
         }
         
         func encode(to encoder: Encoder) throws {
@@ -53,7 +57,7 @@ struct LoginService {
     struct Resource: Codable {
         let id: Int
         let name: String
-        let busInfos: [BusInfo]
+        var busInfos: [BusInfo]
         
         enum CodingKeys: String, CodingKey {
             case id
@@ -69,6 +73,12 @@ struct LoginService {
             let tableContainer = try container.nestedContainer(keyedBy: AnyCodingKey.self, forKey: .table)
             let tableKey = tableContainer.allKeys.first!
             busInfos = try tableContainer.decode([BusInfo].self, forKey: tableKey)
+            
+            // 为每个 BusInfo 添加 resourceId 和 resourceName
+            for index in 0..<busInfos.count {
+                busInfos[index].resourceId = id
+                busInfos[index].resourceName = name
+            }
         }
         
         func encode(to encoder: Encoder) throws {
@@ -133,7 +143,7 @@ struct LoginService {
                 let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
                 LogManager.shared.addLog("登录响应解码成功")
                 if loginResponse.success, let token = loginResponse.token {
-                    LogManager.shared.addLog("登录成功，开始跟随重定向")
+                    LogManager.shared.addLog("录成功，开始跟随重定向")
                     self.followRedirect(token: token) { result in
                         switch result {
                         case .success:
@@ -160,7 +170,7 @@ struct LoginService {
     private func followRedirect(token: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let redirectURL = URL(string: "https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=\(token)")!
         
-        LogManager.shared.addLog("发送重定向请求 - URL: \(redirectURL.absoluteString)")
+        LogManager.shared.addLog("发送重定请求 - URL: \(redirectURL.absoluteString)")
         let task = session.dataTask(with: redirectURL) { _, response, error in
             if let error = error {
                 LogManager.shared.addLog("重定向失败: \(error.localizedDescription)")
@@ -233,6 +243,8 @@ struct LoginService {
                     let listData = try JSONSerialization.data(withJSONObject: (json?["d"] as? [String: Any])?["list"] ?? [], options: [])
                     let resources = try JSONDecoder().decode([Resource].self, from: listData)
                     LogManager.shared.addLog("成功解析资源: 共\(resources.count)个资源")
+                    
+                    // 更新缓存，只包含 resources
                     self.cacheBusInfo(DatedBusInfo(date: Date(), resources: resources))
                     completion(.success(resources))
                 } catch {

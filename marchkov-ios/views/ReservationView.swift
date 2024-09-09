@@ -8,6 +8,7 @@ struct BusInfo: Identifiable {
     let resourceName: String
     let date: String  // 新增日期字段
     let timeId: Int  // 新增 timeId 字段
+    let resourceId: Int  // 新增 resourceId 字段
 }
 
 struct ReservationView: View {
@@ -82,6 +83,7 @@ struct ReservationView: View {
                 "去昌平": toChangping
             ]
             isLoading = false
+            LogManager.shared.addLog("加载缓存数据：\(cachedInfo)")
         }
     }
     
@@ -103,7 +105,8 @@ struct ReservationView: View {
                     margin: busInfo.margin,
                     resourceName: resource.name,
                     date: busInfo.date,
-                    timeId: busInfo.timeId
+                    timeId: busInfo.timeId,
+                    resourceId: resource.id  // 添加 resourceId
                 )
             }
         }
@@ -213,9 +216,15 @@ struct BusButton: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                Text("Time ID: \(busInfo.timeId)")  // 添加 timeId 显示
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack {
+                    Text("Time ID: \(busInfo.timeId)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("Resource ID: \(busInfo.resourceId)")  // 新增显示 resourceId
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             .padding(.vertical, 8)
         }
