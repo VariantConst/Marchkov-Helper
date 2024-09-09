@@ -20,8 +20,9 @@ struct ReservationView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var selectedDate = Date()
     @State private var isRefreshing = false
+    @GestureState private var dragOffset: CGFloat = 0
+    @State private var currentPage = 0 // 0 表示今天，1 表示明天
     
     var body: some View {
         NavigationView {
@@ -30,22 +31,47 @@ struct ReservationView: View {
                     ProgressView("加载中...")
                 } else {
                     VStack {
-                        Picker("选择日期", selection: $selectedDate) {
-                            Text("今天").tag(Date())
-                            Text("明天").tag(Calendar.current.date(byAdding: .day, value: 1, to: Date())!)
+                        // 替换 Picker 为自定义的日期选择器
+                        HStack {
+                            Text("今天")
+                                .fontWeight(currentPage == 0 ? .bold : .regular)
+                                .foregroundColor(currentPage == 0 ? .primary : .secondary)
+                            Spacer()
+                            Text("明天")
+                                .fontWeight(currentPage == 1 ? .bold : .regular)
+                                .foregroundColor(currentPage == 1 ? .primary : .secondary)
                         }
-                        .pickerStyle(SegmentedPickerStyle())
                         .padding()
+                        .background(
+                            GeometryReader { geometry in
+                                Rectangle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: geometry.size.width / 2)
+                                    .offset(x: CGFloat(currentPage) * geometry.size.width / 2)
+                            }
+                        )
+                        .animation(.spring(), value: currentPage)
                         
-                        List {
-                            ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                                Section(header: Text(direction)) {
-                                    ForEach(filteredBuses(for: direction), id: \.id) { busInfo in
-                                        BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+                        // 使用 TabView 来实现滑动效果
+                        TabView(selection: $currentPage) {
+                            busListView(for: Date()).tag(0)
+                            busListView(for: Calendar.current.date(byAdding: .day, value: 1, to: Date())!).tag(1)
+                        }
+                        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                        .gesture(
+                            DragGesture()
+                                .updating($dragOffset) { value, state, _ in
+                                    state = value.translation.width
+                                }
+                                .onEnded { value in
+                                    let threshold: CGFloat = 50
+                                    if value.translation.width > threshold {
+                                        currentPage = max(0, currentPage - 1)
+                                    } else if value.translation.width < -threshold {
+                                        currentPage = min(1, currentPage + 1)
                                     }
                                 }
-                            }
-                        }
+                        )
                     }
                 }
             }
@@ -134,17 +160,24 @@ struct ReservationView: View {
         return formatter.date(from: dateString)
     }
     
-    private func filteredBuses(for direction: String) -> [BusInfo] {
+    private func filteredBuses(for direction: String, on date: Date) -> [BusInfo] {
         let calendar = Calendar.current
+        let now = Date()
         let filteredBuses = availableBuses[direction]?.filter { busInfo in
-            guard let date = dateFromString(busInfo.date) else { return false }
-            return calendar.isDate(date, inSameDayAs: selectedDate)
+            guard let busDate = dateFromString(busInfo.date) else { return false }
+            if calendar.isDateInToday(busDate) {
+                // 对于今天的班车，只显示未过期的
+                let busTime = calendar.date(bySettingHour: Int(busInfo.time.prefix(2)) ?? 0,
+                                            minute: Int(busInfo.time.suffix(2)) ?? 0,
+                                            second: 0, of: busDate) ?? busDate
+                return busTime > now
+            } else {
+                // 对于非今天的班车，保持原有逻辑
+                return calendar.isDate(busDate, inSameDayAs: date)
+            }
         } ?? []
         
-        // 按时间排序
-        return filteredBuses.sorted { (bus1, bus2) -> Bool in
-            return bus1.time < bus2.time
-        }
+        return filteredBuses.sorted { $0.time < $1.time }
     }
     
     private func refreshReservationStatus() async {
@@ -321,6 +354,18 @@ struct ReservationView: View {
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.error)
     }
+    
+    private func busListView(for date: Date) -> some View {
+        List {
+            ForEach(["去燕园", "去昌平"], id: \.self) { direction in
+                Section(header: Text(direction)) {
+                    ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
+                        BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+                    }
+                }
+            }
+        }
+    }
 }
 
 struct BusButton: View {
@@ -338,39 +383,17 @@ struct BusButton: View {
             }
             playHaptic()
         }) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(busInfo.time)
-                        .font(.headline)
-                    Spacer()
-                    Text(getBusRoute(for: busInfo.direction))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                Text(busInfo.resourceName)
-                    .font(.caption)
+            HStack {
+                Text(busInfo.time)
+                    .font(.headline)
+                Spacer()
+                Text(getBusRoute(for: busInfo.direction))
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
-                HStack {
-                    Text("余票: \(busInfo.margin)")
-                        .font(.caption)
-                        .foregroundColor(busInfo.margin > 5 ? .green : .orange)
-                    Spacer()
-                    Text(busInfo.date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                HStack {
-                    Text("Time ID: \(busInfo.timeId)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text("Resource ID: \(busInfo.resourceId)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
                 if busInfo.isReserved {
-                    Text("已预约 - 点击取消")
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("已预约")
                         .font(.caption)
                         .foregroundColor(.green)
                 }
@@ -406,17 +429,20 @@ struct BusButtonStyle: ButtonStyle {
             .padding(.horizontal)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(backgroundColor)
-                    .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+                    .fill(Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(borderColor, lineWidth: 1)
             )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
     }
     
-    private var backgroundColor: Color {
+    private var borderColor: Color {
         if isReserved {
-            return colorScheme == .dark ? Color.green.opacity(0.3) : Color.green.opacity(0.1)
+            return .green
         } else {
-            return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.white
+            return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
         }
     }
 }
