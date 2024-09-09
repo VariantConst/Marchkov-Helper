@@ -87,7 +87,6 @@ struct ReservationView: View {
                 "去昌平": toChangping
             ]
             isLoading = false
-            LogManager.shared.addLog("加载缓存数据：\(cachedInfo)")
         }
     }
     
