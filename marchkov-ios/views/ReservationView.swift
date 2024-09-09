@@ -55,7 +55,6 @@ struct ReservationView: View {
                     }
                 }
             }
-            .background(gradientBackground.edgesIgnoringSafeArea(.all))
             .onAppear(perform: {
                 loadCachedBusInfo()
                 Task {
@@ -75,22 +74,6 @@ struct ReservationView: View {
             .alert(isPresented: $showAlert) {
                 Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
             }
-        }
-    }
-    
-    private var gradientBackground: LinearGradient {
-        if colorScheme == .dark {
-            return LinearGradient(
-                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        } else {
-            return LinearGradient(
-                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
         }
     }
     
@@ -356,7 +339,7 @@ struct ReservationView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(direction)
                             .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(.primary)
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
                             .padding(.leading)
                             .padding(.top, 8)
                         
@@ -365,11 +348,6 @@ struct ReservationView: View {
                                 .transition(.scale.combined(with: .opacity))
                         }
                     }
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(.systemBackground))
-                            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
-                    )
                     .padding(.horizontal)
                 }
             }
@@ -449,7 +427,6 @@ struct BusButton: View {
     let reserveAction: (BusInfo) -> Void
     let cancelAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @State private var showParticles = false
 
     var body: some View {
         Button(action: {
@@ -457,39 +434,39 @@ struct BusButton: View {
                 cancelAction(busInfo)
             } else {
                 reserveAction(busInfo)
-                showParticles = true
             }
             playHaptic()
         }) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(busInfo.time)
-                        .font(.headline)
+                        .font(.headline.weight(.semibold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                     Text(busInfo.resourceName)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
                 }
                 Spacer()
                 VStack(spacing: 2) {
                     Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
-                        .foregroundColor(busInfo.isReserved ? .green : .gray)
+                        .foregroundColor(busInfo.isReserved ? accentColor : (colorScheme == .dark ? .white.opacity(0.8) : .gray))
                     Text(busInfo.isReserved ? "已预约" : "可预约")
-                        .font(.caption)
-                        .foregroundColor(busInfo.isReserved ? .green : .gray)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(busInfo.isReserved ? accentColor : (colorScheme == .dark ? .white.opacity(0.8) : .gray))
                 }
             }
             .padding()
         }
         .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved))
-        .overlay(
-            ParticleEffect(isActive: $showParticles)
-                .allowsHitTesting(false)
-        )
     }
 
     private func playHaptic() {
         let impact = UIImpactFeedbackGenerator(style: .light)
         impact.impactOccurred()
+    }
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)
     }
 }
 
@@ -513,70 +490,17 @@ struct BusButtonStyle: ButtonStyle {
     }
     
     private var backgroundColor: Color {
-        isReserved ? (colorScheme == .dark ? Color(.systemGreen).opacity(0.2) : Color(.systemGreen).opacity(0.1)) :
+        isReserved ? (colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.2) : Color(red: 0.2, green: 0.5, blue: 0.8).opacity(0.1)) :
                      (colorScheme == .dark ? Color(.systemGray6) : Color.white)
     }
     
     private var borderColor: Color {
-        isReserved ? .green : (colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2))
+        isReserved ? (colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)) :
+                     (colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2))
     }
     
     private var shadowColor: Color {
         colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.1)
-    }
-}
-
-struct ParticleEffect: View {
-    @Binding var isActive: Bool
-    let particleCount = 20
-
-    var body: some View {
-        ZStack {
-            ForEach(0..<particleCount, id: \.self) { _ in
-                ParticleView(isActive: $isActive)
-            }
-        }
-    }
-}
-
-struct ParticleView: View {
-    @State private var position = CGPoint.zero
-    @State private var scale: CGFloat = 0.01
-    @State private var opacity: Double = 0
-    @Binding var isActive: Bool
-
-    var body: some View {
-        Circle()
-            .fill(Color.green)
-            .frame(width: 10, height: 10)
-            .scaleEffect(scale)
-            .opacity(opacity)
-            .position(position)
-            .onAppear {
-                if isActive {
-                    animate()
-                }
-            }
-            .onChange(of: isActive) { newValue in
-                if newValue {
-                    animate()
-                }
-            }
-    }
-
-    func animate() {
-        position = CGPoint(x: CGFloat.random(in: 0...300), y: CGFloat.random(in: 0...100))
-        withAnimation(.easeOut(duration: 0.5)) {
-            scale = CGFloat.random(in: 0.5...1.0)
-            opacity = 1
-        }
-        withAnimation(.easeIn(duration: 0.5).delay(0.5)) {
-            scale = 0.01
-            opacity = 0
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            isActive = false
-        }
     }
 }
 
