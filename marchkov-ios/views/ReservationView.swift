@@ -7,6 +7,7 @@ struct BusInfo: Identifiable {
     let margin: Int
     let resourceName: String
     let date: String  // 新增日期字段
+    let timeId: Int  // 新增 timeId 字段
 }
 
 struct ReservationView: View {
@@ -77,7 +78,8 @@ struct ReservationView: View {
                     direction: direction, 
                     margin: $0.margin, 
                     resourceName: resource.name,
-                    date: $0.date
+                    date: $0.date,
+                    timeId: $0.timeId  // 添加 timeId
                 ) 
             }
         }
@@ -123,10 +125,13 @@ struct BusButton: View {
                         .font(.caption)
                         .foregroundColor(busInfo.margin > 5 ? .green : .orange)
                     Spacer()
-                    Text(busInfo.date)  // 显示日期
+                    Text(busInfo.date)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                Text("Time ID: \(busInfo.timeId)")  // 添加 timeId 显示
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             .padding(.vertical, 8)
         }

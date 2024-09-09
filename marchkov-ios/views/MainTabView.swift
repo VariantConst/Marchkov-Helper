@@ -257,12 +257,12 @@ struct MainTabView: View {
                 let direction: String
                 if resource.id == 2 || resource.id == 4 {
                     direction = "去燕园"
-                    toYanyuan.append(BusInfo(time: time, direction: direction, margin: busInfo.margin, resourceName: resource.name, date: today))
-                    LogManager.shared.addLog("添加去燕园班车: \(time), 余票: \(busInfo.margin)")
+                    toYanyuan.append(BusInfo(time: time, direction: direction, margin: busInfo.margin, resourceName: resource.name, date: today, timeId: busInfo.timeId))
+                    LogManager.shared.addLog("添加去燕园班车: \(time), 余票: \(busInfo.margin), timeId: \(busInfo.timeId)")
                 } else if resource.id == 5 || resource.id == 6 || resource.id == 7 {
                     direction = "去昌平"
-                    toChangping.append(BusInfo(time: time, direction: direction, margin: busInfo.margin, resourceName: resource.name, date: today))
-                    LogManager.shared.addLog("添加去昌平班车: \(time), 余票: \(busInfo.margin)")
+                    toChangping.append(BusInfo(time: time, direction: direction, margin: busInfo.margin, resourceName: resource.name, date: today, timeId: busInfo.timeId))
+                    LogManager.shared.addLog("添加去昌平班车: \(time), 余票: \(busInfo.margin), timeId: \(busInfo.timeId)")
                 }
             }
         }
