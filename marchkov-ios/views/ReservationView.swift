@@ -23,8 +23,6 @@ struct ReservationView: View {
     @State private var isRefreshing = false
     @GestureState private var dragOffset: CGFloat = 0
     @State private var currentPage = 0 // 0 表示今天，1 表示明天
-    @State private var showTutorial = true
-    @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
     
     var body: some View {
         NavigationView {
@@ -33,7 +31,7 @@ struct ReservationView: View {
                     ProgressView("加载中...")
                 } else {
                     VStack(spacing: 0) {
-                        // 更新的日期选择器
+                        // 自定义的日期选择器
                         DateSelectorView(currentPage: $currentPage)
                         
                         // 使用 TabView 来实现滑动效果
@@ -69,9 +67,6 @@ struct ReservationView: View {
                         }
                     }
                 }
-                if !hasSeenTutorial {
-                    showTutorial = true
-                }
             })
             .refreshable {
                 await refreshReservationStatus()
@@ -79,13 +74,6 @@ struct ReservationView: View {
             .alert(isPresented: $showAlert) {
                 Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
             }
-            .overlay(
-                Group {
-                    if showTutorial {
-                        TutorialView(showTutorial: $showTutorial)
-                    }
-                }
-            )
         }
     }
     
@@ -367,6 +355,7 @@ struct ReservationView: View {
 
 struct DateSelectorView: View {
     @Binding var currentPage: Int
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         HStack(spacing: 0) {
@@ -374,30 +363,58 @@ struct DateSelectorView: View {
             dateButton(title: "明天", tag: 1)
         }
         .padding(4)
-        .background(Color(.systemBackground).opacity(0.8))
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .background(
+            Capsule()
+                .fill(backgroundColor)
+                .shadow(color: shadowColor, radius: 5, x: 0, y: 2)
+        )
+        .overlay(
+            Capsule()
+                .stroke(borderColor, lineWidth: 1)
+        )
         .padding(.horizontal)
         .padding(.top)
     }
     
     private func dateButton(title: String, tag: Int) -> some View {
         Button(action: {
-            withAnimation(.spring()) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 currentPage = tag
             }
         }) {
             Text(title)
-                .fontWeight(.medium)
-                .foregroundColor(currentPage == tag ? .white : .primary)
+                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .foregroundColor(currentPage == tag ? .white : textColor)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 20)
                 .background(
                     Capsule()
-                        .fill(currentPage == tag ? Color.accentColor : Color.clear)
+                        .fill(currentPage == tag ? accentColor : Color.clear)
+                        .shadow(color: currentPage == tag ? accentColor.opacity(0.3) : Color.clear, radius: 3, x: 0, y: 2)
                 )
+                .contentShape(Capsule())
         }
         .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGray6) : Color.white
+    }
+    
+    private var borderColor: Color {
+        colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
+    }
+    
+    private var shadowColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.1)
+    }
+    
+    private var textColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.8) : Color.black.opacity(0.6)
+    }
+    
+    private var accentColor: Color {
+        Color.accentColor
     }
 }
 
@@ -406,14 +423,15 @@ struct BusButton: View {
     let reserveAction: (BusInfo) -> Void
     let cancelAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @GestureState private var isDetectingLongPress = false
-    @State private var completedLongPress = false
 
     var body: some View {
         Button(action: {
             if busInfo.isReserved {
                 cancelAction(busInfo)
+            } else {
+                reserveAction(busInfo)
             }
+            playHaptic()
         }) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -436,20 +454,7 @@ struct BusButton: View {
             }
             .padding()
         }
-        .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved, isPressed: isDetectingLongPress))
-        .gesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .updating($isDetectingLongPress) { currentState, gestureState, _ in
-                    gestureState = currentState
-                }
-                .onEnded { _ in
-                    if !busInfo.isReserved {
-                        completedLongPress = true
-                        reserveAction(busInfo)
-                    }
-                }
-        )
-        .animation(.easeInOut, value: isDetectingLongPress)
+        .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved))
     }
 
     private func getBusRoute(for direction: String) -> String {
@@ -472,7 +477,6 @@ struct BusButton: View {
 struct BusButtonStyle: ButtonStyle {
     let colorScheme: ColorScheme
     let isReserved: Bool
-    let isPressed: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -485,7 +489,7 @@ struct BusButtonStyle: ButtonStyle {
                     .stroke(borderColor, lineWidth: 1)
             )
             .shadow(color: shadowColor, radius: 3, x: 0, y: 2)
-            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
     }
     
     private var backgroundColor: Color {
@@ -527,41 +531,4 @@ struct PeriodInfo: Codable {
     let id: Int
     let time: String
     let status: Int
-}
-
-struct TutorialView: View {
-    @Binding var showTutorial: Bool
-    @AppStorage("hasSeenTutorial") private var hasSeenTutorial = false
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.7)
-                .edgesIgnoringSafeArea(.all)
-            
-            VStack(spacing: 20) {
-                Text("如何预约班车")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text("长按班车按钮进行预约")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Image(systemName: "hand.tap.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.white)
-                
-                Button("我知道了") {
-                    showTutorial = false
-                    hasSeenTutorial = true
-                }
-                .padding()
-                .background(Color.white)
-                .foregroundColor(.black)
-                .cornerRadius(10)
-            }
-            .padding()
-        }
-    }
 }
