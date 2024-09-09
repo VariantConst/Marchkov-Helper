@@ -14,6 +14,8 @@ struct ReservationView: View {
     @State private var availableBuses: [String: [BusInfo]] = [:]
     @State private var isLoading = true
     @Environment(\.colorScheme) private var colorScheme
+    @State private var showAlert = false
+    @State private var alertMessage = ""
     
     var body: some View {
         NavigationView {
@@ -25,7 +27,7 @@ struct ReservationView: View {
                         ForEach(["去燕园", "去昌平"], id: \.self) { direction in
                             Section(header: Text(direction)) {
                                 ForEach(availableBuses[direction] ?? [], id: \.id) { busInfo in
-                                    BusButton(busInfo: busInfo)
+                                    BusButton(busInfo: busInfo, reserveAction: reserveBus)
                                 }
                             }
                         }
@@ -37,6 +39,9 @@ struct ReservationView: View {
             .onAppear(perform: loadCachedBusInfo)
             .refreshable {
                 await refreshBusInfo()
+            }
+            .alert(isPresented: $showAlert) {
+                Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
             }
         }
     }
@@ -97,16 +102,67 @@ struct ReservationView: View {
         // 完成后,调用loadCachedBusInfo()来更新视图
         loadCachedBusInfo()
     }
+    
+    private func reserveBus(busInfo: BusInfo) {
+        let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/launch")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+        
+        let resourceId = getResourceId(for: busInfo.direction)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let formattedDate = dateFormatter.string(from: Date())
+        
+        let queryItems = [
+            URLQueryItem(name: "resource_id", value: resourceId),
+            URLQueryItem(name: "data", value: "[{\"date\": \"\(formattedDate)\", \"period\": \(busInfo.timeId), \"sub_resource_id\": 0}]")
+        ]
+        request.url?.append(queryItems: queryItems)
+        
+        // 在日志中显示解码后的完整请求URL
+        if let fullURL = request.url?.absoluteString,
+           let decodedURL = fullURL.removingPercentEncoding {
+            LogManager.shared.addLog("发起预约请求（解码后）：\(decodedURL)")
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.alertMessage = "预约失败：\(error.localizedDescription)"
+                    LogManager.shared.addLog("预约失败：\(error.localizedDescription)")
+                } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    self.alertMessage = "预约结果：\(responseString)"
+                    LogManager.shared.addLog("预约响应：\(responseString)")
+                } else {
+                    self.alertMessage = "预约失败：未知错误"
+                    LogManager.shared.addLog("预约失败：未知错误")
+                }
+                self.showAlert = true
+            }
+        }.resume()
+    }
+    
+    private func getResourceId(for direction: String) -> String {
+        switch direction {
+        case "去燕园":
+            return "2"
+        case "去昌平":
+            return "7"
+        default:
+            return "0"
+        }
+    }
 }
 
 struct BusButton: View {
     let busInfo: BusInfo
+    let reserveAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: {
-            // 这里可以添加预约逻辑
-            print("预约 \(busInfo.direction) \(busInfo.time)")
+            reserveAction(busInfo)
         }) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
