@@ -6,9 +6,12 @@ struct BusInfo: Identifiable {
     let direction: String
     let margin: Int
     let resourceName: String
-    let date: String  // 新增日期字段
-    let timeId: Int  // 新增 timeId 字段
-    let resourceId: Int  // 新增 resourceId 字段
+    let date: String
+    let timeId: Int
+    let resourceId: Int
+    var isReserved: Bool = false
+    var hallAppointmentDataId: Int?
+    var appointmentId: Int?
 }
 
 struct ReservationView: View {
@@ -17,7 +20,7 @@ struct ReservationView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var selectedDate = Date()  // 新增：用于选择日期
+    @State private var selectedDate = Date()
     
     var body: some View {
         NavigationView {
@@ -47,7 +50,10 @@ struct ReservationView: View {
             }
             .navigationTitle("可预约班车")
             .background(gradientBackground.edgesIgnoringSafeArea(.all))
-            .onAppear(perform: loadCachedBusInfo)
+            .onAppear(perform: {
+                loadCachedBusInfo()
+                fetchReservationStatus()
+            })
             .refreshable {
                 await refreshBusInfo()
             }
@@ -106,7 +112,7 @@ struct ReservationView: View {
                     resourceName: resource.name,
                     date: busInfo.date,
                     timeId: busInfo.timeId,
-                    resourceId: resource.id  // 添加 resourceId
+                    resourceId: resource.id
                 )
             }
         }
@@ -138,6 +144,37 @@ struct ReservationView: View {
         loadCachedBusInfo()
     }
     
+    private func fetchReservationStatus() {
+        guard let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&status=2") else {
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let data = data, let reservationInfo = try? JSONDecoder().decode(ReservationResponse.self, from: data) {
+                DispatchQueue.main.async {
+                    self.updateBusInfoWithReservation(reservationInfo)
+                }
+            }
+        }.resume()
+    }
+    
+    private func updateBusInfoWithReservation(_ reservationInfo: ReservationResponse) {
+        for (direction, buses) in availableBuses {
+            availableBuses[direction] = buses.map { bus in
+                var updatedBus = bus
+                if let matchedReservation = reservationInfo.d.data.first(where: {
+                    $0.resource_id == bus.resourceId &&
+                    $0.periodList.contains(where: { $0.time == "\(bus.date) \(bus.time)" })
+                }) {
+                    updatedBus.isReserved = true
+                    updatedBus.hallAppointmentDataId = matchedReservation.hall_appointment_data_id
+                    updatedBus.appointmentId = matchedReservation.id
+                }
+                return updatedBus
+            }
+        }
+    }
+    
     private func reserveBus(busInfo: BusInfo) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/launch")!
         var request = URLRequest(url: url)
@@ -145,7 +182,6 @@ struct ReservationView: View {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
         
-        // 使用 busInfo.resourceId 替代 getResourceId 函数
         let resourceId = String(busInfo.resourceId)
         
         let data = "[{\"date\": \"\(busInfo.date)\", \"period\": \(busInfo.timeId), \"sub_resource_id\": 0}]"
@@ -154,7 +190,6 @@ struct ReservationView: View {
         let encodedPostData = postData.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         request.httpBody = encodedPostData.data(using: .utf8)
         
-        // 在日志中显示解码后的完整请求内容
         LogManager.shared.addLog("发起预约请求（解码后）：URL: \(url.absoluteString), Body: \(postData)")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -170,6 +205,10 @@ struct ReservationView: View {
                     LogManager.shared.addLog("预约失败：未知错误")
                 }
                 self.showAlert = true
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    self.fetchReservationStatus()
+                }
             }
         }.resume()
     }
@@ -210,14 +249,20 @@ struct BusButton: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text("Resource ID: \(busInfo.resourceId)")  // 新增显示 resourceId
+                    Text("Resource ID: \(busInfo.resourceId)")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+                
+                if busInfo.isReserved {
+                    Text("已预约")
+                        .font(.caption)
+                        .foregroundColor(.green)
                 }
             }
             .padding(.vertical, 8)
         }
-        .buttonStyle(BusButtonStyle(colorScheme: colorScheme))
+        .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved))
     }
 
     private func getBusRoute(for direction: String) -> String {
@@ -234,22 +279,48 @@ struct BusButton: View {
 
 struct BusButtonStyle: ButtonStyle {
     let colorScheme: ColorScheme
+    let isReserved: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(colorScheme == .dark ? Color.gray.opacity(0.3) : Color.white)
+                    .fill(backgroundColor)
                     .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
             )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
     }
+    
+    private var backgroundColor: Color {
+        if isReserved {
+            return colorScheme == .dark ? Color.green.opacity(0.3) : Color.green.opacity(0.1)
+        } else {
+            return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.white
+        }
+    }
 }
 
-// 如果需要,可以将gradientBackground扩展移到这里
-// extension View {
-//     func gradientBackground(colorScheme: ColorScheme) -> LinearGradient {
-//         // ... 实现 ...
-//     }
-// }
+struct ReservationResponse: Codable {
+    let e: Int
+    let m: String
+    let d: ReservationData
+}
+
+struct ReservationData: Codable {
+    let total: Int
+    let data: [ReservationItem]
+}
+
+struct ReservationItem: Codable {
+    let id: Int
+    let resource_id: Int
+    let hall_appointment_data_id: Int
+    let periodList: [PeriodInfo]
+}
+
+struct PeriodInfo: Codable {
+    let id: Int
+    let time: String
+    let status: Int
+}
