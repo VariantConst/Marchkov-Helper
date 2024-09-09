@@ -117,10 +117,15 @@ struct ReservationView: View {
     
     private func filteredBuses(for direction: String) -> [BusInfo] {
         let calendar = Calendar.current
-        return availableBuses[direction]?.filter { busInfo in
+        let filteredBuses = availableBuses[direction]?.filter { busInfo in
             guard let date = dateFromString(busInfo.date) else { return false }
             return calendar.isDate(date, inSameDayAs: selectedDate)
         } ?? []
+        
+        // 按时间排序
+        return filteredBuses.sorted { (bus1, bus2) -> Bool in
+            return bus1.time < bus2.time
+        }
     }
     
     private func refreshBusInfo() async {
@@ -133,25 +138,21 @@ struct ReservationView: View {
     private func reserveBus(busInfo: BusInfo) {
         let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/launch")!
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
         
         let resourceId = getResourceId(for: busInfo.direction)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let formattedDate = dateFormatter.string(from: Date())
         
-        let queryItems = [
-            URLQueryItem(name: "resource_id", value: resourceId),
-            URLQueryItem(name: "data", value: "[{\"date\": \"\(formattedDate)\", \"period\": \(busInfo.timeId), \"sub_resource_id\": 0}]")
-        ]
-        request.url?.append(queryItems: queryItems)
+        // 使用busInfo.date而不是当前日期
+        let data = "[{\"date\": \"\(busInfo.date)\", \"period\": \(busInfo.timeId), \"sub_resource_id\": 0}]"
         
-        // 在日志中显示解码后的完整请求URL
-        if let fullURL = request.url?.absoluteString,
-           let decodedURL = fullURL.removingPercentEncoding {
-            LogManager.shared.addLog("发起预约请求（解码后）：\(decodedURL)")
-        }
+        let postData = "resource_id=\(resourceId)&data=\(data)"
+        let encodedPostData = postData.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        request.httpBody = encodedPostData.data(using: .utf8)
+        
+        // 在日志中显示解码后的完整请求内容
+        LogManager.shared.addLog("发起预约请求（解码后）：URL: \(url.absoluteString), Body: \(postData)")
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
