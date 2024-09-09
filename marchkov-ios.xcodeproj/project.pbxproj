@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		F5084CA92C8D6E2F0033FC0A /* ReservationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5084CA82C8D6E2F0033FC0A /* ReservationView.swift */; };
-		F50AFC762C4BDEB3009BDF31 /* SFSafeSymbols in Frameworks */ = {isa = PBXBuildFile; productRef = F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */; };
 		F50AFC782C4BEC3D009BDF31 /* SuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50AFC772C4BEC3D009BDF31 /* SuccessView.swift */; };
 		F55F58132C482AED002E65F0 /* UserInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55F58122C482AED002E65F0 /* UserInfoCard.swift */; };
 		F5AAEB882C8A0998008F4A26 /* RideHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AAEB872C8A0998008F4A26 /* RideHistoryView.swift */; };
@@ -85,7 +84,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F50AFC762C4BDEB3009BDF31 /* SFSafeSymbols in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,7 +234,6 @@
 			);
 			name = "marchkov-ios";
 			packageProductDependencies = (
-				F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */,
 			);
 			productName = "marchkov-ios";
 			productReference = F5D8A6D62C451C6D001E0280 /* marchkov-ios.app */;
@@ -534,7 +531,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"marchkov-ios/Preview Content\"";
 				DEVELOPMENT_TEAM = 3B84D2645W;
 				ENABLE_PREVIEWS = YES;
@@ -552,7 +549,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "variantconst.marchkov-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -567,7 +564,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"marchkov-ios/Preview Content\"";
 				DEVELOPMENT_TEAM = 3B84D2645W;
 				ENABLE_PREVIEWS = YES;
@@ -585,7 +582,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "variantconst.marchkov-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -721,14 +718,6 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		F50AFC752C4BDEB3009BDF31 /* SFSafeSymbols */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F50AFC732C4BDEAC009BDF31 /* XCRemoteSwiftPackageReference "SFSafeSymbols" */;
-			productName = SFSafeSymbols;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F5D8A6CE2C451C6D001E0280 /* Project object */;
 }

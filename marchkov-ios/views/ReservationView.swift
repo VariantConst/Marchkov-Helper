@@ -26,32 +26,36 @@ struct ReservationView: View {
     
     var body: some View {
         NavigationView {
-            Group {
-                if isLoading {
-                    ProgressView("加载中...")
-                } else {
-                    VStack(spacing: 0) {
-                        // 自定义的日期选择器
-                        DateSelectorView(currentPage: $currentPage)
-                            .padding(.bottom, 8)  // 添加加一些底部间距
-                        
-                        // 使用 TabView 来实现滑动效果
-                        TabView(selection: $currentPage) {
-                            busListView(for: Date()).tag(0)
-                            busListView(for: Calendar.current.date(byAdding: .day, value: 1, to: Date())!).tag(1)
-                        }
-                        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                        .gesture(
-                            DragGesture()
-                                .onEnded { value in
-                                    let threshold: CGFloat = 50
-                                    if value.translation.width > threshold {
-                                        withAnimation { currentPage = max(0, currentPage - 1) }
-                                    } else if value.translation.width < -threshold {
-                                        withAnimation { currentPage = min(1, currentPage + 1) }
+            ZStack {
+                gradientBackground.edgesIgnoringSafeArea(.all)
+                
+                Group {
+                    if isLoading {
+                        ProgressView("加载中...")
+                    } else {
+                        VStack(spacing: 0) {
+                            // 自定义的日期选择器
+                            DateSelectorView(currentPage: $currentPage)
+                                .padding(.bottom, 8)
+                            
+                            // 使用 TabView 来实现滑动效果
+                            TabView(selection: $currentPage) {
+                                busListView(for: Date()).tag(0)
+                                busListView(for: Calendar.current.date(byAdding: .day, value: 1, to: Date())!).tag(1)
+                            }
+                            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                            .gesture(
+                                DragGesture()
+                                    .onEnded { value in
+                                        let threshold: CGFloat = 50
+                                        if value.translation.width > threshold {
+                                            withAnimation { currentPage = max(0, currentPage - 1) }
+                                        } else if value.translation.width < -threshold {
+                                            withAnimation { currentPage = min(1, currentPage + 1) }
+                                        }
                                     }
-                                }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -353,6 +357,22 @@ struct ReservationView: View {
             .padding(.vertical)
         }
     }
+    
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
 }
 
 struct DateSelectorView: View {
@@ -456,7 +476,15 @@ struct BusButton: View {
             }
             .padding()
         }
-        .buttonStyle(BusButtonStyle(colorScheme: colorScheme, isReserved: busInfo.isReserved))
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(backgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(borderColor, lineWidth: 2)
+        )
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
     }
 
     private func playHaptic() {
@@ -467,39 +495,21 @@ struct BusButton: View {
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)
     }
-}
-
-struct BusButtonStyle: ButtonStyle {
-    let colorScheme: ColorScheme
-    let isReserved: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(backgroundColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 15)
-                    .stroke(borderColor, lineWidth: 2)
-            )
-            .shadow(color: shadowColor, radius: 5, x: 0, y: 3)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-    }
     
     private var backgroundColor: Color {
-        isReserved ? (colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0).opacity(0.2) : Color(red: 0.2, green: 0.5, blue: 0.8).opacity(0.1)) :
-                     (colorScheme == .dark ? Color(.systemGray6) : Color.white)
+        if busInfo.isReserved {
+            return colorScheme == .dark ? accentColor.opacity(0.2) : accentColor.opacity(0.1)
+        } else {
+            return colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.5)
+        }
     }
     
     private var borderColor: Color {
-        isReserved ? (colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)) :
-                     (colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2))
-    }
-    
-    private var shadowColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.1)
+        if busInfo.isReserved {
+            return accentColor
+        } else {
+            return colorScheme == .dark ? Color.white.opacity(0.3) : Color.gray.opacity(0.3)
+        }
     }
 }
 
