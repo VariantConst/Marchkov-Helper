@@ -40,7 +40,7 @@ struct ReservationView: View {
                             ForEach(["去燕园", "去昌平"], id: \.self) { direction in
                                 Section(header: Text(direction)) {
                                     ForEach(filteredBuses(for: direction), id: \.id) { busInfo in
-                                        BusButton(busInfo: busInfo, reserveAction: reserveBus)
+                                        BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
                                     }
                                 }
                             }
@@ -212,16 +212,59 @@ struct ReservationView: View {
             }
         }.resume()
     }
+    
+    private func cancelReservation(busInfo: BusInfo) {
+        guard let appointmentId = busInfo.appointmentId,
+              let hallAppointmentDataId = busInfo.hallAppointmentDataId else {
+            self.alertMessage = "取消预约失败：缺少必要信息"
+            self.showAlert = true
+            return
+        }
+        
+        let url = URL(string: "https://wproc.pku.edu.cn/site/reservation/single-time-cancel")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        
+        let postData = "appointment_id=\(appointmentId)&data_id[0]=\(hallAppointmentDataId)"
+        request.httpBody = postData.data(using: .utf8)
+        
+        LogManager.shared.addLog("发起取消预约请求：URL: \(url.absoluteString), Body: \(postData)")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.alertMessage = "取消预约失败：\(error.localizedDescription)"
+                    LogManager.shared.addLog("取消预约失败：\(error.localizedDescription)")
+                } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    self.alertMessage = "取消预约结果：\(responseString)"
+                    LogManager.shared.addLog("取消预约响应：\(responseString)")
+                } else {
+                    self.alertMessage = "取消预约失败：未知错误"
+                    LogManager.shared.addLog("取消预约失败：未知错误")
+                }
+                self.showAlert = true
+                
+                // 刷新预约状态
+                self.fetchReservationStatus()
+            }
+        }.resume()
+    }
 }
 
 struct BusButton: View {
     let busInfo: BusInfo
     let reserveAction: (BusInfo) -> Void
+    let cancelAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Button(action: {
-            reserveAction(busInfo)
+            if busInfo.isReserved {
+                cancelAction(busInfo)
+            } else {
+                reserveAction(busInfo)
+            }
         }) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -255,7 +298,7 @@ struct BusButton: View {
                 }
                 
                 if busInfo.isReserved {
-                    Text("已预约")
+                    Text("已预约 - 点击取消")
                         .font(.caption)
                         .foregroundColor(.green)
                 }
