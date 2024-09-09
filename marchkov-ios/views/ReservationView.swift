@@ -101,7 +101,7 @@ struct ReservationView: View {
             
             self.availableBuses = [
                 "去燕园": toYanyuan,
-                "去昌平": toChangping
+                "回昌平": toChangping
             ]
             isLoading = false
             LogManager.shared.addLog("加载缓存数据：\(cachedInfo)")
@@ -351,20 +351,24 @@ struct ReservationView: View {
     
     private func busListView(for date: Date) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 20) {
                 ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text(direction)
-                            .font(.headline)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
                             .padding(.leading)
+                            .padding(.top, 8)
                         
                         ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
                             BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+                                .transition(.scale.combined(with: .opacity))
                         }
                     }
+                    .padding(.horizontal)
                 }
             }
-            .padding()
+            .padding(.vertical)
         }
     }
 }
@@ -459,14 +463,12 @@ struct BusButton: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                if busInfo.isReserved {
-                    VStack(spacing: 2) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("已预约")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    }
+                VStack(spacing: 2) {
+                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
+                        .foregroundColor(busInfo.isReserved ? .green : .gray)
+                    Text(busInfo.isReserved ? "已预约" : "可预约")
+                        .font(.caption)
+                        .foregroundColor(busInfo.isReserved ? .green : .gray)
                 }
             }
             .padding()
@@ -492,22 +494,20 @@ struct BusButtonStyle: ButtonStyle {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 15)
-                    .stroke(borderColor, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 2)
             )
-            .shadow(color: shadowColor, radius: 3, x: 0, y: 2)
+            .shadow(color: shadowColor, radius: 5, x: 0, y: 3)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
     
     private var backgroundColor: Color {
-        colorScheme == .dark ? Color(.systemGray6) : Color.white
+        isReserved ? (colorScheme == .dark ? Color(.systemGreen).opacity(0.2) : Color(.systemGreen).opacity(0.1)) :
+                     (colorScheme == .dark ? Color(.systemGray6) : Color.white)
     }
     
     private var borderColor: Color {
-        if isReserved {
-            return .green
-        } else {
-            return colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
-        }
+        isReserved ? .green : (colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2))
     }
     
     private var shadowColor: Color {
