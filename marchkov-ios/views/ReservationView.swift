@@ -16,6 +16,7 @@ struct ReservationView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @State private var selectedDate = Date()  // 新增：用于选择日期
     
     var body: some View {
         NavigationView {
@@ -23,18 +24,27 @@ struct ReservationView: View {
                 if isLoading {
                     ProgressView("加载中...")
                 } else {
-                    List {
-                        ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                            Section(header: Text(direction)) {
-                                ForEach(availableBuses[direction] ?? [], id: \.id) { busInfo in
-                                    BusButton(busInfo: busInfo, reserveAction: reserveBus)
+                    VStack {
+                        Picker("选择日期", selection: $selectedDate) {
+                            Text("今天").tag(Date())
+                            Text("明天").tag(Calendar.current.date(byAdding: .day, value: 1, to: Date())!)
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .padding()
+                        
+                        List {
+                            ForEach(["去燕园", "去昌平"], id: \.self) { direction in
+                                Section(header: Text(direction)) {
+                                    ForEach(filteredBuses(for: direction), id: \.id) { busInfo in
+                                        BusButton(busInfo: busInfo, reserveAction: reserveBus)
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("今日可预约班车")
+            .navigationTitle("可预约班车")
             .background(gradientBackground.edgesIgnoringSafeArea(.all))
             .onAppear(perform: loadCachedBusInfo)
             .refreshable {
@@ -76,24 +86,41 @@ struct ReservationView: View {
     }
     
     private func processBusInfo(resources: [LoginService.Resource], ids: [Int], direction: String) -> [BusInfo] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        
         return resources.filter { ids.contains($0.id) }.flatMap { resource in
-            resource.busInfos.map { 
-                BusInfo(
-                    time: $0.yaxis, 
-                    direction: direction, 
-                    margin: $0.margin, 
+            resource.busInfos.compactMap { busInfo in
+                guard let date = dateFromString(busInfo.date),
+                      (calendar.isDate(date, inSameDayAs: today) || calendar.isDate(date, inSameDayAs: tomorrow)),
+                      busInfo.margin > 0 else {
+                    return nil
+                }
+                return BusInfo(
+                    time: busInfo.yaxis,
+                    direction: direction,
+                    margin: busInfo.margin,
                     resourceName: resource.name,
-                    date: $0.date,
-                    timeId: $0.timeId  // 添加 timeId
-                ) 
+                    date: busInfo.date,
+                    timeId: busInfo.timeId
+                )
             }
         }
     }
     
-    private func formatDate(_ date: Date) -> String {
+    private func dateFromString(_ dateString: String) -> Date? {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MM月dd日"
-        return formatter.string(from: date)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: dateString)
+    }
+    
+    private func filteredBuses(for direction: String) -> [BusInfo] {
+        let calendar = Calendar.current
+        return availableBuses[direction]?.filter { busInfo in
+            guard let date = dateFromString(busInfo.date) else { return false }
+            return calendar.isDate(date, inSameDayAs: selectedDate)
+        } ?? []
     }
     
     private func refreshBusInfo() async {
