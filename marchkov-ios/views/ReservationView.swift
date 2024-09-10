@@ -23,6 +23,7 @@ struct ReservationView: View {
     @State private var isRefreshing = false
     @GestureState private var dragOffset: CGFloat = 0
     @State private var currentPage = 0 // 0 表示今天，1 表示明天
+    @State private var animationDuration: Double = 0.25 // 适合高刷新率的动画持续时间
     
     var body: some View {
         NavigationView {
@@ -34,8 +35,9 @@ struct ReservationView: View {
                         ProgressView("加载中...")
                     } else {
                         VStack(spacing: 0) {
-                            DateSelectorView(currentPage: $currentPage)
-                                .padding(.bottom, 8)
+                            DateSelectorView(currentPage: $currentPage, animationDuration: animationDuration)
+                                .padding(.horizontal)
+                                .padding(.bottom, 16)
                             
                             TabView(selection: $currentPage) {
                                 busListView(for: Date()).tag(0)
@@ -47,9 +49,13 @@ struct ReservationView: View {
                                     .onEnded { value in
                                         let threshold: CGFloat = 50
                                         if value.translation.width > threshold {
-                                            withAnimation { currentPage = max(0, currentPage - 1) }
+                                            withAnimation(.easeInOut(duration: animationDuration)) {
+                                                currentPage = max(0, currentPage - 1)
+                                            }
                                         } else if value.translation.width < -threshold {
-                                            withAnimation { currentPage = min(1, currentPage + 1) }
+                                            withAnimation(.easeInOut(duration: animationDuration)) {
+                                                currentPage = min(1, currentPage + 1)
+                                            }
                                         }
                                     }
                             )
@@ -78,6 +84,13 @@ struct ReservationView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear {
+            // 根据设备的刷新率动态设置动画持续时间
+            if let window = UIApplication.shared.windows.first {
+                let refreshRate = window.screen.maximumFramesPerSecond
+                animationDuration = refreshRate > 60 ? 0.2 : 0.25
+            }
+        }
     }
     
     private func loadCachedBusInfo() {
@@ -377,34 +390,43 @@ struct ReservationView: View {
 struct DateSelectorView: View {
     @Binding var currentPage: Int
     @Environment(\.colorScheme) private var colorScheme
+    let animationDuration: Double
     
     var body: some View {
         HStack(spacing: 12) {
             dateButton(title: "今天", tag: 0)
             dateButton(title: "明天", tag: 1)
         }
-        .padding(6)
+        .padding(8)
         .background(
-            Capsule()
-                .fill(Color(UIColor.systemBackground))
-                .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(backgroundColor)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
     }
     
     private func dateButton(title: String, tag: Int) -> some View {
         Button(action: {
-            withAnimation(.spring()) {
+            withAnimation(.easeInOut(duration: animationDuration)) {
                 currentPage = tag
             }
         }) {
             Text(formattedDateString(for: tag))
-                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .font(.system(size: 16, weight: .medium))
                 .foregroundColor(currentPage == tag ? .white : .primary)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 16)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
                 .background(
-                    Capsule()
-                        .fill(currentPage == tag ? Color.accentColor : Color.clear)
+                    Group {
+                        if currentPage == tag {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(accentColor)
+                        }
+                    }
                 )
         }
     }
@@ -414,6 +436,14 @@ struct DateSelectorView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "M月d日"
         return "\(tag == 0 ? "今天" : "明天")(\(formatter.string(from: date)))"
+    }
+    
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(red: 0.2, green: 0.2, blue: 0.25) : Color(red: 0.95, green: 0.95, blue: 0.97)
+    }
+    
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
     }
 }
 
@@ -435,9 +465,9 @@ struct BusButton: View {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(busInfo.time)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 24, weight: .bold))
                     Text(busInfo.resourceName)
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .font(.system(size: busInfo.resourceName.count > 10 ? 10 : 14, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 Spacer()
@@ -445,7 +475,7 @@ struct BusButton: View {
                     Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock.fill")
                         .font(.system(size: 24))
                     Text(busInfo.isReserved ? "已预约" : "可预约")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .font(.system(size: 12, weight: .medium))
                 }
                 .foregroundColor(busInfo.isReserved ? .green : buttonColor)
             }
