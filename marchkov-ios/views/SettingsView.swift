@@ -24,6 +24,10 @@ struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var animationDuration: Double = 0.3
     @State private var showSettingsInfo = false
+    @State private var showAdvancedSettings = false
+    @State private var tapCount = 0
+    @State private var lastTapTime = Date()
+    @State private var showAdvancedSettingsMessage = false
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
@@ -67,6 +71,25 @@ struct SettingsView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 30)
             }
+            
+            // 添加美化后的提示消息
+            if showAdvancedSettingsMessage {
+                VStack {
+                    Text("已显示高级设置")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.8))
+                        )
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .animation(.spring())
+                    Spacer()
+                }
+                .padding(.top, 20)
+                .zIndex(1) // 确保提示消息显示在最上层
+            }
         }
         .confirmationDialog("确认退出登录", isPresented: $showLogoutConfirmation, titleVisibility: .visible) {
             Button("退出登录", role: .destructive, action: logout)
@@ -97,6 +120,9 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 SectionHeader(title: "班车设置")
+                    .onTapGesture {
+                        handleTitleTap()
+                    }
                 Button(action: { showSettingsInfo = true }) {
                     Image(systemName: "questionmark.circle")
                         .foregroundColor(accentColor)
@@ -131,8 +157,10 @@ struct SettingsView: View {
             .padding(.bottom, 15)
 
             VStack(spacing: 15) {
-                ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
-                ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
+                if showAdvancedSettings {
+                    ElegantSlider(value: $prevInterval, title: "过期班车追溯", range: 1...114, unit: "分钟", step: 10, specialValues: [1, 114])
+                    ElegantSlider(value: $nextInterval, title: "未来班车预约", range: 1...514, unit: "分钟", step: 10, specialValues: [1, 514])
+                }
                 ElegantSlider(
                     value: $criticalTime,
                     title: "临界时刻",
@@ -154,6 +182,44 @@ struct SettingsView: View {
         }
     }
 
+    private func handleTitleTap() {
+        let now = Date()
+        if now.timeIntervalSince(lastTapTime) <= 2 {
+            tapCount += 1
+            if tapCount == 5 {
+                showAdvancedSettings = true
+                withAnimation {
+                    showAdvancedSettingsMessage = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation {
+                        showAdvancedSettingsMessage = false
+                    }
+                }
+            }
+        } else {
+            tapCount = 1
+        }
+        lastTapTime = now
+    }
+
+    private func resetBusSettings() {
+        UserDataManager.shared.resetToDefaultSettings()
+        prevInterval = UserDataManager.shared.getPrevInterval()
+        nextInterval = UserDataManager.shared.getNextInterval()
+        criticalTime = UserDataManager.shared.getCriticalTime()
+        flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
+        showAdvancedSettings = false
+        tapCount = 0
+        
+        // 清空历史缓存
+        UserDefaults.standard.removeObject(forKey: "cachedBusInfo")
+        UserDefaults.standard.removeObject(forKey: "cachedRideHistory")
+        
+        // 可选：添加日志
+        LogManager.shared.addLog("已重置班车设置并清空历史缓存")
+    }
+    
     private var generalSettingsSection: some View {
         VStack(alignment: .leading, spacing: 25) {
             SectionHeader(title: "通用设置")
@@ -182,21 +248,6 @@ struct SettingsView: View {
         .background(BlurView(style: .systemMaterial))
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.3), radius: 15, x: 0, y: 8)
-    }
-    
-    private func resetBusSettings() {
-        UserDataManager.shared.resetToDefaultSettings()
-        prevInterval = UserDataManager.shared.getPrevInterval()
-        nextInterval = UserDataManager.shared.getNextInterval()
-        criticalTime = UserDataManager.shared.getCriticalTime()
-        flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
-        
-        // 清空历史缓存
-        UserDefaults.standard.removeObject(forKey: "cachedBusInfo")
-        UserDefaults.standard.removeObject(forKey: "cachedRideHistory")
-        
-        // 可选：添加日志
-        LogManager.shared.addLog("已重置班车设置并清空历史缓存")
     }
     
     private var actionButtonsSection: some View {
