@@ -253,7 +253,7 @@ struct SettingsView: View {
     private var actionButtonsSection: some View {
         VStack(spacing: 20) {
             Link(destination: URL(string: "https://github.com/VariantConst/3-2-1-Marchkov")!) {
-                buttonContent(icon: "link", text: "审查应用源码")
+                buttonContent(icon: "star", text: "支持我们")
             }
             .buttonStyle(FlatButtonStyle(isAccent: true))
         }
