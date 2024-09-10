@@ -517,48 +517,71 @@ struct LoginService {
         let yanYanyuanIds = [2, 4]
         let reverseDirection: BusDirection = yanYanyuanIds.contains(currentResult.busId) ? .toChangping : .toYanyuan
         
-        // 获取资源
-        self.getResources(token: token ?? "") { result in
-            switch result {
-            case .success(let resources):
-                // 使用新的方向进行预约
-                LogManager.shared.addLog("使用方向 \(reverseDirection) 进行反向预约")
-                self.getReservationResult(resources: resources, forceDirection: reverseDirection) { result in
-                    switch result {
-                    case .success(let newResult):
-                        if !currentResult.isPastBus {
-                            guard let appointmentId = currentResult.appointmentId, let appAppointmentId = currentResult.appAppointmentId else {
-                                LogManager.shared.addLog("取消原有预约失败：缺少 appointmentId 或 appAppointmentId")
-                                completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing appointmentId or appAppointmentId"])))
-                                return
-                            }
-                            
-                            self.cancelReservation(appointmentId: appointmentId, appAppointmentId: appAppointmentId) { cancelResult in
-                                switch cancelResult {
-                                case .success:
-                                    LogManager.shared.addLog("取消原有预约成功")
-                                    completion(.success(newResult))
-                                case .failure(let error):
-                                    LogManager.shared.addLog("取消原有预约失败：\(error.localizedDescription)")
-                                    completion(.failure(error))
-                                }
-                            }
-                        } else {
+        // 检查当前时间是否在7:10-8:40之间
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.hour, .minute], from: now)
+        let currentTime = components.hour! * 60 + components.minute!
+        let isSpecialTimeRange = (430...520).contains(currentTime) // 7:10 = 430分钟, 8:40 = 520分钟
+        
+        // 定义取消预约的闭包
+        let cancelCurrentReservation = { (completion: @escaping (Result<Void, Error>) -> Void) in
+            if !currentResult.isPastBus, let appointmentId = currentResult.appointmentId, let appAppointmentId = currentResult.appAppointmentId {
+                self.cancelReservation(appointmentId: appointmentId, appAppointmentId: appAppointmentId, completion: completion)
+            } else {
+                completion(.success(()))
+            }
+        }
+        
+        // 定义新预约的闭包
+        let makeNewReservation = { (completion: @escaping (Result<ReservationResult, Error>) -> Void) in
+            self.getResources(token: self.token ?? "") { result in
+                switch result {
+                case .success(let resources):
+                    LogManager.shared.addLog("使用方向 \(reverseDirection) 进行反向预约")
+                    self.getReservationResult(resources: resources, forceDirection: reverseDirection, completion: completion)
+                case .failure(let error):
+                    LogManager.shared.addLog("反向预约失败：获取资源出错 - \(error.localizedDescription)")
+                    completion(.failure(error))
+                }
+            }
+        }
+        
+        if isSpecialTimeRange {
+            LogManager.shared.addLog("当前时间在7:10-8:40之间，先取消当前预约再进行新预约")
+            cancelCurrentReservation { result in
+                switch result {
+                case .success:
+                    LogManager.shared.addLog("取消原有预约成功，开始新预约")
+                    makeNewReservation(completion)
+                case .failure(let error):
+                    LogManager.shared.addLog("取消原有预约失败：\(error.localizedDescription)")
+                    completion(.failure(error))
+                }
+            }
+        } else {
+            LogManager.shared.addLog("当前时间不在7:10-8:40之间，先进行新预约再取消当前预约")
+            makeNewReservation { result in
+                switch result {
+                case .success(let newResult):
+                    cancelCurrentReservation { cancelResult in
+                        switch cancelResult {
+                        case .success:
+                            LogManager.shared.addLog("取消原有预约成功")
                             completion(.success(newResult))
-                        }
-
-                    case .failure(let error):
-                        LogManager.shared.addLog("反向预约失败：\(error.localizedDescription)")
-                        if (error as NSError).domain == "No suitable bus found" {
-                            completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "反向无车可坐"])))
-                        } else {
+                        case .failure(let error):
+                            LogManager.shared.addLog("取消原有预约失败：\(error.localizedDescription)")
                             completion(.failure(error))
                         }
                     }
+                case .failure(let error):
+                    LogManager.shared.addLog("反向预约失败：\(error.localizedDescription)")
+                    if (error as NSError).domain == "No suitable bus found" {
+                        completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "反向无车可坐"])))
+                    } else {
+                        completion(.failure(error))
+                    }
                 }
-            case .failure(let error):
-                LogManager.shared.addLog("反向预约失败：获取资源出错 - \(error.localizedDescription)")
-                completion(.failure(error))
             }
         }
     }
@@ -705,7 +728,7 @@ struct LoginService {
             }
             
             if let httpResponse = response as? HTTPURLResponse {
-                LogManager.shared.addLog("获取二维码 - 状态码: \(httpResponse.statusCode)")
+                LogManager.shared.addLog("获取二维码 - ���态码: \(httpResponse.statusCode)")
             }
             
             guard let data = data else {

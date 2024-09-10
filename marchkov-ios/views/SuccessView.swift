@@ -19,6 +19,7 @@ struct SuccessView: View {
     @State private var reverseButtonText: String = "预约反向班车"
     @State private var isReverseButtonDisabled: Bool = false
     @State private var engine: CHHapticEngine?
+    @State private var shouldAutoRefresh: Bool = false
 
     private var mainColor: Color {
         result.isPastBus ?
@@ -193,10 +194,28 @@ struct SuccessView: View {
                     // 触发连续震动反馈
                     complexFailureHaptic()
                     
-                    // 2秒后恢复按钮文字和状态
+                    // 检查当前时间是否在7:10-8:40之间
+                    let currentTime = Date()
+                    let calendar = Calendar.current
+                    let hour = calendar.component(.hour, from: currentTime)
+                    let minute = calendar.component(.minute, from: currentTime)
+                    let currentMinutes = hour * 60 + minute
+                    
+                    if currentMinutes >= 430 && currentMinutes <= 520 { // 7:10 = 430分钟, 8:40 = 520分钟
+                        shouldAutoRefresh = true
+                    }
+                    
+                    // 2秒后恢复按钮文字和状态，并执行自动刷新（如果需要）
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         reverseButtonText = "预约反向班车"
                         isReverseButtonDisabled = false
+                        
+                        if shouldAutoRefresh {
+                            Task {
+                                await refresh()
+                                shouldAutoRefresh = false
+                            }
+                        }
                     }
                 }
             }
