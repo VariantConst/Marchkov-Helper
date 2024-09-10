@@ -342,25 +342,34 @@ struct LoginService {
                         if timeDifference >= -prevInterval && timeDifference <= nextInterval {
                             if timeDifference <= 0 {
                                 // Past bus
-                                LogManager.shared.addLog("找到过期班车, 获取临时码")
-                                getTempCode(resourceId: resource.id, startTime: busTime) { (result: Result<(code: String, name: String), Error>) in
+                                LogManager.shared.addLog("找到过期班车，尝试获取预约二维码")
+                                self.getReservationQRCode(resource: resource, date: today, busTime: busTime) { result in
                                     switch result {
-                                    case .success(let (qrCode, name)):
-                                        LogManager.shared.addLog("成功获取临时码")
-                                        let reservationResult = ReservationResult(
-                                            isPastBus: true,
-                                            name: resource.name,
-                                            yaxis: busTime,
-                                            qrCode: qrCode,
-                                            username: name,
-                                            busId: resource.id,
-                                            appointmentId: nil,
-                                            appAppointmentId: nil
-                                        )
+                                    case .success(let reservationResult):
+                                        LogManager.shared.addLog("成功获取预约二维码")
                                         completion(.success(reservationResult))
-                                    case .failure(let error):
-                                        LogManager.shared.addLog("获取临时码失败: \(error.localizedDescription)")
-                                        completion(.failure(error))
+                                    case .failure(_):
+                                        LogManager.shared.addLog("获取预约二维码失败，尝试获取临时码")
+                                        self.getTempCode(resourceId: resource.id, startTime: busTime) { (result: Result<(code: String, name: String), Error>) in
+                                            switch result {
+                                            case .success(let (qrCode, name)):
+                                                LogManager.shared.addLog("成功获取临时码")
+                                                let reservationResult = ReservationResult(
+                                                    isPastBus: true,
+                                                    name: resource.name,
+                                                    yaxis: busTime,
+                                                    qrCode: qrCode,
+                                                    username: name,
+                                                    busId: resource.id,
+                                                    appointmentId: nil,
+                                                    appAppointmentId: nil
+                                                )
+                                                completion(.success(reservationResult))
+                                            case .failure(let error):
+                                                LogManager.shared.addLog("获取临时码失败: \(error.localizedDescription)")
+                                                completion(.failure(error))
+                                            }
+                                        }
                                     }
                                 }
                             } else {
