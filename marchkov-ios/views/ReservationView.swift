@@ -34,11 +34,9 @@ struct ReservationView: View {
                         ProgressView("加载中...")
                     } else {
                         VStack(spacing: 0) {
-                            // 自定义的日期选择器
                             DateSelectorView(currentPage: $currentPage)
                                 .padding(.bottom, 8)
                             
-                            // 使用 TabView 来实现滑动效果
                             TabView(selection: $currentPage) {
                                 busListView(for: Date()).tag(0)
                                 busListView(for: Calendar.current.date(byAdding: .day, value: 1, to: Date())!).tag(1)
@@ -79,6 +77,7 @@ struct ReservationView: View {
                 Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
     
     private func loadCachedBusInfo() {
@@ -361,13 +360,13 @@ struct ReservationView: View {
     private var gradientBackground: LinearGradient {
         if colorScheme == .dark {
             return LinearGradient(
-                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 45/255, green: 45/255, blue: 55/255)]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         } else {
             return LinearGradient(
-                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 235/255, green: 235/255, blue: 240/255)]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -380,64 +379,41 @@ struct DateSelectorView: View {
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
-        HStack(spacing: 8) {
-            dateButton(title: "今", tag: 0)
-            dateButton(title: "明", tag: 1)
+        HStack(spacing: 12) {
+            dateButton(title: "今天", tag: 0)
+            dateButton(title: "明天", tag: 1)
         }
-        .frame(height: 40)
-        .padding(.horizontal, 12) // 增加平内边距
+        .padding(6)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(backgroundColor)
-                .shadow(color: shadowColor, radius: 5, x: 0, y: 2)
+            Capsule()
+                .fill(Color(UIColor.systemBackground))
+                .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(borderColor, lineWidth: 1)
-        )
-        .padding(.horizontal)
-        .padding(.top)
     }
     
     private func dateButton(title: String, tag: Int) -> some View {
         Button(action: {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.spring()) {
                 currentPage = tag
             }
         }) {
-            Text(title)
+            Text(formattedDateString(for: tag))
                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(currentPage == tag ? .white : textColor)
-                .frame(maxWidth: .infinity) // 使用最大宽度
-                .frame(height: 32)
+                .foregroundColor(currentPage == tag ? .white : .primary)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(currentPage == tag ? accentColor : Color.clear)
-                        .shadow(color: currentPage == tag ? accentColor.opacity(0.3) : Color.clear, radius: 3, x: 0, y: 2)
+                    Capsule()
+                        .fill(currentPage == tag ? Color.accentColor : Color.clear)
                 )
-                .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
     }
     
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(.systemGray6) : Color.white
-    }
-    
-    private var borderColor: Color {
-        colorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.2)
-    }
-    
-    private var shadowColor: Color {
-        colorScheme == .dark ? Color.black.opacity(0.2) : Color.black.opacity(0.1)
-    }
-    
-    private var textColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.8) : Color.black.opacity(0.6)
-    }
-    
-    private var accentColor: Color {
-        Color.accentColor
+    private func formattedDateString(for tag: Int) -> String {
+        let date = Calendar.current.date(byAdding: .day, value: tag, to: Date()) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "M月d日"
+        return "\(tag == 0 ? "今天" : "明天")(\(formatter.string(from: date)))"
     }
 }
 
@@ -457,34 +433,33 @@ struct BusButton: View {
             playHaptic()
         }) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(busInfo.time)
-                        .font(.headline.weight(.semibold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                     Text(busInfo.resourceName)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(colorScheme == .dark ? Color(red: 0.8, green: 0.8, blue: 0.8) : Color(red: 0.4, green: 0.4, blue: 0.4))
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
                 }
                 Spacer()
-                VStack(spacing: 2) {
-                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
-                        .foregroundColor(busInfo.isReserved ? accentColor : (colorScheme == .dark ? .white.opacity(0.8) : .gray))
+                VStack(spacing: 4) {
+                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock.fill")
+                        .font(.system(size: 24))
                     Text(busInfo.isReserved ? "已预约" : "可预约")
-                        .font(.caption.weight(.medium))
-                        .foregroundColor(busInfo.isReserved ? accentColor : (colorScheme == .dark ? .white.opacity(0.8) : .gray))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
+                .foregroundColor(busInfo.isReserved ? .green : buttonColor)
             }
             .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(backgroundColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(busInfo.isReserved ? Color.green.opacity(0.5) : buttonColor.opacity(0.5), lineWidth: 2)
+            )
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(backgroundColor)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(borderColor, lineWidth: 2)
-        )
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 10, x: 0, y: 5)
     }
 
     private func playHaptic() {
@@ -492,23 +467,15 @@ struct BusButton: View {
         impact.impactOccurred()
     }
     
-    private var accentColor: Color {
-        colorScheme == .dark ? Color(red: 0.4, green: 0.8, blue: 1.0) : Color(red: 0.2, green: 0.5, blue: 0.8)
+    private var buttonColor: Color {
+        colorScheme == .dark ? Color(red: 0.4, green: 0.5, blue: 0.6) : Color(red: 0.5, green: 0.6, blue: 0.7)
     }
     
     private var backgroundColor: Color {
         if busInfo.isReserved {
-            return colorScheme == .dark ? accentColor.opacity(0.2) : accentColor.opacity(0.1)
+            return colorScheme == .dark ? Color.green.opacity(0.1) : Color.green.opacity(0.05)
         } else {
-            return colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.5)
-        }
-    }
-    
-    private var borderColor: Color {
-        if busInfo.isReserved {
-            return accentColor
-        } else {
-            return colorScheme == .dark ? Color.white.opacity(0.3) : Color.gray.opacity(0.3)
+            return colorScheme == .dark ? Color(red: 0.2, green: 0.2, blue: 0.25) : Color(red: 0.95, green: 0.95, blue: 0.97)
         }
     }
 }
