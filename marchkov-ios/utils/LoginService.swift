@@ -276,15 +276,25 @@ struct LoginService {
         let userDefaults = UserDefaults.standard
         let criticalTime = userDefaults.integer(forKey: "criticalTime")
         let flagMorningToYanyuan = userDefaults.bool(forKey: "flagMorningToYanyuan")
-        let prevInterval = userDefaults.integer(forKey: "prevInterval")
         let nextInterval = userDefaults.integer(forKey: "nextInterval")
         
-        LogManager.shared.addLog("设置参数: 临界时间 = \(criticalTime), 早上去燕园 = \(flagMorningToYanyuan), 过期班车追溯 = \(prevInterval), 未来班车预约 = \(nextInterval)")
-        
+        // 获取当前时间
         let currentDate = Date()
         let calendar = Calendar.current
         let currentHour = calendar.component(.hour, from: currentDate)
         let currentMinute = calendar.component(.minute, from: currentDate)
+        
+        // 特殊处理 19:00-20:00 之间的 prevInterval
+        let prevInterval: Int
+        if currentHour == 19 || (currentHour == 20 && currentMinute == 0) {
+            prevInterval = 29
+            LogManager.shared.addLog("当前时间在 19:00-20:00 之间，设置 prevInterval 为 29 分钟")
+        } else {
+            prevInterval = userDefaults.integer(forKey: "prevInterval")
+        }
+        
+        LogManager.shared.addLog("设置参数: 临界时间 = \(criticalTime), 早上去燕园 = \(flagMorningToYanyuan), 过期班车追溯 = \(prevInterval), 未来班车预约 = \(nextInterval)")
+        
         let minutesSinceMidnight = currentHour * 60 + currentMinute
         
         let direction: BusDirection
