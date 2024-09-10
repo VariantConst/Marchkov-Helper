@@ -427,7 +427,7 @@ struct LoginService {
             }
             
             guard let data = data else {
-                LogManager.shared.addLog("获取临时码 - ���收到数据")
+                LogManager.shared.addLog("获取临时码 - 收到数据")
                 completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data received"])))
                 return
             }
@@ -541,7 +541,7 @@ struct LoginService {
                     LogManager.shared.addLog("使用方向 \(reverseDirection) 进行反向预约")
                     self.getReservationResult(resources: resources, forceDirection: reverseDirection, completion: completion)
                 case .failure(let error):
-                    LogManager.shared.addLog("反向预约失败：获取资源出错 - \(error.localizedDescription)")
+                    LogManager.shared.addLog("反向预约失败：获资源出错 - \(error.localizedDescription)")
                     completion(.failure(error))
                 }
             }
@@ -786,14 +786,24 @@ struct LoginService {
         
         // 获取缓存的乘车历史
         let cachedHistory = getCachedRideHistory()
+        let lastFetchDate = cachedHistory?.lastFetchDate ?? Date.distantPast
         let cachedRides = cachedHistory?.rides ?? []
+        
+        // 计算需要获取的日期范围，使用北京时间
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        let today = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -1, to: lastFetchDate) ?? lastFetchDate
+        let endDate = today
+        
+        LogManager.shared.addLog("获取乘车历史：开始日期 \(dateFormatter.string(from: startDate))，结束日期 \(dateFormatter.string(from: endDate))")
         
         // 构建URL，只请求 status=4 和 status=5 的信息
         let urlStrings = [
-            "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=4&sort_time=true&sort=desc",
-            "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=5&sort_time=true&sort=desc"
+            "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=4&sort_time=true&sort=desc&date_sta=\(dateFormatter.string(from: startDate))&date_end=\(dateFormatter.string(from: endDate))",
+            "https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=5&sort_time=true&sort=desc&date_sta=\(dateFormatter.string(from: startDate))&date_end=\(dateFormatter.string(from: endDate))"
         ]
-        LogManager.shared.addLog("获取乘车历史：请求 status=4 和 status=5 的信息")
         
         // 首先进行登录
         login(username: credentials.username, password: credentials.password) { loginResult in
@@ -829,11 +839,11 @@ struct LoginService {
                     if let error = fetchError {
                         completion(.failure(error))
                     } else {
-                        let mergedRides = self.mergeRides(cachedRides: cachedRides, newRides: allNewRides)
+                        let mergedRides = self.mergeRides(cachedRides: cachedRides, newRides: allNewRides, lastFetchDate: lastFetchDate)
                         completion(.success(mergedRides))
                         // 在后台更新应用本地存储信息
                         DispatchQueue.global(qos: .background).async {
-                            self.updateCachedRideHistory(rides: mergedRides, lastFetchDate: Date())
+                            self.updateCachedRideHistory(rides: mergedRides, lastFetchDate: today)
                         }
                     }
                 }
@@ -895,18 +905,44 @@ struct LoginService {
         }
     }
     
-    private func mergeRides(cachedRides: [RideInfo], newRides: [RideInfo]) -> [RideInfo] {
+    private func mergeRides(cachedRides: [RideInfo], newRides: [RideInfo], lastFetchDate: Date) -> [RideInfo] {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        dateFormatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        
+        let calendar = Calendar.current
+        
+        // 过滤掉缓存中最后一次请求日期及之后的记录
+        let filteredCachedRides = cachedRides.filter { ride in
+            if let rideDate = dateFormatter.date(from: ride.appointmentTime) {
+                return calendar.compare(rideDate, to: lastFetchDate, toGranularity: .day) == .orderedAscending
+            }
+            return true
+        }
+        
         // 创建一个字典来存储所有记录，以 ID 为键
-        var mergedRidesDict = Dictionary(uniqueKeysWithValues: cachedRides.map { ($0.id, $0) })
+        var mergedRidesDict: [Int: RideInfo] = [:]
+        
+        // 添加过滤后的缓存记录，如果有重复的 ID，保留最新的记录
+        for ride in filteredCachedRides {
+            if let existingRide = mergedRidesDict[ride.id] {
+                if ride.appointmentTime > existingRide.appointmentTime {
+                    mergedRidesDict[ride.id] = ride
+                }
+            } else {
+                mergedRidesDict[ride.id] = ride
+            }
+        }
         
         // 更新或添加新记录
         for newRide in newRides {
             mergedRidesDict[newRide.id] = newRide
         }
         
-        // 将字典转换回数组并排序
-        let mergedRides = Array(mergedRidesDict.values)
-        return mergedRides.sorted { $0.appointmentTime > $1.appointmentTime }
+        // 将字典转换回数组并按预约时间降序排序
+        let mergedRides = Array(mergedRidesDict.values).sorted { $0.appointmentTime > $1.appointmentTime }
+        
+        return mergedRides
     }
 }
 
