@@ -23,13 +23,15 @@ struct LogView: View {
                 VStack(spacing: 0) {
                     SearchBar(text: $searchText, accentColor: accentColor)
                         .padding(.horizontal)
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
                     
                     ScrollView {
-                        LazyVStack(spacing: 12) {
+                        LazyVStack(spacing: 16) {
                             ForEach(filteredLogs) { log in
                                 LogEntryView(log: log, accentColor: accentColor)
+                                    .transition(.opacity)
+                                    .animation(.easeInOut, value: searchText)
                             }
                         }
                         .padding()
@@ -37,7 +39,7 @@ struct LogView: View {
                 }
             }
             .navigationTitle("日志")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("关闭") {
@@ -135,6 +137,7 @@ struct LogEntryView: View {
     let log: LogEntry
     let accentColor: Color
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isExpanded = false
     
     private var cardBackgroundColor: Color {
         colorScheme == .dark ? Color(red: 30/255, green: 30/255, blue: 35/255) : .white
@@ -150,12 +153,18 @@ struct LogEntryView: View {
             Text(log.message)
                 .font(.system(.body, design: .rounded))
                 .foregroundColor(.primary)
+                .lineLimit(isExpanded ? nil : 3)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackgroundColor)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05), radius: 10, x: 0, y: 5)
+        .onTapGesture {
+            withAnimation(.spring()) {
+                isExpanded.toggle()
+            }
+        }
     }
 }
 
