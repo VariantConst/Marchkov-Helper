@@ -22,6 +22,7 @@ struct ReservationView: View {
     @State private var alertMessage = ""
     @State private var isRefreshing = false
     @State private var selectedDirection = "去燕园"
+    @State private var currentPage = 0
     
     var body: some View {
         ZStack {
@@ -33,7 +34,14 @@ struct ReservationView: View {
                 if isLoading {
                     loadingView
                 } else {
-                    busListView
+                    TabView(selection: $currentPage) {
+                        busListView(for: "去燕园").tag(0)
+                        busListView(for: "去昌平").tag(1)
+                    }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                    .onChange(of: currentPage) { newValue in
+                        selectedDirection = newValue == 0 ? "去燕园" : "去昌平"
+                    }
                 }
             }
         }
@@ -66,29 +74,47 @@ struct ReservationView: View {
             Text("去昌平").tag("去昌平")
         }
         .pickerStyle(SegmentedPickerStyle())
-        .padding()
+        .padding(.horizontal)
+        .padding(.vertical, 8)
         .background(BlurView(style: .systemMaterial))
-    }
-    
-    private var busListView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                sectionView(for: "今天")
-                sectionView(for: "明天")
-            }
-            .padding()
+        .onChange(of: selectedDirection) { newValue in
+            currentPage = newValue == "去燕园" ? 0 : 1
         }
     }
     
-    private func sectionView(for day: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func busListView(for direction: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 25) { // 增加间距
+                sectionView(for: "今天", direction: direction)
+                    .padding(.top, 20) // 增加顶部距离
+                
+                divider // 使用自定义分割线
+                
+                sectionView(for: "明天", direction: direction)
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    private var divider: some View {
+        VStack(spacing: 4) { // 创建更明显的分割线
+            Color.gray.opacity(0.3)
+                .frame(height: 1)
+            Color.gray.opacity(0.3)
+                .frame(height: 1)
+        }
+        .padding(.vertical, 10) // 增加分割线上下的空间
+    }
+    
+    private func sectionView(for day: String, direction: String) -> some View {
+        VStack(alignment: .leading, spacing: 15) { // 增加间距
             Text(day)
-                .font(.headline)
+                .font(.system(size: 24, weight: .bold)) // 略微增大字体
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.leading, 5)
             
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
-                ForEach(filteredBuses(for: selectedDirection, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) { // 增加卡片间距
+                ForEach(filteredBuses(for: direction, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
                     BusCard(busInfo: busInfo, action: { bus in
                         if bus.isReserved {
                             cancelReservation(busInfo: bus)
@@ -368,10 +394,10 @@ struct BusCard: View {
         Button(action: {
             action(busInfo)
         }) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(busInfo.time)
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                     Spacer()
                     Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
@@ -382,25 +408,21 @@ struct BusCard: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
-                    .frame(height: 40)
-                    .minimumScaleFactor(busInfo.resourceName.count > 9 ? 0.8 : 1.0)
-                
-                Text(busInfo.isReserved ? "已预约" : "点击预约")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(busInfo.isReserved ? .green : accentColor)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 32)
+                    .minimumScaleFactor(busInfo.resourceName.count > 18 ? 0.8 : 1.0)
             }
-            .frame(height: 140)
-            .padding()
+            .frame(height: 80)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12) // 增加左右内边距
             .background(
                 BlurView(style: .systemMaterial)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 15)
+                        RoundedRectangle(cornerRadius: 10)
                             .stroke(busInfo.isReserved ? Color.green : Color.gray.opacity(0.2), lineWidth: busInfo.isReserved ? 2 : 1)
                     )
             )
-            .cornerRadius(15)
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
+            .cornerRadius(10)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
     }
