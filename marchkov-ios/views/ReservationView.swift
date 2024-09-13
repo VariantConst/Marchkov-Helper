@@ -317,7 +317,7 @@ struct ReservationView: View {
                 throw NSError(domain: "取消预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: responseString])
             }
         } else {
-            throw NSError(domain: "取消预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法解析响应"])
+            throw NSError(domain: "取消预约失败", code: 0, userInfo: [NSLocalizedDescriptionKey: "无法解响应"])
         }
         
         // 无论成功与否，都获取最新的预约状态
@@ -373,6 +373,9 @@ struct BusCard: View {
             Text(busInfo.resourceName)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .lineLimit(2)
+                .frame(height: 40) // 固定高度
+                .minimumScaleFactor(busInfo.resourceName.count > 9 ? 0.8 : 1.0)
             
             Button(action: {
                 if busInfo.isReserved {
@@ -390,6 +393,7 @@ struct BusCard: View {
                     .cornerRadius(8)
             }
         }
+        .frame(height: 140) // 设置整个卡片的固定高度
         .padding()
         .background(BlurView(style: .systemMaterial))
         .cornerRadius(15)
