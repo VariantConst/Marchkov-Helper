@@ -70,7 +70,7 @@ struct ReservationView: View {
                         try await fetchReservationStatus()
                     } catch {
                         await MainActor.run {
-                            alertMessage = "获取预约状态失败：\(error.localizedDescription)"
+                            alertMessage = "获取预约状态败：\(error.localizedDescription)"
                             showAlert = true
                         }
                     }
@@ -150,7 +150,7 @@ struct ReservationView: View {
             guard let busDate = dateFromString(busInfo.date, in: timeZone) else { return false }
             
             if calendar.isDate(date, inSameDayAs: now) {
-                // 对于今天的班车，只显示未过期的
+                // 对于今天的班车，只显示未过期��
                 let busTime = calendar.date(bySettingHour: Int(busInfo.time.prefix(2)) ?? 0,
                                             minute: Int(busInfo.time.suffix(2)) ?? 0,
                                             second: 0, of: busDate) ?? busDate
@@ -358,9 +358,11 @@ struct ReservationView: View {
                             .padding(.leading)
                             .padding(.top, 8)
                         
-                        ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
-                            BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
-                                .transition(.scale.combined(with: .opacity))
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                            ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
+                                BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -462,34 +464,50 @@ struct BusButton: View {
             }
             playHaptic()
         }) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
                     Text(busInfo.time)
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.system(size: 22, weight: .bold))
+                    Spacer()
+                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(busInfo.isReserved ? .green : buttonColor)
+                }
+                if busInfo.resourceName.count > 9 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(firstLine)
+                        Text(secondLine)
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                } else {
                     Text(busInfo.resourceName)
-                        .font(.system(size: busInfo.resourceName.count > 10 ? 10 : 14, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                 }
-                Spacer()
-                VStack(spacing: 4) {
-                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock.fill")
-                        .font(.system(size: 24))
-                    Text(busInfo.isReserved ? "已预约" : "可预约")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundColor(busInfo.isReserved ? .green : buttonColor)
             }
-            .padding()
+            .padding(12)
+            .frame(height: 80)
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 12)
                     .fill(backgroundColor)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(busInfo.isReserved ? Color.green.opacity(0.5) : buttonColor.opacity(0.5), lineWidth: 2)
             )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
         }
+    }
+
+    private var firstLine: String {
+        let midIndex = busInfo.resourceName.index(busInfo.resourceName.startIndex, offsetBy: (busInfo.resourceName.count + 1) / 2)
+        return String(busInfo.resourceName[..<midIndex])
+    }
+
+    private var secondLine: String {
+        let midIndex = busInfo.resourceName.index(busInfo.resourceName.startIndex, offsetBy: (busInfo.resourceName.count + 1) / 2)
+        return String(busInfo.resourceName[midIndex...])
     }
 
     private func playHaptic() {
