@@ -89,8 +89,14 @@ struct ReservationView: View {
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
                 ForEach(filteredBuses(for: selectedDirection, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
-                    BusCard(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
-                        .transition(.scale.combined(with: .opacity))
+                    BusCard(busInfo: busInfo, action: { bus in
+                        if bus.isReserved {
+                            cancelReservation(busInfo: bus)
+                        } else {
+                            reserveBus(busInfo: bus)
+                        }
+                    })
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
         }
@@ -302,7 +308,7 @@ struct ReservationView: View {
         let postData = "appointment_id=\(appointmentId)&data_id[0]=\(hallAppointmentDataId)"
         request.httpBody = postData.data(using: .utf8)
         
-        LogManager.shared.addLog("发起取消预约请求：URL: \(url.absoluteString), Body: \(postData)")
+        LogManager.shared.addLog("发起消预约请求：URL: \(url.absoluteString), Body: \(postData)")
         
         let (data, _) = try await URLSession.shared.data(for: request)
         
@@ -351,8 +357,7 @@ struct ReservationView: View {
 
 struct BusCard: View {
     let busInfo: BusInfo
-    let reserveAction: (BusInfo) -> Void
-    let cancelAction: (BusInfo) -> Void
+    let action: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
     
     private var accentColor: Color {
@@ -360,48 +365,44 @@ struct BusCard: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(busInfo.time)
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                Spacer()
-                Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
-                    .foregroundColor(busInfo.isReserved ? .green : accentColor)
-            }
-            
-            Text(busInfo.resourceName)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-                .frame(height: 40) // 固定高度
-                .minimumScaleFactor(busInfo.resourceName.count > 9 ? 0.8 : 1.0)
-            
-            Button(action: {
-                if busInfo.isReserved {
-                    cancelAction(busInfo)
-                } else {
-                    reserveAction(busInfo)
+        Button(action: {
+            action(busInfo)
+        }) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(busInfo.time)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Spacer()
+                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
+                        .foregroundColor(busInfo.isReserved ? .green : accentColor)
                 }
-            }) {
-                Text(busInfo.isReserved ? "取消预约" : "预约")
+                
+                Text(busInfo.resourceName)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .frame(height: 40)
+                    .minimumScaleFactor(busInfo.resourceName.count > 9 ? 0.8 : 1.0)
+                
+                Text(busInfo.isReserved ? "已预约" : "点击预约")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity)
-                    .background(busInfo.isReserved ? Color.red : accentColor)
-                    .cornerRadius(8)
+                    .foregroundColor(busInfo.isReserved ? .green : accentColor)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
+            .frame(height: 140)
+            .padding()
+            .background(
+                BlurView(style: .systemMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 15)
+                            .stroke(busInfo.isReserved ? Color.green : Color.gray.opacity(0.2), lineWidth: busInfo.isReserved ? 2 : 1)
+                    )
+            )
+            .cornerRadius(15)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
         }
-        .frame(height: 140) // 设置整个卡片的固定高度
-        .padding()
-        .background(BlurView(style: .systemMaterial))
-        .cornerRadius(15)
-        .overlay(
-            RoundedRectangle(cornerRadius: 15)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
