@@ -21,74 +21,89 @@ struct ReservationView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isRefreshing = false
-    @GestureState private var dragOffset: CGFloat = 0
-    @State private var currentPage = 0 // 0 表示今天，1 表示明天
-    @State private var animationDuration: Double = 0.25 // 适合高刷新率的动画持续时间
+    @State private var selectedDirection = "去燕园"
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                gradientBackground.edgesIgnoringSafeArea(.all)
+        ZStack {
+            backgroundGradient
+            
+            VStack(spacing: 0) {
+                directionSelector
                 
-                Group {
-                    if isLoading {
-                        ProgressView("加载中...")
-                    } else {
-                        VStack(spacing: 0) {
-                            DateSelectorView(currentPage: $currentPage, animationDuration: animationDuration)
-                                .padding(.horizontal)
-                                .padding(.bottom, 16)
-                            
-                            TabView(selection: $currentPage) {
-                                busListView(for: Date()).tag(0)
-                                busListView(for: Calendar.current.date(byAdding: .day, value: 1, to: Date())!).tag(1)
-                            }
-                            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                            .gesture(
-                                DragGesture()
-                                    .onEnded { value in
-                                        let threshold: CGFloat = 50
-                                        if value.translation.width > threshold {
-                                            withAnimation(.easeInOut(duration: animationDuration)) {
-                                                currentPage = max(0, currentPage - 1)
-                                            }
-                                        } else if value.translation.width < -threshold {
-                                            withAnimation(.easeInOut(duration: animationDuration)) {
-                                                currentPage = min(1, currentPage + 1)
-                                            }
-                                        }
-                                    }
-                            )
-                        }
-                    }
+                if isLoading {
+                    loadingView
+                } else {
+                    busListView
                 }
-            }
-            .onAppear(perform: {
-                loadCachedBusInfo()
-                Task {
-                    do {
-                        try await fetchReservationStatus()
-                    } catch {
-                        await MainActor.run {
-                            alertMessage = "获取预约状态败：\(error.localizedDescription)"
-                            showAlert = true
-                        }
-                    }
-                }
-            })
-            .refreshable {
-                await refreshReservationStatus()
-            }
-            .alert(isPresented: $showAlert) {
-                Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
-        .onAppear {
-            // 根据设备的刷新率动态设置动画持续时间
-            if let window = UIApplication.shared.windows.first {
-                let refreshRate = window.screen.maximumFramesPerSecond
-                animationDuration = refreshRate > 60 ? 0.2 : 0.25
+        .onAppear(perform: loadData)
+        .refreshable { await refreshReservationStatus() }
+        .alert(isPresented: $showAlert) {
+            Alert(title: Text("预约结果"), message: Text(alertMessage), dismissButton: .default(Text("确定")))
+        }
+    }
+    
+    private var backgroundGradient: some View {
+        LinearGradient(gradient: Gradient(colors: [
+            Color(red: 0.95, green: 0.95, blue: 0.97),
+            Color(red: 0.90, green: 0.90, blue: 0.95)
+        ]), startPoint: .top, endPoint: .bottom)
+        .edgesIgnoringSafeArea(.all)
+    }
+    
+    private var directionSelector: some View {
+        Picker("方向", selection: $selectedDirection) {
+            Text("去燕园").tag("去燕园")
+            Text("去昌平").tag("去昌平")
+        }
+        .pickerStyle(SegmentedPickerStyle())
+        .padding()
+    }
+    
+    private var busListView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                sectionView(for: "今天")
+                sectionView(for: "明天")
+            }
+            .padding()
+        }
+    }
+    
+    private func sectionView(for day: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(day)
+                .font(.headline)
+                .padding(.leading, 5)
+            
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
+                ForEach(filteredBuses(for: selectedDirection, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
+                    BusCard(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+        }
+    }
+    
+    private var loadingView: some View {
+        VStack {
+            ProgressView()
+            Text("加载中...")
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private func loadData() {
+        loadCachedBusInfo()
+        Task {
+            do {
+                try await fetchReservationStatus()
+            } catch {
+                await MainActor.run {
+                    alertMessage = "获取预约状态败：\(error.localizedDescription)"
+                    showAlert = true
+                }
             }
         }
     }
@@ -138,38 +153,14 @@ struct ReservationView: View {
     }
     
     private func filteredBuses(for direction: String, on date: Date) -> [BusInfo] {
-        var calendar = Calendar.current
-        let timeZone = TimeZone(identifier: "Asia/Shanghai")!
-        calendar.timeZone = timeZone
-        
-        let now = Date()
+        let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
-        let filteredBuses = availableBuses[direction]?.filter { busInfo in
-            guard let busDate = dateFromString(busInfo.date, in: timeZone) else { return false }
-            
-            if calendar.isDate(date, inSameDayAs: now) {
-                // 对于今天的班车，只显示未过期��
-                let busTime = calendar.date(bySettingHour: Int(busInfo.time.prefix(2)) ?? 0,
-                                            minute: Int(busInfo.time.suffix(2)) ?? 0,
-                                            second: 0, of: busDate) ?? busDate
-                return busTime > now && busTime >= startOfDay && busTime < endOfDay
-            } else {
-                // 对于非今天的班车，确保日期在指定日期范围内
-                return busDate >= startOfDay && busDate < endOfDay
-            }
-        } ?? []
-        
-        return filteredBuses.sorted { $0.time < $1.time }
-    }
-    
-    // 更新 dateFromString 函数以支持时区
-    private func dateFromString(_ dateString: String, in timeZone: TimeZone) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = timeZone
-        return formatter.date(from: dateString)
+        return availableBuses[direction]?.filter { busInfo in
+            guard let busDate = dateFromString(busInfo.date) else { return false }
+            return busDate >= startOfDay && busDate < endOfDay
+        }.sorted { $0.time < $1.time } ?? []
     }
     
     private func refreshReservationStatus() async {
@@ -346,185 +337,48 @@ struct ReservationView: View {
         let notificationFeedback = UINotificationFeedbackGenerator()
         notificationFeedback.notificationOccurred(.error)
     }
-    
-    private func busListView(for date: Date) -> some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                ForEach(["去燕园", "去昌平"], id: \.self) { direction in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(direction)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .padding(.leading)
-                            .padding(.top, 8)
-                        
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                            ForEach(filteredBuses(for: direction, on: date), id: \.id) { busInfo in
-                                BusButton(busInfo: busInfo, reserveAction: reserveBus, cancelAction: cancelReservation)
-                                    .transition(.scale.combined(with: .opacity))
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-            }
-            .padding(.vertical)
-        }
-    }
-    
-    private var gradientBackground: LinearGradient {
-        if colorScheme == .dark {
-            return LinearGradient(
-                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 45/255, green: 45/255, blue: 55/255)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        } else {
-            return LinearGradient(
-                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 235/255, green: 235/255, blue: 240/255)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-    }
 }
 
-struct DateSelectorView: View {
-    @Binding var currentPage: Int
-    @Environment(\.colorScheme) private var colorScheme
-    let animationDuration: Double
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            dateButton(title: "今天", tag: 0)
-            dateButton(title: "明天", tag: 1)
-        }
-        .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(backgroundColor)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
-    }
-    
-    private func dateButton(title: String, tag: Int) -> some View {
-        Button(action: {
-            withAnimation(.easeInOut(duration: animationDuration)) {
-                currentPage = tag
-            }
-        }) {
-            Text(formattedDateString(for: tag))
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(currentPage == tag ? .white : .primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    Group {
-                        if currentPage == tag {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(accentColor)
-                        }
-                    }
-                )
-        }
-    }
-    
-    private func formattedDateString(for tag: Int) -> String {
-        let date = Calendar.current.date(byAdding: .day, value: tag, to: Date()) ?? Date()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日"
-        return "\(tag == 0 ? "今天" : "明天")(\(formatter.string(from: date)))"
-    }
-    
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(red: 0.2, green: 0.2, blue: 0.25) : Color(red: 0.95, green: 0.95, blue: 0.97)
-    }
-    
-    private var accentColor: Color {
-        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
-    }
-}
-
-struct BusButton: View {
+struct BusCard: View {
     let busInfo: BusInfo
     let reserveAction: (BusInfo) -> Void
     let cancelAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
-
+    
     var body: some View {
-        Button(action: {
-            if busInfo.isReserved {
-                cancelAction(busInfo)
-            } else {
-                reserveAction(busInfo)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(busInfo.time)
+                    .font(.system(size: 24, weight: .bold))
+                Spacer()
+                Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
+                    .foregroundColor(busInfo.isReserved ? .green : .blue)
             }
-            playHaptic()
-        }) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(busInfo.time)
-                        .font(.system(size: 22, weight: .bold))
-                    Spacer()
-                    Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(busInfo.isReserved ? .green : buttonColor)
-                }
-                if busInfo.resourceName.count > 9 {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(firstLine)
-                        Text(secondLine)
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+            
+            Text(busInfo.resourceName)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Button(action: {
+                if busInfo.isReserved {
+                    cancelAction(busInfo)
                 } else {
-                    Text(busInfo.resourceName)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                    reserveAction(busInfo)
                 }
+            }) {
+                Text(busInfo.isReserved ? "取消预约" : "预约")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .background(busInfo.isReserved ? Color.red : Color.blue)
+                    .cornerRadius(8)
             }
-            .padding(12)
-            .frame(height: 80)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(backgroundColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(busInfo.isReserved ? Color.green.opacity(0.5) : buttonColor.opacity(0.5), lineWidth: 2)
-            )
-            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
         }
-    }
-
-    private var firstLine: String {
-        let midIndex = busInfo.resourceName.index(busInfo.resourceName.startIndex, offsetBy: (busInfo.resourceName.count + 1) / 2)
-        return String(busInfo.resourceName[..<midIndex])
-    }
-
-    private var secondLine: String {
-        let midIndex = busInfo.resourceName.index(busInfo.resourceName.startIndex, offsetBy: (busInfo.resourceName.count + 1) / 2)
-        return String(busInfo.resourceName[midIndex...])
-    }
-
-    private func playHaptic() {
-        let impact = UIImpactFeedbackGenerator(style: .light)
-        impact.impactOccurred()
-    }
-    
-    private var buttonColor: Color {
-        colorScheme == .dark ? Color(red: 0.4, green: 0.5, blue: 0.6) : Color(red: 0.5, green: 0.6, blue: 0.7)
-    }
-    
-    private var backgroundColor: Color {
-        if busInfo.isReserved {
-            return colorScheme == .dark ? Color.green.opacity(0.1) : Color.green.opacity(0.05)
-        } else {
-            return colorScheme == .dark ? Color(red: 0.2, green: 0.2, blue: 0.25) : Color(red: 0.95, green: 0.95, blue: 0.97)
-        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 }
 
