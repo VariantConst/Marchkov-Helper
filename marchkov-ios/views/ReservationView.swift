@@ -25,7 +25,7 @@ struct ReservationView: View {
     
     var body: some View {
         ZStack {
-            backgroundGradient
+            gradientBackground.edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 0) {
                 directionSelector
@@ -44,12 +44,20 @@ struct ReservationView: View {
         }
     }
     
-    private var backgroundGradient: some View {
-        LinearGradient(gradient: Gradient(colors: [
-            Color(red: 0.95, green: 0.95, blue: 0.97),
-            Color(red: 0.90, green: 0.90, blue: 0.95)
-        ]), startPoint: .top, endPoint: .bottom)
-        .edgesIgnoringSafeArea(.all)
+    private var gradientBackground: LinearGradient {
+        if colorScheme == .dark {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 25/255, green: 25/255, blue: 30/255), Color(red: 75/255, green: 75/255, blue: 85/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            return LinearGradient(
+                gradient: Gradient(colors: [Color(red: 245/255, green: 245/255, blue: 250/255), Color(red: 220/255, green: 220/255, blue: 230/255)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
     
     private var directionSelector: some View {
@@ -59,6 +67,7 @@ struct ReservationView: View {
         }
         .pickerStyle(SegmentedPickerStyle())
         .padding()
+        .background(BlurView(style: .systemMaterial))
     }
     
     private var busListView: some View {
@@ -75,6 +84,7 @@ struct ReservationView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(day)
                 .font(.headline)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.leading, 5)
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
@@ -345,14 +355,19 @@ struct BusCard: View {
     let cancelAction: (BusInfo) -> Void
     @Environment(\.colorScheme) private var colorScheme
     
+    private var accentColor: Color {
+        colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(busInfo.time)
                     .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
                 Spacer()
                 Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
-                    .foregroundColor(busInfo.isReserved ? .green : .blue)
+                    .foregroundColor(busInfo.isReserved ? .green : accentColor)
             }
             
             Text(busInfo.resourceName)
@@ -371,14 +386,18 @@ struct BusCard: View {
                     .foregroundColor(.white)
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity)
-                    .background(busInfo.isReserved ? Color.red : Color.blue)
+                    .background(busInfo.isReserved ? Color.red : accentColor)
                     .cornerRadius(8)
             }
         }
         .padding()
-        .background(Color.white)
+        .background(BlurView(style: .systemMaterial))
         .cornerRadius(15)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
     }
 }
 
