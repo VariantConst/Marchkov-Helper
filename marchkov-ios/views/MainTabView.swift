@@ -13,7 +13,6 @@ struct MainTabView: View {
     @State private var resources: [LoginService.Resource] = []
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var brightnessManager = BrightnessManager()
-    @State private var selectedTab: Int = 0
     @State private var rideHistory: [LoginService.RideInfo]?
     @State private var isRideHistoryLoading: Bool = true
     @State private var isRideHistoryDataReady: Bool = false
@@ -44,6 +43,9 @@ struct MainTabView: View {
     @State private var availableBuses: [String: [BusInfo]] = [:]
     @State private var token: String?
     
+    @AppStorage("isAutoReservationEnabled") private var isAutoReservationEnabled: Bool = true
+    @State private var showHorseButton: Bool = false
+    
     var body: some View {
         TabView(selection: $currentTab) {
             ReservationResultView(
@@ -51,6 +53,7 @@ struct MainTabView: View {
                 errorMessage: $errorMessage,
                 reservationResult: $reservationResult,
                 resources: $resources,
+                showHorseButton: $showHorseButton,
                 refresh: refresh
             )
             .tabItem {
@@ -64,7 +67,7 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
-            RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading) // 添加 date 参数
+            RideHistoryView(rideHistory: $rideHistory, isLoading: $isRideHistoryLoading)
                 .tabItem {
                     Label("历史", systemImage: "clock.fill")
                 }
@@ -89,8 +92,8 @@ struct MainTabView: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
         .environmentObject(brightnessManager)
-        .onChange(of: selectedTab) { oldValue, newValue in
-            if newValue == 0 { // 切换到显示二维码的视图
+        .onChange(of: currentTab) { oldValue, newValue in
+            if newValue == 0 {
                 brightnessManager.captureCurrentBrightness()
                 brightnessManager.setMaxBrightness()
             } else {
@@ -102,7 +105,11 @@ struct MainTabView: View {
             if rideHistory == nil {
                 fetchRideHistory()
             }
-            fetchAvailableBuses()
+            if isAutoReservationEnabled {
+                fetchAvailableBuses()
+            } else {
+                showHorseButton = true
+            }
         }
     }
     
@@ -198,7 +205,6 @@ struct MainTabView: View {
                 switch result {
                 case .success(let history):
                     self.rideHistory = history
-                    // 使用 DispatchQueue.main.asyncAfter 来确保数据在后台完全处理后再更新 UI
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         self.isRideHistoryDataReady = true
                     }
@@ -235,9 +241,29 @@ struct MainTabView: View {
         LoginService.shared.getResources(token: token) { result in
             switch result {
             case .success(let resources):
-                self.parseAvailableBuses(resources: resources)
+                self.resources = resources
+                self.getReservationResult()
             case .failure(let error):
                 LogManager.shared.addLog("获取资源失败：\(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    self.errorMessage = "获取资源失败：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func getReservationResult() {
+        LoginService.shared.getReservationResult(resources: resources) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let reservationResult):
+                    self.reservationResult = reservationResult
+                    self.parseAvailableBuses(resources: self.resources)
+                case .failure(let error):
+                    self.errorMessage = "获取预约结果失败: \(error.localizedDescription)"
+                }
+                self.isLoading = false
             }
         }
     }
@@ -277,15 +303,12 @@ struct MainTabView: View {
     }
     
     private func performLogout() {
-        // 清除乘车历史记录和相关日期
         UserDataManager.shared.clearRideHistory()
         
-        // 重置相关状态
         rideHistory = nil
         isRideHistoryLoading = true
         isRideHistoryDataReady = false
         
-        // 调用原来的 logout 函数
         logout()
     }
 }
@@ -295,9 +318,9 @@ struct ReservationResultView: View {
     @Binding var errorMessage: String
     @Binding var reservationResult: ReservationResult?
     @Binding var resources: [LoginService.Resource]
+    @Binding var showHorseButton: Bool
     @State private var showLogs: Bool = false
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
-    @State private var showHorseButton: Bool = false
     let refresh: () async -> Void
     @Environment(\.colorScheme) private var colorScheme
     
@@ -374,19 +397,16 @@ struct HorseButtonView: View {
                 performRefresh()
             }) {
                 ZStack {
-                    // 背景圆圈
                     Circle()
                         .fill(accentColor.opacity(0.1))
                         .frame(width: 200, height: 200)
                     
-                    // 动画波纹
                     Circle()
                         .stroke(accentColor.opacity(0.5), lineWidth: 2)
                         .frame(width: 200, height: 200)
                         .scaleEffect(isAnimating ? 1.5 : 1.0)
                         .opacity(isAnimating ? 0 : 1)
                     
-                    // 马emoji
                     Text("🐴")
                         .font(.system(size: 100))
                 }
@@ -442,7 +462,6 @@ class MotionManager: ObservableObject {
             if abs(data.acceleration.x) > threshold || abs(data.acceleration.y) > threshold || abs(data.acceleration.z) > threshold {
                 DispatchQueue.main.async {
                     self?.isShaking = true
-                    // 重置晃动状态,为下一次晃动做准备
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                         self?.isShaking = false
                     }
@@ -511,11 +530,11 @@ extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3: // RGB (12-bit)
+        case 3:
             (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
+        case 6:
             (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
+        case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
             (a, r, g, b) = (1, 1, 1, 0)

@@ -22,6 +22,7 @@ struct LoginView: View {
     @State private var token: String?
     @State private var lastNetworkActivityTime = Date()
     @StateObject private var brightnessManager = BrightnessManager()
+    @AppStorage("isAutoReservationEnabled") private var isAutoReservationEnabled: Bool = true
     
     var body: some View {
         Group {
@@ -84,12 +85,14 @@ struct LoginView: View {
                         self.loginResult = "登录成功!"
                         self.isLoggedIn = true
                         self.token = token
-                        LogManager.shared.addLog("登录和重定向成功，开始获取资源")
+                        LogManager.shared.addLog("登录和重定向成功")
                         UserDataManager.shared.saveUserCredentials(username: username, password: password)
-                        self.getResources(token: token)
+                        self.isLoading = false
+                        // 不再在这里处理 isAutoReservationEnabled，而是将其传递给 MainTabView
                     } else {
                         self.loginResult = "登录失败: 用户名或密码无效。"
                         LogManager.shared.addLog("登录失败：用户名或密码无效")
+                        self.isLoading = false
                     }
                 case .failure(let error):
                     self.isLoading = false

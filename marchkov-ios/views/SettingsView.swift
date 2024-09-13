@@ -28,6 +28,7 @@ struct SettingsView: View {
     @State private var tapCount = 0
     @State private var lastTapTime = Date()
     @State private var showAdvancedSettingsMessage = false
+    @AppStorage("isAutoReservationEnabled") private var isAutoReservationEnabled: Bool = true
     
     private var accentColor: Color {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
@@ -243,6 +244,11 @@ struct SettingsView: View {
             ElegantToggle(isOn: $isDeveloperMode.onChange { newValue in
                 hapticFeedback()
             }, title: "显示日志")
+            
+            // 新增"启动自动预约"开关
+            ElegantToggle(isOn: $isAutoReservationEnabled.onChange { newValue in
+                hapticFeedback()
+            }, title: "启动自动预约")
         }
         .padding(25)
         .background(BlurView(style: .systemMaterial))
@@ -485,7 +491,7 @@ struct BusSettingsInfoView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         infoSection(title: "通勤方向", description: "选择您的主要通勤方向。默认设置为'上午去燕园'，即14点前去燕园，14点后回昌平。", example: "如果您选择'上午回昌平'，则会相反。")
-                        infoSection(title: "过期班车追溯", description: "设置可查看多久之前的过期班车。默认为10分钟，范围：1-114分钟。", example: "例如，设置为30分钟时，您可以查看半小时内已经发车的班车信息。")
+                        infoSection(title: "过期班车追溯", description: "设置可查看多久之前的过期班车。默认为10分钟，范围：1-114分钟。", example: "例如��设置为30分钟时，您可以查看半小时内���经发车的班车信息。")
                         infoSection(title: "未来班车预约", description: "设置可预约多久之后的未来班车。默认为60分钟，范围：1-514分钟。", example: "例如，设置为120分钟时，您可以预约两小时内即将发车的班车。")
                         infoSection(title: "临界时刻", description: "设置一天中转换通勤方向的时间点。默认为14:00，范围：06:00-22:00。", example: "例如，如果您设置为12:00，则在中午12点前的班车被视为去程，12点后的班车被视为返程。")
                         
