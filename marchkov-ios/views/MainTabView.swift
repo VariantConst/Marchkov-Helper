@@ -122,7 +122,7 @@ struct MainTabView: View {
         refreshTimer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { _ in
-                if Date().timeIntervalSince(lastNetworkActivityTime) >= 60 * 10 {
+                if Date().timeIntervalSince(lastNetworkActivityTime) >= 10 {
                     Task {
                         await performAutoRefresh()
                     }
