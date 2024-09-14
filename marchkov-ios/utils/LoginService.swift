@@ -143,7 +143,7 @@ struct LoginService {
                 let loginResponse = try JSONDecoder().decode(LoginResponse.self, from: data)
                 LogManager.shared.addLog("登录响应解码成功")
                 if loginResponse.success, let token = loginResponse.token {
-                    LogManager.shared.addLog("录成功，开始跟随重定向")
+                    LogManager.shared.addLog("登录成功，开始跟随重定向")
                     self.followRedirect(token: token) { result in
                         switch result {
                         case .success:

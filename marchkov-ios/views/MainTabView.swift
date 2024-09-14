@@ -57,7 +57,7 @@ struct MainTabView: View {
                 resources: $resources,
                 showHorseButton: $showHorseButton,
                 isReservationProcessComplete: $isReservationProcessComplete,
-                refresh: { await refresh() }
+                refresh: { isAuto in await refresh(isAuto: isAuto) }
             )
             .tabItem {
                 Label("乘车", systemImage: "car.fill")
@@ -139,8 +139,7 @@ struct MainTabView: View {
     }
     
     private func performAutoRefresh() async {
-        // 不设置 isLoading，以避免显示加载动画
-        Task {
+        if !showHorseButton {
             await refresh(isAuto: true)
         }
     }
@@ -167,7 +166,7 @@ struct MainTabView: View {
             }
             
             guard loginResponse.success, let token = loginResponse.token else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "登录失败：用户名或密���无效"])
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "登录失败：用户名或密无效"])
             }
             
             LogManager.shared.addLog("重新登录成功，开始获取资")
@@ -335,7 +334,7 @@ struct ReservationResultView: View {
     @Binding var isReservationProcessComplete: Bool
     @State private var showLogs: Bool = false
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
-    let refresh: () async -> Void
+    let refresh: (Bool) async -> Void
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
@@ -356,9 +355,9 @@ struct ReservationResultView: View {
                                 if !errorMessage.isEmpty {
                                     ErrorView(errorMessage: errorMessage, isDeveloperMode: isDeveloperMode, showLogs: $showLogs)
                                 } else if let result = reservationResult {
-                                    SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult, refresh: refresh, showHorseButton: $showHorseButton)
+                                    SuccessView(result: result, isDeveloperMode: isDeveloperMode, showLogs: $showLogs, reservationResult: $reservationResult, refresh: { await refresh(false) }, showHorseButton: $showHorseButton)
                                 } else if showHorseButton {
-                                    HorseButtonView(refresh: refresh, showHorseButton: $showHorseButton)
+                                    HorseButtonView(refresh: { await refresh(false) }, showHorseButton: $showHorseButton)
                                 } else {
                                     NoResultView()
                                 }
@@ -370,7 +369,7 @@ struct ReservationResultView: View {
                         }
                         .refreshable {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            await refresh()
+                            await refresh(false)
                         }
                         .scrollIndicators(.hidden)
                     }
