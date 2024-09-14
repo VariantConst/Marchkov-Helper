@@ -273,10 +273,10 @@ struct LoginService {
     
     func getReservationResult(resources: [Resource], forceDirection: BusDirection? = nil, isReverseAttempt: Bool = false, completion: @escaping (Result<ReservationResult, Error>) -> Void) {
         LogManager.shared.addLog("开始获取预约结果")
-        let userDefaults = UserDefaults.standard
-        let criticalTime = userDefaults.integer(forKey: "criticalTime")
-        let flagMorningToYanyuan = userDefaults.bool(forKey: "flagMorningToYanyuan")
-        let nextInterval = userDefaults.integer(forKey: "nextInterval")
+        // 使用 UserDataManager 获取设置
+        let criticalTime = UserDataManager.shared.getCriticalTime()
+        let flagMorningToYanyuan = UserDataManager.shared.getFlagMorningToYanyuan()
+        let nextInterval = UserDataManager.shared.getNextInterval()
         
         // 获取当前时间
         let currentDate = Date()
@@ -290,7 +290,7 @@ struct LoginService {
             prevInterval = 29
             LogManager.shared.addLog("当前时间在 19:00-20:00 之间，设置 prevInterval 为 29 分钟")
         } else {
-            prevInterval = userDefaults.integer(forKey: "prevInterval")
+            prevInterval = UserDataManager.shared.getPrevInterval()
         }
         
         LogManager.shared.addLog("设置参数: 临界时间 = \(criticalTime), 早上去燕园 = \(flagMorningToYanyuan), 过期班车追溯 = \(prevInterval), 未来班车预约 = \(nextInterval)")
@@ -745,7 +745,7 @@ struct LoginService {
                         LogManager.shared.addLog("获取二维码成功: \(code)")
                         completion(.success(code))
                     } else {
-                        LogManager.shared.addLog("获取二维码 - 无效的响应格式")
+                        LogManager.shared.addLog("获取二维码 - ���效的响应格式")
                         completion(.failure(NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])))
                     }
                 }
