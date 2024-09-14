@@ -57,7 +57,7 @@ struct MainTabView: View {
                 resources: $resources,
                 showHorseButton: $showHorseButton,
                 isReservationProcessComplete: $isReservationProcessComplete,
-                refresh: refresh
+                refresh: { await refresh() }
             )
             .tabItem {
                 Label("乘车", systemImage: "car.fill")
@@ -139,23 +139,22 @@ struct MainTabView: View {
     }
     
     private func performAutoRefresh() async {
-        if isLoading {
-            return
+        // 不设置 isLoading，以避免显示加载动画
+        Task {
+            await refresh(isAuto: true)
         }
-        
-        await MainActor.run {
-            isLoading = true
-            errorMessage = ""
-            reservationResult = nil
-            resources = []
-        }
-        
-        await refresh()
-        
-        updateLastNetworkActivityTime()
     }
     
-    private func refresh() async {
+    private func refresh(isAuto: Bool = false) async {
+        if !isAuto {
+            await MainActor.run {
+                isLoading = true
+                errorMessage = ""
+                reservationResult = nil
+                resources = []
+            }
+        }
+        
         do {
             guard let credentials = UserDataManager.shared.getUserCredentials() else {
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "未找到用户凭证"])
@@ -168,7 +167,7 @@ struct MainTabView: View {
             }
             
             guard loginResponse.success, let token = loginResponse.token else {
-                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "登录失败：用户名或密码无效"])
+                throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "登录失败：用户名或密���无效"])
             }
             
             LogManager.shared.addLog("重新登录成功，开始获取资")
@@ -188,16 +187,20 @@ struct MainTabView: View {
             await MainActor.run {
                 self.resources = newResources
                 self.reservationResult = newReservationResult
-                self.errorMessage = ""
-                self.isLoading = false
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                if !isAuto {
+                    self.errorMessage = ""
+                    self.isLoading = false
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
             }
             
             updateLastNetworkActivityTime()
         } catch {
             await MainActor.run {
                 self.errorMessage = "刷新失败: \(error.localizedDescription)"
-                self.isLoading = false
+                if !isAuto {
+                    self.isLoading = false
+                }
             }
         }
     }
