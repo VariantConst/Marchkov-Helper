@@ -260,7 +260,7 @@ struct ReservationView: View {
         await MainActor.run {
             updateBusInfoWithReservation(reservationInfo)
         }
-        LogManager.shared.addLog("成功获取预约状��：\(reservationInfo)")
+        LogManager.shared.addLog("成功获取预约状：\(reservationInfo)")
     }
     
     private func updateBusInfoWithReservation(_ reservationInfo: ReservationResponse) {
@@ -419,6 +419,10 @@ struct BusCard: View {
         colorScheme == .dark ? Color(red: 100/255, green: 210/255, blue: 255/255) : Color(red: 60/255, green: 120/255, blue: 180/255)
     }
     
+    private var selectedGreenColor: Color {
+        colorScheme == .dark ? Color(red: 76/255, green: 175/255, blue: 80/255) : Color(red: 56/255, green: 142/255, blue: 60/255)
+    }
+    
     var body: some View {
         Button(action: {
             action(busInfo)
@@ -430,7 +434,7 @@ struct BusCard: View {
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                     Spacer()
                     Image(systemName: busInfo.isReserved ? "checkmark.circle.fill" : "clock")
-                        .foregroundColor(busInfo.isReserved ? .green : accentColor)
+                        .foregroundColor(busInfo.isReserved ? selectedGreenColor : accentColor)
                 }
                 
                 Text(busInfo.resourceName)
@@ -443,11 +447,18 @@ struct BusCard: View {
             .frame(height: 80)
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(BlurView(style: .systemMaterial))
+            .background(
+                ZStack {
+                    BlurView(style: .systemMaterial)
+                    if busInfo.isReserved {
+                        selectedGreenColor.opacity(0.1)
+                    }
+                }
+            )
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(busInfo.isReserved ? Color.green : Color.gray.opacity(0.2), lineWidth: busInfo.isReserved ? 2 : 1)
+                    .stroke(busInfo.isReserved ? selectedGreenColor : Color.gray.opacity(0.2), lineWidth: busInfo.isReserved ? 2 : 1)
             )
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
         }
