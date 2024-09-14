@@ -47,6 +47,7 @@ struct MainTabView: View {
     @State private var showHorseButton: Bool = false
     
     @State private var isReservationProcessComplete: Bool = false
+    @State private var isInitialLoad: Bool = true // 添加初始加载标志
     
     var body: some View {
         TabView(selection: $currentTab) {
@@ -57,7 +58,8 @@ struct MainTabView: View {
                 resources: $resources,
                 showHorseButton: $showHorseButton,
                 isReservationProcessComplete: $isReservationProcessComplete,
-                refresh: { isAuto in await refresh(isAuto: isAuto) }
+                refresh: { isAuto in await refresh(isAuto: isAuto) },
+                isInitialLoad: $isInitialLoad
             )
             .tabItem {
                 Label("乘车", systemImage: "car.fill")
@@ -145,7 +147,7 @@ struct MainTabView: View {
     }
     
     private func refresh(isAuto: Bool = false) async {
-        if !isAuto {
+        if isInitialLoad {
             await MainActor.run {
                 isLoading = true
                 errorMessage = ""
@@ -186,9 +188,12 @@ struct MainTabView: View {
             await MainActor.run {
                 self.resources = newResources
                 self.reservationResult = newReservationResult
+                if isInitialLoad {
+                    self.isLoading = false
+                    self.isInitialLoad = false
+                }
                 if !isAuto {
                     self.errorMessage = ""
-                    self.isLoading = false
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 }
             }
@@ -227,6 +232,11 @@ struct MainTabView: View {
         guard let credentials = UserDataManager.shared.getUserCredentials() else {
             LogManager.shared.addLog("获取班车信息失败：未找到用户凭证")
             isReservationProcessComplete = true
+            // 设置初始加载完成
+            Task { @MainActor in
+                isInitialLoad = false
+                isLoading = false
+            }
             return
         }
 
@@ -236,13 +246,28 @@ struct MainTabView: View {
                 if loginResponse.success, let token = loginResponse.token {
                     self.token = token
                     self.getResources(token: token)
+                    // 设置初始加载完成
+                    Task { @MainActor in
+                        isInitialLoad = false
+                        isLoading = false
+                    }
                 } else {
                     LogManager.shared.addLog("登录失败：用户名或密码无效")
                     self.isReservationProcessComplete = true
+                    // 设置初始加载完成
+                    Task { @MainActor in
+                        isInitialLoad = false
+                        isLoading = false
+                    }
                 }
             case .failure(let error):
                 LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
                 self.isReservationProcessComplete = true
+                // 设置初始加载完成
+                Task { @MainActor in
+                    isInitialLoad = false
+                    isLoading = false
+                }
             }
         }
     }
@@ -253,12 +278,19 @@ struct MainTabView: View {
             case .success(let resources):
                 self.resources = resources
                 self.getReservationResult()
+                // 设置初始加载完成
+                Task { @MainActor in
+                    isInitialLoad = false
+                    isLoading = false
+                }
             case .failure(let error):
                 LogManager.shared.addLog("获取资源失败：\(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self.isLoading = false
                     self.errorMessage = "获取资源失败：\(error.localizedDescription)"
                     self.isReservationProcessComplete = true
+                    // 设置初始加载完成
+                    isInitialLoad = false
                 }
             }
         }
@@ -336,6 +368,7 @@ struct ReservationResultView: View {
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
     let refresh: (Bool) async -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @Binding var isInitialLoad: Bool // 添加绑定变量
     
     var body: some View {
         NavigationView {
@@ -343,7 +376,7 @@ struct ReservationResultView: View {
                 ZStack {
                     gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all)
                     
-                    if isLoading || !isReservationProcessComplete {
+                    if isLoading && isInitialLoad { // 修改条件，仅在初始加载时显示"加载中"
                         ProgressView("加载中...")
                             .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                             .scaleEffect(1.2)
