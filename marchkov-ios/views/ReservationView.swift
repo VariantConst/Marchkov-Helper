@@ -105,16 +105,23 @@ struct ReservationView: View {
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.leading, 5)
             
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(filteredBuses(for: direction, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
-                    BusCard(busInfo: busInfo, action: { bus in
-                        if bus.isReserved {
-                            cancelReservation(busInfo: bus)
-                        } else {
-                            reserveBus(busInfo: bus)
-                        }
-                    })
-                    .transition(.scale.combined(with: .opacity))
+            if filteredBuses(for: direction, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)).isEmpty {
+                Text("暂无班车")
+                    .font(.system(size: 20))
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ForEach(filteredBuses(for: direction, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
+                        BusCard(busInfo: busInfo, action: { bus in
+                            if bus.isReserved {
+                                cancelReservation(busInfo: bus)
+                            } else {
+                                reserveBus(busInfo: bus)
+                            }
+                        })
+                        .transition(.scale.combined(with: .opacity))
+                    }
                 }
             }
         }
@@ -144,26 +151,31 @@ struct ReservationView: View {
     
     private func loadCachedBusInfo() {
         if let cachedInfo = LoginService.shared.getCachedBusInfo() {
-            let toYanyuan = processBusInfo(resources: cachedInfo.resources, ids: [2, 4], direction: "去燕园")
-            let toChangping = processBusInfo(resources: cachedInfo.resources, ids: [5, 6, 7], direction: "去昌平")
+            let today = Date()
+            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+            
+            let toYanyuanToday = processBusInfo(resources: cachedInfo.resources, ids: [2, 4], direction: "去燕园", date: today)
+            let toYanyuanTomorrow = processBusInfo(resources: cachedInfo.resources, ids: [2, 4], direction: "去燕园", date: tomorrow)
+            
+            let toChangpingToday = processBusInfo(resources: cachedInfo.resources, ids: [5, 6, 7], direction: "去昌平", date: today)
+            let toChangpingTomorrow = processBusInfo(resources: cachedInfo.resources, ids: [5, 6, 7], direction: "去昌平", date: tomorrow)
             
             self.availableBuses = [
-                "去燕园": toYanyuan,
-                "去昌平": toChangping
+                "去燕园": toYanyuanToday + toYanyuanTomorrow,
+                "去昌平": toChangpingToday + toChangpingTomorrow
             ]
             isLoading = false
         }
     }
     
-    private func processBusInfo(resources: [LoginService.Resource], ids: [Int], direction: String) -> [BusInfo] {
+    private func processBusInfo(resources: [LoginService.Resource], ids: [Int], direction: String, date: Date) -> [BusInfo] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let dateString = formattedDate(date)
         
         return resources.filter { ids.contains($0.id) }.flatMap { resource in
             resource.busInfos.compactMap { busInfo in
-                guard let date = dateFromString(busInfo.date),
-                      (calendar.isDate(date, inSameDayAs: today) || calendar.isDate(date, inSameDayAs: tomorrow)),
+                guard let busDate = dateFromString(busInfo.date),
+                      calendar.isDate(busDate, inSameDayAs: date),
                       busInfo.margin > 0 else {
                     return nil
                 }
@@ -172,7 +184,7 @@ struct ReservationView: View {
                     direction: direction,
                     margin: busInfo.margin,
                     resourceName: resource.name,
-                    date: busInfo.date,
+                    date: dateString,
                     timeId: busInfo.timeId,
                     resourceId: resource.id
                 )
@@ -180,8 +192,16 @@ struct ReservationView: View {
         }
     }
     
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+    
     private func dateFromString(_ dateString: String) -> Date? {
         let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(identifier: "Asia/Shanghai") // 添加时区
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.date(from: dateString)
     }
@@ -190,10 +210,21 @@ struct ReservationView: View {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
+        let currentTime = Date() // 获取当前时间
+
         return availableBuses[direction]?.filter { busInfo in
             guard let busDate = dateFromString(busInfo.date) else { return false }
-            return busDate >= startOfDay && busDate < endOfDay
+            if calendar.isDate(busDate, inSameDayAs: date) {
+                if calendar.isDate(date, inSameDayAs: Date()) {
+                    // 今天的班车需检查时间
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "yyyy-MM-dd HH:mm"
+                    guard let busDateTime = formatter.date(from: "\(busInfo.date) \(busInfo.time)") else { return false }
+                    return busDateTime >= currentTime // 仅显示未过时的班车
+                }
+                return true // 明天的班车直接显示
+            }
+            return false
         }.sorted { $0.time < $1.time } ?? []
     }
     
