@@ -71,15 +71,21 @@ struct ReservationView: View {
     private var directionSelector: some View {
         HStack(spacing: 0) {
             DirectionButton(title: "去燕园", isSelected: selectedDirection == "去燕园") {
-                selectedDirection = "去燕园"
+                withAnimation {
+                    selectedDirection = "去燕园"
+                    currentPage = 0
+                }
             }
             DirectionButton(title: "去昌平", isSelected: selectedDirection == "去昌平") {
-                selectedDirection = "去昌平"
+                withAnimation {
+                    selectedDirection = "去昌平"
+                    currentPage = 1
+                }
             }
         }
-        .padding(.vertical, 12)
-        .background(Color(UIColor.systemBackground).opacity(0.8))
-        .cornerRadius(20)
+        .padding(4)
+        .background(BlurView(style: .systemMaterial))
+        .clipShape(Capsule())
         .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
         .padding(.horizontal)
         .padding(.top, 8)
@@ -254,7 +260,7 @@ struct ReservationView: View {
         await MainActor.run {
             updateBusInfoWithReservation(reservationInfo)
         }
-        LogManager.shared.addLog("成功获取预约状态：\(reservationInfo)")
+        LogManager.shared.addLog("成功获取预约状��：\(reservationInfo)")
     }
     
     private func updateBusInfoWithReservation(_ reservationInfo: ReservationResponse) {
@@ -437,14 +443,12 @@ struct BusCard: View {
             .frame(height: 80)
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(
-                BlurView(style: .systemMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(busInfo.isReserved ? Color.green : Color.gray.opacity(0.2), lineWidth: busInfo.isReserved ? 2 : 1)
-                    )
-            )
+            .background(BlurView(style: .systemMaterial))
             .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(busInfo.isReserved ? Color.green : Color.gray.opacity(0.2), lineWidth: busInfo.isReserved ? 2 : 1)
+            )
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 3, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
@@ -479,6 +483,7 @@ struct DirectionButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         Button(action: action) {
@@ -486,9 +491,18 @@ struct DirectionButton: View {
                 .font(.system(size: 18, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .background(isSelected ? Color.accentColor : Color.clear)
-                .foregroundColor(isSelected ? .white : .primary)
-                .animation(.easeInOut, value: isSelected)
+                .background(
+                    Group {
+                        if isSelected {
+                            Capsule()
+                                .fill(Color.accentColor)
+                                .shadow(color: Color.accentColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                        }
+                    }
+                )
+                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .primary))
         }
+        .buttonStyle(PlainButtonStyle())
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
