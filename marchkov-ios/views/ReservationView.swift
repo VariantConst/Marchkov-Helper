@@ -39,7 +39,7 @@ struct ReservationView: View {
                         busListView(for: "去昌平").tag(1)
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .onChange(of: currentPage) { newValue in
+                    .onChange(of: currentPage) { _, newValue in
                         selectedDirection = newValue == 0 ? "去燕园" : "去昌平"
                     }
                 }
@@ -228,7 +228,7 @@ struct ReservationView: View {
                     guard let busDateTime = formatter.date(from: "\(busInfo.date) \(busInfo.time)") else { return false }
                     return busDateTime >= currentTime // 仅显示未过时的班车
                 }
-                return true // 明天的班车直接显示
+                return true // 明���的班车直接显示
             }
             return false
         }.sorted { $0.time < $1.time } ?? []
