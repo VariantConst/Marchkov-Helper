@@ -232,11 +232,13 @@ struct MainTabView: View {
         guard let credentials = UserDataManager.shared.getUserCredentials() else {
             LogManager.shared.addLog("获取班车信息失败：未找到用户凭证")
             isReservationProcessComplete = true
-            // 设置初始加载完成
+            // 移除设置初始加载完成
+            /*
             Task { @MainActor in
                 isInitialLoad = false
                 isLoading = false
             }
+            */
             return
         }
 
@@ -246,28 +248,34 @@ struct MainTabView: View {
                 if loginResponse.success, let token = loginResponse.token {
                     self.token = token
                     self.getResources(token: token)
-                    // 设置初始加载完成
+                    // 移除设置初始加载完成
+                    /*
                     Task { @MainActor in
                         isInitialLoad = false
                         isLoading = false
                     }
+                    */
                 } else {
                     LogManager.shared.addLog("登录失败：用户名或密码无效")
                     self.isReservationProcessComplete = true
-                    // 设置初始加载完成
+                    // 移除设置初始加载完成
+                    /*
                     Task { @MainActor in
                         isInitialLoad = false
                         isLoading = false
                     }
+                    */
                 }
             case .failure(let error):
                 LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
                 self.isReservationProcessComplete = true
-                // 设置初始加载完成
+                // 移除设置初始加载完成
+                /*
                 Task { @MainActor in
                     isInitialLoad = false
                     isLoading = false
                 }
+                */
             }
         }
     }
@@ -278,19 +286,23 @@ struct MainTabView: View {
             case .success(let resources):
                 self.resources = resources
                 self.getReservationResult()
-                // 设置初始加载完成
+                // 移除设置初始加载完成
+                /*
                 Task { @MainActor in
                     isInitialLoad = false
                     isLoading = false
                 }
+                */
             case .failure(let error):
                 LogManager.shared.addLog("获取资源失败：\(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self.isLoading = false
                     self.errorMessage = "获取资源失败：\(error.localizedDescription)"
                     self.isReservationProcessComplete = true
-                    // 设置初始加载完成
+                    // 移除设置初始加载完成
+                    /*
                     isInitialLoad = false
+                    */
                 }
             }
         }
@@ -303,10 +315,15 @@ struct MainTabView: View {
                 case .success(let reservationResult):
                     self.reservationResult = reservationResult
                     self.parseAvailableBuses(resources: self.resources)
+                    // 设置初始加载完成
+                    self.isInitialLoad = false
+                    self.isLoading = false
                 case .failure(let error):
                     self.errorMessage = "获取预约结果失败: \(error.localizedDescription)"
+                    // 设置初始加载完成
+                    self.isInitialLoad = false
+                    self.isLoading = false
                 }
-                self.isLoading = false
                 self.isReservationProcessComplete = true
             }
         }
