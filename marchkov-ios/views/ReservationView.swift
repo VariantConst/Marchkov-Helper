@@ -70,13 +70,16 @@ struct ReservationView: View {
     
     private var directionSelector: some View {
         Picker("方向", selection: $selectedDirection) {
-            Text("去燕园").tag("去燕园")
-            Text("去昌平").tag("去昌平")
+            Text("去燕园")
+                .font(.system(size: 24, weight: .bold)) // 增大字体
+                .tag("去燕园")
+            Text("去昌平")
+                .font(.system(size: 24, weight: .bold)) // 增大字体
+                .tag("去昌平")
         }
         .pickerStyle(SegmentedPickerStyle())
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(BlurView(style: .systemMaterial))
         .onChange(of: selectedDirection) { newValue in
             currentPage = newValue == "去燕园" ? 0 : 1
         }
@@ -84,36 +87,25 @@ struct ReservationView: View {
     
     private func busListView(for direction: String) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 25) { // 增加间距
+            VStack(alignment: .leading, spacing: 25) {
                 sectionView(for: "今天", direction: direction)
-                    .padding(.top, 20) // 增加顶部距离
-                
-                divider // 使用自定义分割线
+                    .padding(.top, 20)
                 
                 sectionView(for: "明天", direction: direction)
+                    .padding(.bottom, 20) // 添加底部margin
             }
             .padding(.horizontal)
         }
     }
     
-    private var divider: some View {
-        VStack(spacing: 4) { // 创建更明显的分割线
-            Color.gray.opacity(0.3)
-                .frame(height: 1)
-            Color.gray.opacity(0.3)
-                .frame(height: 1)
-        }
-        .padding(.vertical, 10) // 增加分割线上下的空间
-    }
-    
     private func sectionView(for day: String, direction: String) -> some View {
-        VStack(alignment: .leading, spacing: 15) { // 增加间距
+        VStack(alignment: .leading, spacing: 15) {
             Text(day)
-                .font(.system(size: 24, weight: .bold)) // 略微增大字体
+                .font(.system(size: 28, weight: .bold)) // 增大字体
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.leading, 5)
             
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) { // 增加卡片间距
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(filteredBuses(for: direction, on: day == "今天" ? Date() : Date().addingTimeInterval(86400)), id: \.id) { busInfo in
                     BusCard(busInfo: busInfo, action: { bus in
                         if bus.isReserved {
@@ -413,7 +405,7 @@ struct BusCard: View {
             }
             .frame(height: 80)
             .padding(.vertical, 8)
-            .padding(.horizontal, 12) // 增加左右内边距
+            .padding(.horizontal, 12)
             .background(
                 BlurView(style: .systemMaterial)
                     .overlay(

@@ -256,7 +256,7 @@ struct MainTabView: View {
                     }
                     */
                 } else {
-                    LogManager.shared.addLog("登录失败：用户名或密码无效")
+                    LogManager.shared.addLog("登录失败：用户名或密码无��")
                     self.isReservationProcessComplete = true
                     // 移除设置初始加载完成
                     /*
@@ -422,6 +422,7 @@ struct ReservationResultView: View {
                             await refresh(false)
                         }
                         .scrollIndicators(.hidden)
+                        .padding(.bottom, 16) // 添加底部margin
                     }
                     
                     VStack {
