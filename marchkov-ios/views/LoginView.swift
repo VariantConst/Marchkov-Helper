@@ -23,6 +23,7 @@ struct LoginView: View {
     @State private var lastNetworkActivityTime = Date()
     @StateObject private var brightnessManager = BrightnessManager()
     @AppStorage("isAutoReservationEnabled") private var isAutoReservationEnabled: Bool = true
+    @State private var isReservationProcessComplete: Bool = false
     
     var body: some View {
         Group {
@@ -75,6 +76,7 @@ struct LoginView: View {
     
     private func login() {
         isLoading = true
+        isReservationProcessComplete = false
         LogManager.shared.clearLogs()
         LogManager.shared.addLog("开始登录流程")
         LoginService.shared.login(username: username, password: password) { [self] result in
@@ -87,17 +89,23 @@ struct LoginView: View {
                         self.token = token
                         LogManager.shared.addLog("登录和重定向成功")
                         UserDataManager.shared.saveUserCredentials(username: username, password: password)
-                        self.isLoading = false
-                        // 不再在这里处理 isAutoReservationEnabled，而是将其传递给 MainTabView
+                        if isAutoReservationEnabled {
+                            self.getResources(token: token)
+                        } else {
+                            self.isLoading = false
+                            self.isReservationProcessComplete = true
+                        }
                     } else {
                         self.loginResult = "登录失败: 用户名或密码无效。"
                         LogManager.shared.addLog("登录失败：用户名或密码无效")
                         self.isLoading = false
+                        self.isReservationProcessComplete = true
                     }
                 case .failure(let error):
                     self.isLoading = false
                     self.loginResult = "登录失败: \(error.localizedDescription)"
                     LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
+                    self.isReservationProcessComplete = true
                 }
                 self.updateLastNetworkActivityTime()
             }
@@ -115,6 +123,7 @@ struct LoginView: View {
                 case .failure(let error):
                     self.isLoading = false
                     self.errorMessage = "获取班车信息失败: \(error.localizedDescription)"
+                    self.isReservationProcessComplete = true
                 }
                 self.updateLastNetworkActivityTime()
             }
@@ -131,6 +140,7 @@ struct LoginView: View {
                 case .failure(let error):
                     self.errorMessage = "获取预约结果失败: \(error.localizedDescription)"
                 }
+                self.isReservationProcessComplete = true
                 self.updateLastNetworkActivityTime()
             }
         }

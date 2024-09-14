@@ -46,6 +46,8 @@ struct MainTabView: View {
     @AppStorage("isAutoReservationEnabled") private var isAutoReservationEnabled: Bool = true
     @State private var showHorseButton: Bool = false
     
+    @State private var isReservationProcessComplete: Bool = false
+    
     var body: some View {
         TabView(selection: $currentTab) {
             ReservationResultView(
@@ -54,6 +56,7 @@ struct MainTabView: View {
                 reservationResult: $reservationResult,
                 resources: $resources,
                 showHorseButton: $showHorseButton,
+                isReservationProcessComplete: $isReservationProcessComplete,
                 refresh: refresh
             )
             .tabItem {
@@ -106,9 +109,11 @@ struct MainTabView: View {
                 fetchRideHistory()
             }
             if isAutoReservationEnabled {
+                isReservationProcessComplete = false
                 fetchAvailableBuses()
             } else {
                 showHorseButton = true
+                isReservationProcessComplete = true
             }
         }
     }
@@ -218,7 +223,8 @@ struct MainTabView: View {
     
     private func fetchAvailableBuses() {
         guard let credentials = UserDataManager.shared.getUserCredentials() else {
-            LogManager.shared.addLog("获取班车信息失：未找用户凭证")
+            LogManager.shared.addLog("获取班车信息失败：未找到用户凭证")
+            isReservationProcessComplete = true
             return
         }
 
@@ -230,9 +236,11 @@ struct MainTabView: View {
                     self.getResources(token: token)
                 } else {
                     LogManager.shared.addLog("登录失败：用户名或密码无效")
+                    self.isReservationProcessComplete = true
                 }
             case .failure(let error):
                 LogManager.shared.addLog("登录失败：\(error.localizedDescription)")
+                self.isReservationProcessComplete = true
             }
         }
     }
@@ -248,6 +256,7 @@ struct MainTabView: View {
                 DispatchQueue.main.async {
                     self.isLoading = false
                     self.errorMessage = "获取资源失败：\(error.localizedDescription)"
+                    self.isReservationProcessComplete = true
                 }
             }
         }
@@ -264,6 +273,7 @@ struct MainTabView: View {
                     self.errorMessage = "获取预约结果失败: \(error.localizedDescription)"
                 }
                 self.isLoading = false
+                self.isReservationProcessComplete = true
             }
         }
     }
@@ -319,6 +329,7 @@ struct ReservationResultView: View {
     @Binding var reservationResult: ReservationResult?
     @Binding var resources: [LoginService.Resource]
     @Binding var showHorseButton: Bool
+    @Binding var isReservationProcessComplete: Bool
     @State private var showLogs: Bool = false
     @AppStorage("isDeveloperMode") private var isDeveloperMode: Bool = false
     let refresh: () async -> Void
@@ -330,7 +341,7 @@ struct ReservationResultView: View {
                 ZStack {
                     gradientBackground(colorScheme: colorScheme).edgesIgnoringSafeArea(.all)
                     
-                    if isLoading {
+                    if isLoading || !isReservationProcessComplete {
                         ProgressView("加载中...")
                             .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                             .scaleEffect(1.2)
