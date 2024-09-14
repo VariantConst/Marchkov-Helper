@@ -69,20 +69,20 @@ struct ReservationView: View {
     }
     
     private var directionSelector: some View {
-        Picker("方向", selection: $selectedDirection) {
-            Text("去燕园")
-                .font(.system(size: 24, weight: .bold)) // 增大字体
-                .tag("去燕园")
-            Text("去昌平")
-                .font(.system(size: 24, weight: .bold)) // 增大字体
-                .tag("去昌平")
+        HStack(spacing: 0) {
+            DirectionButton(title: "去燕园", isSelected: selectedDirection == "去燕园") {
+                selectedDirection = "去燕园"
+            }
+            DirectionButton(title: "去昌平", isSelected: selectedDirection == "去昌平") {
+                selectedDirection = "去昌平"
+            }
         }
-        .pickerStyle(SegmentedPickerStyle())
+        .padding(.vertical, 12)
+        .background(Color(UIColor.systemBackground).opacity(0.8))
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
         .padding(.horizontal)
-        .padding(.vertical, 8)
-        .onChange(of: selectedDirection) { newValue in
-            currentPage = newValue == "去燕园" ? 0 : 1
-        }
+        .padding(.top, 8)
     }
     
     private func busListView(for direction: String) -> some View {
@@ -92,7 +92,7 @@ struct ReservationView: View {
                     .padding(.top, 20)
                 
                 sectionView(for: "明天", direction: direction)
-                    .padding(.bottom, 20) // 添加底部margin
+                    .padding(.bottom, 20)
             }
             .padding(.horizontal)
         }
@@ -101,7 +101,7 @@ struct ReservationView: View {
     private func sectionView(for day: String, direction: String) -> some View {
         VStack(alignment: .leading, spacing: 15) {
             Text(day)
-                .font(.system(size: 28, weight: .bold)) // 增大字体
+                .font(.system(size: 24, weight: .bold))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.leading, 5)
             
@@ -473,4 +473,22 @@ struct PeriodInfo: Codable {
     let id: Int
     let time: String
     let status: Int
+}
+
+struct DirectionButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(isSelected ? Color.accentColor : Color.clear)
+                .foregroundColor(isSelected ? .white : .primary)
+                .animation(.easeInOut, value: isSelected)
+        }
+    }
 }
