@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import './close_button.dart';
 import './username_field.dart';
 import './password_field.dart';
 import './terms_checkbox.dart';
@@ -29,6 +28,32 @@ class LoginPageState extends State<LoginPage> {
     // 权限请求逻辑
   }
 
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('用户协议'),
+          content: SingleChildScrollView(
+            child: Text(
+              '这是一个示例用户协议。在实际应用中，您需要在此处添加完整的用户协议内容。'
+              '用户协议通常包括使用条款、隐私政策、免责声明等重要信息。'
+              '请确保用户仔细阅读并同意这些条款before使用您的应用。',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('关闭'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,8 +66,8 @@ class LoginPageState extends State<LoginPage> {
               key: _formKey,
               child: Column(
                 children: [
-                  CloseButtonWidget(),
-                  SizedBox(height: 20),
+                  // 移除 CloseButtonWidget(),
+                  // 移除 SizedBox(height: 20),
                   Text(
                     '欢迎使用校园出行',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -70,15 +95,40 @@ class LoginPageState extends State<LoginPage> {
                     validator: (value) => value!.isEmpty ? '请输入密码' : null,
                   ),
                   SizedBox(height: 20),
-                  TermsCheckbox(
-                    agreeToTerms: _agreeToTerms,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        _agreeToTerms = value ?? false;
-                      });
-                    },
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _agreeToTerms,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            _agreeToTerms = value ?? false;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _showTermsDialog,
+                          child: Text.rich(
+                            TextSpan(
+                              text: '我已阅读并同意',
+                              children: [
+                                TextSpan(
+                                  text: '用户协议',
+                                  style: TextStyle(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
                     height: 50,

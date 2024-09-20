@@ -88,22 +88,23 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-  fonts:
-    - family: Work Sans
-      fonts:
-        - asset: fonts/WorkSans-Regular.ttf
-        - asset: fonts/WorkSans-Medium.ttf
-          weight: 500
-        - asset: fonts/WorkSans-Bold.ttf
-          weight: 700
-        - asset: fonts/WorkSans-Black.ttf
-          weight: 900
-    - family: Noto Sans
-      fonts:
-        - asset: fonts/NotoSans-Regular.ttf
-        - asset: fonts/NotoSans-Medium.ttf
-          weight: 500
-        - asset: fonts/NotoSans-Bold.ttf
-          weight: 700
-        - asset: fonts/NotoSans-Black.ttf
-          weight: 900
+  # 注释掉或删除以下字体配置
+  # fonts:
+  #   - family: Work Sans
+  #     fonts:
+  #       - asset: fonts/WorkSans-Regular.ttf
+  #       - asset: fonts/WorkSans-Medium.ttf
+  #         weight: 500
+  #       - asset: fonts/WorkSans-Bold.ttf
+  #         weight: 700
+  #       - asset: fonts/WorkSans-Black.ttf
+  #         weight: 900
+  #   - family: Noto Sans
+  #     fonts:
+  #       - asset: fonts/NotoSans-Regular.ttf
+  #       - asset: fonts/NotoSans-Medium.ttf
+  #         weight: 500
+  #       - asset: fonts/NotoSans-Bold.ttf
+  #         weight: 700
+  #       - asset: fonts/NotoSans-Black.ttf
+  #         weight: 900
