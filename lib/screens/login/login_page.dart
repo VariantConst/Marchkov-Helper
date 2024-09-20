@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/auth_provider.dart';
-import '../../../widgets/error_dialog.dart';
-import '../main/main_page.dart'; // 添加这行，确保路径正确
+import '../../providers/auth_provider.dart';
+import './close_button.dart';
+import './username_field.dart';
+import './password_field.dart';
+import './terms_checkbox.dart';
+import '../main/main_page.dart';
+import '../../widgets/error_dialog.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -37,21 +41,10 @@ class LoginPageState extends State<LoginPage> {
               key: _formKey,
               child: Column(
                 children: [
-                  // 关闭按钮
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: IconButton(
-                      icon: Icon(Icons.close,
-                          color: Theme.of(context).colorScheme.onSurface),
-                      onPressed: () {
-                        // 关闭操作
-                      },
-                    ),
-                  ),
+                  CloseButtonWidget(),
                   SizedBox(height: 20),
-                  // 标题
                   Text(
-                    'Welcome to Marchkov Helper',
+                    '欢迎使用校园出行',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
@@ -59,101 +52,33 @@ class LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 10),
-                  // 描述
                   Text(
-                    'The most advanced tool for Marchkov algorithms',
+                    '最先进的校园出行工具',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 30),
-                  // 用户名输入
-                  TextFormField(
-                    decoration: InputDecoration(
-                      hintText: 'Username',
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      hintStyle: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.6)),
-                    ),
+                  UsernameField(
                     onSaved: (value) => _username = value!,
                     validator: (value) => value!.isEmpty ? '请输入用户名' : null,
                   ),
                   SizedBox(height: 20),
-                  // 密码输入
-                  TextFormField(
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      filled: true,
-                      fillColor: Theme.of(context).colorScheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      hintStyle: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.6)),
-                    ),
-                    obscureText: true,
+                  PasswordField(
                     onSaved: (value) => _password = value!,
                     validator: (value) => value!.isEmpty ? '请输入密码' : null,
                   ),
                   SizedBox(height: 20),
-                  // 同意条款
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _agreeToTerms,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            _agreeToTerms = value!;
-                          });
-                        },
-                        activeColor: Theme.of(context).colorScheme.primary,
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'I agree to the terms of service',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyLarge
-                                  ?.copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                  ),
-                            ),
-                            Text(
-                              'By continuing, you agree to our Privacy Policy and Terms of Service',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withOpacity(0.6),
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  TermsCheckbox(
+                    agreeToTerms: _agreeToTerms,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        _agreeToTerms = value ?? false;
+                      });
+                    },
                   ),
                   SizedBox(height: 20),
-                  // 登录按钮
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -175,7 +100,7 @@ class LoginPageState extends State<LoginPage> {
                         backgroundColor: Theme.of(context).colorScheme.primary,
                       ),
                       child: Text(
-                        'Log in',
+                        '登录',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                               color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.bold,
