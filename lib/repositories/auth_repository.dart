@@ -15,4 +15,6 @@ class AuthRepository {
   Future<void> loadUsername() {
     return _authService.loadUsername();
   }
+
+  String get loginResponse => _authService.loginResponse;
 }

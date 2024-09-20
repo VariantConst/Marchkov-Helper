@@ -15,6 +15,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> login(String username, String password) async {
     await _authRepository.login(username, password);
     _user = User(username: username, token: ''); // 临时设置用户
+    _loginResponse = _authRepository.loginResponse;
     notifyListeners();
   }
 
@@ -28,6 +29,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> loadUsername() async {
     await _authRepository.loadUsername();
     // 同样需要从AuthService获取最新状态
+    _loginResponse = _authRepository.loginResponse;
     notifyListeners();
   }
 }
