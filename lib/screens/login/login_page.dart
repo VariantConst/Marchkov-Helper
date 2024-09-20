@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../widgets/error_dialog.dart';
+import '../main/main_page.dart'; // 添加这一行
 
 class LoginPage extends StatefulWidget {
   @override
@@ -77,6 +78,10 @@ class LoginPageState extends State<LoginPage> {
   void _login() async {
     try {
       await context.read<AuthProvider>().login(_username, _password);
+      if (mounted) {
+        Navigator.of(context)
+            .pushReplacement(MaterialPageRoute(builder: (_) => MainPage()));
+      }
     } catch (error) {
       if (mounted) {
         showErrorDialog(context, error.toString());

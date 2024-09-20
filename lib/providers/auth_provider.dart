@@ -14,11 +14,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     await _authRepository.login(username, password);
-    // 假设 AuthService 会在登录后更新_user和_loginResponse
-    // 这里需要从AuthService获取最新状态
-    // 例如：
-    // _user = _authRepository.authService.user;
-    // _loginResponse = _authRepository.authService.loginResponse;
+    _user = User(username: username, token: ''); // 临时设置用户
     notifyListeners();
   }
 
