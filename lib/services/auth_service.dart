@@ -1,8 +1,9 @@
+// lib/services/auth_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:marchkov_flutter/models/user.dart';
+import '../models/user.dart';
 
 class AuthService extends ChangeNotifier {
   User? _user;

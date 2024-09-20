@@ -1,7 +1,8 @@
+// lib/screens/main/main_page.dart
 import 'package:flutter/material.dart';
-import 'package:marchkov_flutter/screens/reservation/reservation_page.dart';
-import 'package:marchkov_flutter/screens/ride/ride_page.dart';
-import 'package:marchkov_flutter/screens/settings/settings_page.dart';
+import '../ride/ride_page.dart';
+import '../settings/settings_page.dart';
+import '../reservation/reservation_page.dart';
 
 class MainPage extends StatefulWidget {
   @override
@@ -32,7 +33,7 @@ class MainPageState extends State<MainPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            _selectedIndex = 1; // 直接设置索引为1，对应RidePage
+            _selectedIndex = 1; // RidePage
           });
         },
         elevation: 2.0,

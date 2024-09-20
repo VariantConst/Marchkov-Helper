@@ -1,13 +1,14 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:marchkov_flutter/services/auth_service.dart';
-import 'package:marchkov_flutter/views/login_page.dart';
-import 'package:marchkov_flutter/views/main_page.dart';
+import 'providers/auth_provider.dart';
+import 'screens/login/login_page.dart';
+import 'screens/main/main_page.dart';
 
 void main() {
   runApp(
     ChangeNotifierProvider(
-      create: (context) => AuthService(),
+      create: (context) => AuthProvider(),
       child: MyApp(),
     ),
   );
@@ -22,9 +23,9 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: Consumer<AuthService>(
-        builder: (context, authService, child) {
-          return authService.isLoggedIn ? MainPage() : LoginPage();
+      home: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          return authProvider.isLoggedIn ? MainPage() : LoginPage();
         },
       ),
     );

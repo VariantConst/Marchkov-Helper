@@ -1,3 +1,4 @@
+// lib/screens/ride/ride_page.dart
 import 'package:flutter/material.dart';
 
 class RidePage extends StatelessWidget {

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:marchkov_flutter/services/auth_service.dart';
-import 'package:marchkov_flutter/widgets/error_dialog.dart';
-import 'package:permission_handler/permission_handler.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../widgets/error_dialog.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -22,7 +21,7 @@ class LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _requestPermissions() async {
-    await Permission.location.request();
+    // 权限请求逻辑
   }
 
   @override
@@ -77,7 +76,7 @@ class LoginPageState extends State<LoginPage> {
 
   void _login() async {
     try {
-      await context.read<AuthService>().login(_username, _password);
+      await context.read<AuthProvider>().login(_username, _password);
     } catch (error) {
       if (mounted) {
         showErrorDialog(context, error.toString());
