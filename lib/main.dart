@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:permission_handler/permission_handler.dart';
-// 删除未使用的导入
-// import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(
@@ -18,37 +17,66 @@ void main() {
 class AppState extends ChangeNotifier {
   bool isLoggedIn = false;
   String token = '';
+  String username = '';
+  String loginResponse = '';
 
-  void login(String username, String password) async {
-    // 这里实现实际的登录请求
-    final response = await http.post(
-      Uri.parse('https://iaaa.pku.edu.cn/iaaa/oauthlogin.do'),
-      body: {
-        'appid': 'wproc',
-        'userName': username,
-        'password': password,
-        'redirUrl':
-            'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/',
-      },
-      headers: {
-        'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-      },
-    );
+  Future<void> login(String username, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://iaaa.pku.edu.cn/iaaa/oauthlogin.do'),
+        body: {
+          'appid': 'wproc',
+          'userName': username,
+          'password': password,
+          'redirUrl':
+              'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/',
+        },
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      token = jsonResponse['token'];
-      isLoggedIn = true;
-      notifyListeners();
-    } else {
-      throw Exception('登录失败');
+      loginResponse = const JsonEncoder.withIndent('  ')
+          .convert(json.decode(response.body));
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        token = jsonResponse['token'];
+        isLoggedIn = true;
+        this.username = username;
+        await _saveUsername(username);
+        notifyListeners();
+      } else {
+        throw Exception('登录失败');
+      }
+    } catch (e) {
+      throw Exception('登录失败: $e');
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
     isLoggedIn = false;
     token = '';
+    username = '';
+    loginResponse = '';
+    await _removeUsername();
+    notifyListeners();
+  }
+
+  Future<void> _saveUsername(String username) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', username);
+  }
+
+  Future<void> _removeUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('username');
+  }
+
+  Future<void> loadUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    username = prefs.getString('username') ?? '';
     notifyListeners();
   }
 }
@@ -90,8 +118,32 @@ class LoginPageState extends State<LoginPage> {
 
   Future<void> _requestPermissions() async {
     await Permission.location.request();
-    // 删除 internet 权限请求，因为它不是 Permission 类的一部分
-    // await Permission.internet.request();
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('错误'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(message),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('确定'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -127,9 +179,18 @@ class LoginPageState extends State<LoginPage> {
               ElevatedButton(
                 child: Text('登录'),
                 onPressed: () {
-                  if (_formKey.currentState!.validate() && _agreeToTerms) {
-                    _formKey.currentState!.save();
-                    context.read<AppState>().login(_username, _password);
+                  if (_formKey.currentState!.validate()) {
+                    if (!_agreeToTerms) {
+                      _showErrorDialog('请同意用户协议');
+                    } else {
+                      _formKey.currentState!.save();
+                      context
+                          .read<AppState>()
+                          .login(_username, _password)
+                          .catchError((error) {
+                        _showErrorDialog(error.toString());
+                      });
+                    }
                   }
                 },
               ),
@@ -202,12 +263,39 @@ class ReservationPage extends StatelessWidget {
 class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ElevatedButton(
-        child: Text('退出登录'),
-        onPressed: () {
-          context.read<AppState>().logout();
-        },
+    final appState = context.watch<AppState>();
+
+    return Scaffold(
+      appBar: AppBar(title: Text('设置')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('用户名: ${appState.username}', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 16),
+            Text('登录响应:', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(appState.loginResponse,
+                  style: TextStyle(fontFamily: 'Courier')),
+            ),
+            SizedBox(height: 32),
+            ElevatedButton(
+              child: Text('退出登录'),
+              onPressed: () {
+                appState.logout();
+                Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => LoginPage()));
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

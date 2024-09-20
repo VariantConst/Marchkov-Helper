@@ -38,6 +38,7 @@ dependencies:
   http: ^0.13.3
   permission_handler: ^10.0.0
   geolocator: ^9.0.0
+  shared_preferences: ^2.0.8
 
 dev_dependencies:
   flutter_test:
