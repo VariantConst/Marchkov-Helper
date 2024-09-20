@@ -212,6 +212,7 @@ class MainPageState extends State<MainPage> {
 
   static List<Widget> _widgetOptions = <Widget>[
     ReservationPage(),
+    RidePage(),
     SettingsPage(),
   ];
 
@@ -229,7 +230,9 @@ class MainPageState extends State<MainPage> {
       ),
       floatingActionButton: FloatingActionButton.large(
         onPressed: () {
-          // 实现乘车功能
+          setState(() {
+            _selectedIndex = 1; // 直接设置索引为1，对应RidePage
+          });
         },
         child: Icon(Icons.directions_car),
       ),
@@ -242,10 +245,16 @@ class MainPageState extends State<MainPage> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
             IconButton(
-                icon: Icon(Icons.book), onPressed: () => _onItemTapped(0)),
+              icon: Icon(Icons.book),
+              onPressed: () => _onItemTapped(0),
+              color: _selectedIndex == 0 ? Colors.blue : null,
+            ),
             SizedBox(width: 48),
             IconButton(
-                icon: Icon(Icons.settings), onPressed: () => _onItemTapped(1)),
+              icon: Icon(Icons.settings),
+              onPressed: () => _onItemTapped(2),
+              color: _selectedIndex == 2 ? Colors.blue : null,
+            ),
           ],
         ),
       ),
@@ -257,6 +266,13 @@ class ReservationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(child: Text('预约页面'));
+  }
+}
+
+class RidePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Text('乘车页面'));
   }
 }
 
