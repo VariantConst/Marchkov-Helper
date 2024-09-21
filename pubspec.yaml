@@ -41,6 +41,7 @@ dependencies:
   shared_preferences: ^2.0.6
   cookie_jar: ^4.0.8
   path_provider: ^2.1.2
+  intl: ^0.17.0 # 添加这一行
 
 dev_dependencies:
   flutter_test:

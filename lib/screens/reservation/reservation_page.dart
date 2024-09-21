@@ -4,6 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
 import 'dart:convert';
 import '../../widgets/bus_route_card.dart';
+import 'package:intl/intl.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -170,12 +171,70 @@ class _ReservationPageState extends State<ReservationPage>
               : _filteredBusList.isEmpty
                   ? Center(child: Text('暂无班车信息'))
                   : ListView.builder(
-                      itemCount: _filteredBusList.length,
+                      itemCount: _getGroupedBusList().length,
                       itemBuilder: (context, index) {
-                        final bus = _filteredBusList[index];
-                        return BusRouteCard(busData: bus);
+                        final group = _getGroupedBusList()[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text(
+                                _formatDate(group.key),
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: group.value
+                                  .map((bus) => BusRouteCard(
+                                        busData: bus,
+                                        onTap: () =>
+                                            _showBusDetails(context, bus),
+                                      ))
+                                  .toList(),
+                            ),
+                            SizedBox(height: 16),
+                          ],
+                        );
                       },
                     ),
+    );
+  }
+
+  List<MapEntry<String, List<dynamic>>> _getGroupedBusList() {
+    final groupedBuses = <String, List<dynamic>>{};
+    for (var bus in _filteredBusList) {
+      final date = bus['abscissa'].split(' ')[0];
+      if (!groupedBuses.containsKey(date)) {
+        groupedBuses[date] = [];
+      }
+      groupedBuses[date]!.add(bus);
+    }
+    return groupedBuses.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+  }
+
+  String _formatDate(String dateString) {
+    final date = DateTime.parse(dateString);
+    return DateFormat('MM-dd').format(date);
+  }
+
+  void _showBusDetails(BuildContext context, Map<String, dynamic> busData) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: BusRouteDetails(busData: busData),
+          actions: [
+            TextButton(
+              child: Text('关闭'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
     );
   }
 }
