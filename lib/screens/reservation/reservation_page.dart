@@ -134,29 +134,43 @@ class _ReservationPageState extends State<ReservationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('预约'),
-      ),
-      body: Column(
-        children: [
-          _buildCalendar(),
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(child: Text(_errorMessage))
-                    : _filteredBusList.isEmpty
-                        ? Center(child: Text('暂无班车信息'))
-                        : _buildBusList(),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 20),
+              Text(
+                '班车预约',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+              SizedBox(height: 20),
+              _buildCalendar(),
+              SizedBox(height: 20),
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : _errorMessage.isNotEmpty
+                        ? Center(child: Text(_errorMessage))
+                        : _filteredBusList.isEmpty
+                            ? Center(child: Text('暂无班车信息'))
+                            : _buildBusList(),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildCalendar() {
     return SizedBox(
-      height: 80,
+      height: 100,
       child: PageView.builder(
         controller: _pageController,
         onPageChanged: (int page) {
@@ -171,42 +185,51 @@ class _ReservationPageState extends State<ReservationPage> {
           final date = _weekDates[index];
           final isSelected = index == _currentPage;
 
-          return AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Theme.of(context).primaryColor
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[300]!,
-                width: 2,
+          return GestureDetector(
+            onTap: () {
+              _pageController.animateToPage(
+                index,
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color:
+                    isSelected ? Theme.of(context).primaryColor : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  DateFormat('E').format(date),
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black54,
-                    fontWeight: FontWeight.bold,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    DateFormat('E').format(date),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black54,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : Colors.black,
+                  SizedBox(height: 4),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -232,6 +255,7 @@ class _ReservationPageState extends State<ReservationPage> {
     return ListView(
       children: [
         _buildBusSection('去昌平', toChangping),
+        SizedBox(height: 20),
         _buildBusSection('去燕园', toYanyuan),
       ],
     );
@@ -241,19 +265,21 @@ class _ReservationPageState extends State<ReservationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.all(8),
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge,
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).primaryColor,
           ),
         ),
+        SizedBox(height: 12),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 12,
+          runSpacing: 12,
           children: buses.map<Widget>((busData) {
             return SizedBox(
-              width: (MediaQuery.of(context).size.width - 40) / 4,
+              width: (MediaQuery.of(context).size.width - 56) / 3, // 修改这里
               child: BusRouteCard(
                 busData: busData,
                 onTap: () => _showBusDetails(busData),
