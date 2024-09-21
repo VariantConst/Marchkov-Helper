@@ -84,66 +84,66 @@ class AuthService extends ChangeNotifier {
       await _cookieJar.saveFromResponse(
           Uri.parse('https://iaaa.pku.edu.cn'), cookies);
 
-      // 检查重定向
-      if (response.headers.value(HttpHeaders.locationHeader) != null) {
-        String redirectUrl =
-            response.headers.value(HttpHeaders.locationHeader)!;
-
-        // 第二步: 手动处理重定向请求
-        HttpClientRequest redirectRequest =
-            await httpClient.getUrl(Uri.parse(redirectUrl));
-        redirectRequest.followRedirects = false; // 设置为 false
-        redirectRequest.headers.set(
-          HttpHeaders.userAgentHeader,
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        );
-
-        // 添加之前的 cookies
-        for (var cookie in cookies) {
-          redirectRequest.cookies.add(cookie);
-        }
-
-        HttpClientResponse redirectResponse = await redirectRequest.close();
-
-        // 读取重定向响应
-        String redirectResponseBody =
-            await redirectResponse.transform(utf8.decoder).join();
-        print('重定向请求响应状态码: ${redirectResponse.statusCode}');
-        print('重定向请求响应体: $redirectResponseBody');
-        print('重定向 Set-Cookie: ${redirectResponse.headers['set-cookie']}');
-
-        // 保存重定向后的 cookies
-        List<Cookie> redirectCookies = redirectResponse.cookies;
-        await _cookieJar.saveFromResponse(
-            Uri.parse(redirectUrl), redirectCookies);
-        print('重定向后的 cookies 已保存到 cookie jar 中。');
-      }
-
-      // 关闭 HttpClient
-      httpClient.close();
-
-      _loginResponse =
-          const JsonEncoder.withIndent('  ').convert(json.decode(responseBody));
-
+      // 解析 token
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(responseBody);
         final token = jsonResponse['token'];
+        print('登录成功，token是: $token');
+
+        // 第二步: 使用 token 进行 GET 请求
+        await _fetchWprocCookies(httpClient, token);
+
         _user = User(username: username, token: token);
         _password = password;
 
         // 打印所有保存的 cookies
-        final savedCookies = cookies;
-        print('所有保存的 cookies: $savedCookies');
+        final savedCookies = await _cookieJar
+            .loadForRequest(Uri.parse('https://wproc.pku.edu.cn'));
+        print('所有保存的 wproc cookies: $savedCookies');
 
         await _saveCredentials(username, password);
         notifyListeners();
       } else {
         throw Exception('登录失败: ${response.statusCode}');
       }
+
+      // 关闭 HttpClient
+      httpClient.close();
     } catch (e) {
       print('登录过程中发生错误: $e');
       throw Exception('登录失败: $e');
     }
+  }
+
+  /// 使用 token 进行 GET 请求以获取 wproc 的 cookies
+  Future<void> _fetchWprocCookies(HttpClient httpClient, String token) async {
+    // 构建 GET 请求的 URL
+    final uri = Uri.parse(
+        'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=$token');
+
+    // 创建 GET 请求
+    HttpClientRequest getRequest = await httpClient.getUrl(uri);
+    getRequest.followRedirects = false;
+    getRequest.headers.set(
+      HttpHeaders.userAgentHeader,
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    );
+
+    // 发送 GET 请求并获取响应
+    HttpClientResponse getResponse = await getRequest.close();
+
+    // 读取响应
+    String getResponseBody = await getResponse.transform(utf8.decoder).join();
+    print('第二次请求响应状态码: ${getResponse.statusCode}');
+    print('第二次请求响应体: $getResponseBody');
+    print('第二次 Set-Cookie: ${getResponse.headers['set-cookie']}');
+
+    // 保存第二次请求的 cookies
+    List<Cookie> wprocCookies = getResponse.cookies;
+    await _cookieJar.saveFromResponse(
+        Uri.parse('https://wproc.pku.edu.cn'), wprocCookies);
+
+    print('wproc 的 cookies 已保存到 cookie jar 中。');
   }
 
   Future<void> logout() async {
