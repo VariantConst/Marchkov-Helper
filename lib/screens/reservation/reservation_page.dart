@@ -18,8 +18,9 @@ class _ReservationPageState extends State<ReservationPage> {
   String _errorMessage = '';
   late DateTime _selectedDate;
   late List<DateTime> _weekDates;
-  late PageController _pageController;
-  late int _currentPage;
+  late PageController _calendarController;
+  late PageController _mainPageController;
+  int _currentPage = 0; // 添加这行来定义 _currentPage
 
   @override
   void initState() {
@@ -27,16 +28,17 @@ class _ReservationPageState extends State<ReservationPage> {
     _selectedDate = DateTime.now();
     _weekDates = _getWeekDates();
     _loadReservationData();
-    _currentPage = 0;
-    _pageController = PageController(
+    _calendarController = PageController(
       initialPage: _currentPage,
       viewportFraction: 0.2,
     );
+    _mainPageController = PageController(initialPage: _currentPage);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _calendarController.dispose();
+    _mainPageController.dispose();
     super.dispose();
   }
 
@@ -135,24 +137,49 @@ class _ReservationPageState extends State<ReservationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildCalendar(),
-              SizedBox(height: 20),
-              Expanded(
-                child: _isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : _errorMessage.isNotEmpty
-                        ? Center(child: Text(_errorMessage))
-                        : _filteredBusList.isEmpty
-                            ? Center(child: Text('暂无班车信息'))
-                            : _buildBusList(),
+        child: Column(
+          children: [
+            _buildCalendar(), // 将日历移到外部
+            Expanded(
+              child: PageView.builder(
+                controller: _mainPageController,
+                onPageChanged: (int page) {
+                  setState(() {
+                    _currentPage = page;
+                    _selectedDate = _weekDates[page];
+                    _filterBusList();
+                  });
+                  _calendarController.animateToPage(
+                    page,
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                itemCount: _weekDates.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 已移除 _buildCalendar()
+                        SizedBox(height: 20),
+                        Expanded(
+                          child: _isLoading
+                              ? Center(child: CircularProgressIndicator())
+                              : _errorMessage.isNotEmpty
+                                  ? Center(child: Text(_errorMessage))
+                                  : _filteredBusList.isEmpty
+                                      ? Center(child: Text('暂无班车信息'))
+                                      : _buildBusList(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -162,13 +189,13 @@ class _ReservationPageState extends State<ReservationPage> {
     return SizedBox(
       height: 100,
       child: PageView.builder(
-        controller: _pageController,
+        controller: _calendarController,
         onPageChanged: (int page) {
-          setState(() {
-            _currentPage = page;
-            _selectedDate = _weekDates[page];
-            _filterBusList();
-          });
+          _mainPageController.animateToPage(
+            page,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         },
         itemCount: _weekDates.length,
         itemBuilder: (context, index) {
@@ -180,7 +207,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
           return GestureDetector(
             onTap: () {
-              _pageController.animateToPage(
+              _calendarController.animateToPage(
                 index,
                 duration: Duration(milliseconds: 300),
                 curve: Curves.easeInOut,

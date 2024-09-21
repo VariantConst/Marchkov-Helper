@@ -37,14 +37,14 @@ class MainPageState extends State<MainPage> {
           });
         },
         elevation: 4.0,
-        child: Icon(Icons.directions_bus, size: 36),
         backgroundColor: Theme.of(context).primaryColor,
+        child: Icon(Icons.directions_bus, size: 36),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         shape: CircularNotchedRectangle(),
         notchMargin: 8.0,
-        child: Container(
+        child: SizedBox(
           height: 60,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
