@@ -2,23 +2,64 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
-import 'dart:convert'; // 添加导入
-import '../../widgets/bus_route_card.dart'; // 添加导入
+import 'dart:convert';
+import '../../widgets/bus_route_card.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
   State<ReservationPage> createState() => _ReservationPageState();
 }
 
-class _ReservationPageState extends State<ReservationPage> {
-  List<dynamic> _busList = []; // 用于存储班车信息
+class _ReservationPageState extends State<ReservationPage>
+    with SingleTickerProviderStateMixin {
+  List<dynamic> _busList = []; // 原始班车列表
+  List<dynamic> _filteredBusList = []; // 过滤后的班车列表
   bool _isLoading = true;
   String _errorMessage = '';
+  int _selectedIndex = 0; // 0: 去昌平, 1: 去燕园
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _loadReservationData();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {
+          _selectedIndex = _tabController.index;
+          _filterBusList();
+        });
+      }
+    });
+  }
+
+  void _filterBusList() {
+    setState(() {
+      if (_selectedIndex == 0) {
+        // 去昌平
+        _filteredBusList = _busList.where((bus) {
+          final name = bus['route_name'] ?? '';
+          final indexYan = name.indexOf('燕');
+          final indexXin = name.indexOf('新');
+          if (indexYan != -1 && indexXin != -1) {
+            return indexYan < indexXin;
+          }
+          return false;
+        }).toList();
+      } else {
+        // 去燕园
+        _filteredBusList = _busList.where((bus) {
+          final name = bus['route_name'] ?? '';
+          final indexYan = name.indexOf('燕');
+          final indexXin = name.indexOf('新');
+          if (indexYan != -1 && indexXin != -1) {
+            return indexXin < indexYan;
+          }
+          return false;
+        }).toList();
+      }
+    });
   }
 
   Future<void> _loadReservationData() async {
@@ -56,14 +97,21 @@ class _ReservationPageState extends State<ReservationPage> {
                   'row': slot['row'],
                   'time_id': slot['time_id'],
                 };
-                allBuses.add(busInfo);
+                // 过滤班车名称，根据要求分类
+                final name = busInfo['route_name'] ?? '';
+                final indexYan = name.indexOf('燕');
+                final indexXin = name.indexOf('新');
+                if (indexYan != -1 && indexXin != -1) {
+                  allBuses.add(busInfo);
+                }
               }
             }
           }
         }
 
+        _busList = allBuses;
+        _filterBusList(); // 初始过滤
         setState(() {
-          _busList = allBuses;
           _isLoading = false;
         });
       } else {
@@ -78,22 +126,37 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('预约'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: '去昌平'),
+            Tab(text: '去燕园'),
+          ],
+        ),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
               ? Center(child: Text(_errorMessage))
-              : ListView.builder(
-                  itemCount: _busList.length,
-                  itemBuilder: (context, index) {
-                    final bus = _busList[index];
-                    return BusRouteCard(busData: bus);
-                  },
-                ),
+              : _filteredBusList.isEmpty
+                  ? Center(child: Text('暂无班车信息'))
+                  : ListView.builder(
+                      itemCount: _filteredBusList.length,
+                      itemBuilder: (context, index) {
+                        final bus = _filteredBusList[index];
+                        return BusRouteCard(busData: bus);
+                      },
+                    ),
     );
   }
 }
