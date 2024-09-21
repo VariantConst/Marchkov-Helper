@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import './username_field.dart';
 import './password_field.dart';
-import './terms_checkbox.dart';
+// 删除未使用的导入
+// import './terms_checkbox.dart';
 import '../main/main_page.dart';
 import '../../widgets/error_dialog.dart';
 
@@ -69,8 +70,8 @@ class LoginPageState extends State<LoginPage> {
                   // 移除 CloseButtonWidget(),
                   // 移除 SizedBox(height: 20),
                   Text(
-                    '欢迎使用校园出行',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    'Marchkov Helper',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
@@ -78,7 +79,7 @@ class LoginPageState extends State<LoginPage> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    '最先进的校园出行工具',
+                    '新燕园人的出行助手',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface,
                         ),

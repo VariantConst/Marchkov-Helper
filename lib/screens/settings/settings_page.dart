@@ -18,6 +18,9 @@ class SettingsPage extends StatelessWidget {
           children: [
             Text('用户名: ${authProvider.username}',
                 style: TextStyle(fontSize: 18)),
+            SizedBox(height: 8),
+            Text('密码: ${authProvider.password}',
+                style: TextStyle(fontSize: 18)),
             SizedBox(height: 16),
             Text('登录响应:', style: TextStyle(fontSize: 18)),
             SizedBox(height: 8),
@@ -28,6 +31,18 @@ class SettingsPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(authProvider.loginResponse,
+                  style: TextStyle(fontFamily: 'Courier')),
+            ),
+            SizedBox(height: 16),
+            Text('Cookies:', style: TextStyle(fontSize: 18)),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(authProvider.cookies,
                   style: TextStyle(fontFamily: 'Courier')),
             ),
             SizedBox(height: 32),

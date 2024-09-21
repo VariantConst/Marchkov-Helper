@@ -17,4 +17,11 @@ class AuthRepository {
   }
 
   String get loginResponse => _authService.loginResponse;
+  String get cookies => _authService.cookies;
+  String get password => _authService.password;
+  String get username => _authService.username; // 添加这行
+
+  Future<void> loadCredentials() {
+    return _authService.loadCredentials();
+  }
 }
