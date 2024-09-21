@@ -41,7 +41,9 @@ dependencies:
   shared_preferences: ^2.0.6
   cookie_jar: ^4.0.8
   path_provider: ^2.1.2
-  intl: ^0.17.0 # 添加这一行
+  intl: ^0.19.0 # 添加这一行
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -111,3 +113,5 @@ flutter:
   #         weight: 700
   #       - asset: fonts/NotoSans-Black.ttf
   #         weight: 900
+
+  generate: true
