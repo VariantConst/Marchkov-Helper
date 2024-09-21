@@ -140,16 +140,6 @@ class _ReservationPageState extends State<ReservationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: 20),
-              Text(
-                '班车预约',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
-                ),
-              ),
-              SizedBox(height: 20),
               _buildCalendar(),
               SizedBox(height: 20),
               Expanded(

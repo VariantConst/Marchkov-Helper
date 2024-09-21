@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '校园出行',
+      title: 'Marchkov Helper',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'Work Sans',
@@ -107,7 +107,8 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             FlutterLogo(size: 100),
             SizedBox(height: 20),
-            Text('校园出行', style: Theme.of(context).textTheme.headlineMedium),
+            Text('Marchkov Helper',
+                style: Theme.of(context).textTheme.headlineMedium),
             SizedBox(height: 20),
             CircularProgressIndicator(),
           ],
