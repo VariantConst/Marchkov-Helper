@@ -254,40 +254,52 @@ class _ReservationPageState extends State<ReservationPage> {
 
     return ListView(
       children: [
-        _buildBusSection('去昌平', toChangping),
+        _buildBusCard('去昌平', toChangping, Colors.blue[100]!),
         SizedBox(height: 20),
-        _buildBusSection('去燕园', toYanyuan),
+        _buildBusCard('去燕园', toYanyuan, Colors.green[100]!),
       ],
     );
   }
 
-  Widget _buildBusSection(String title, List<dynamic> buses) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).primaryColor,
-          ),
-        ),
-        SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: buses.map<Widget>((busData) {
-            return SizedBox(
-              width: (MediaQuery.of(context).size.width - 56) / 3, // 修改这里
-              child: BusRouteCard(
-                busData: busData,
-                onTap: () => _showBusDetails(busData),
+  Widget _buildBusCard(String title, List<dynamic> buses, Color cardColor) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: cardColor,
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-            );
-          }).toList(),
+            ),
+            SizedBox(height: 16),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 1.2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: buses.length,
+              itemBuilder: (context, index) {
+                return BusRouteCard(
+                  busData: buses[index],
+                  onTap: () => _showBusDetails(buses[index]),
+                );
+              },
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
