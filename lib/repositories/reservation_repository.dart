@@ -1,14 +1,14 @@
 import '../models/bus_route.dart';
 import '../services/reservation_service.dart';
-import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 
 class ReservationRepository {
   final ReservationService _reservationService;
 
-  ReservationRepository(AuthService authService)
-      : _reservationService = ReservationService(authService);
+  ReservationRepository(AuthProvider authProvider)
+      : _reservationService = ReservationService(authProvider);
 
-  Future<void> login(String username, String password) {
+  Future<bool> login(String username, String password) {
     return _reservationService.login(username, password);
   }
 

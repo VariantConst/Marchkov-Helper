@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/reservation_provider.dart';
 import 'screens/login/login_page.dart';
 import 'screens/main/main_page.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => AuthProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ReservationProvider>(
+          create: (context) => ReservationProvider(
+              Provider.of<AuthProvider>(context, listen: false)),
+          update: (context, auth, previous) => ReservationProvider(auth),
+        ),
+      ],
       child: MyApp(),
     ),
   );

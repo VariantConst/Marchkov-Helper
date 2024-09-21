@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/bus_route.dart';
 import '../repositories/reservation_repository.dart';
-import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
 import '../utils/date_formatter.dart';
 
 class ReservationProvider with ChangeNotifier {
@@ -10,8 +10,8 @@ class ReservationProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  ReservationProvider(AuthService authService)
-      : _reservationRepository = ReservationRepository(authService);
+  ReservationProvider(AuthProvider authProvider)
+      : _reservationRepository = ReservationRepository(authProvider);
 
   List<BusRoute> get busRoutes => _busRoutes;
   bool get isLoading => _isLoading;
@@ -41,9 +41,10 @@ class ReservationProvider with ChangeNotifier {
 
       final results = await Future.wait(futures);
       _busRoutes = results.expand((element) => element).toList();
+      _isLoading = false;
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
-    } finally {
       _isLoading = false;
       notifyListeners();
     }

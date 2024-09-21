@@ -1,15 +1,16 @@
 import 'dart:convert';
 import '../models/bus_route.dart';
-import '../services/auth_service.dart';
+import 'package:http/http.dart' as http;
+import '../providers/auth_provider.dart';
 
 class ReservationService {
-  final AuthService _authService;
+  final AuthProvider _authProvider;
 
-  ReservationService(this._authService);
+  ReservationService(this._authProvider);
 
   Future<bool> login(String username, String password) async {
     try {
-      await _authService.login(username, password);
+      await _authProvider.login(username, password);
       return true;
     } catch (e) {
       print('登录失败: $e');
@@ -19,7 +20,7 @@ class ReservationService {
 
   Future<List<BusRoute>> fetchBusRoutes(int hallId, String time) async {
     // 确保已登录
-    if (!_authService.isLoggedIn) {
+    if (!_authProvider.isLoggedIn) {
       throw Exception('未登录,请先登录');
     }
 
@@ -33,7 +34,12 @@ class ReservationService {
       },
     );
 
-    final response = await _authService.get(uri);
+    final response = await http.get(
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+    );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -45,6 +51,25 @@ class ReservationService {
       }
     } else {
       throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
+  }
+
+  Future<String> fetchReservationData(String date) async {
+    final cookies = _authProvider.cookies;
+    final url = Uri.parse(
+        'https://wproc.pku.edu.cn/site/reservation/list-page?hall_id=1&time=$date&p=1&page_size=0');
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Cookie': cookies,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return response.body;
+    } else {
+      throw Exception('请求失败: ${response.statusCode}');
     }
   }
 }
