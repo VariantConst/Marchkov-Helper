@@ -68,55 +68,63 @@ class _ReservationPageState extends State<ReservationPage>
 
     try {
       final today = DateTime.now();
-      final dateString = today.toIso8601String().split('T')[0];
+      final dateStrings = [
+        today.toIso8601String().split('T')[0],
+        today.add(Duration(days: 7)).toIso8601String().split('T')[0],
+      ];
 
-      final response =
-          await reservationService.fetchReservationData(dateString);
-      print(response); // 打印响应内容以调试
+      final responses = await Future.wait(
+        dateStrings.map((dateString) =>
+            reservationService.fetchReservationData(dateString)),
+      );
 
-      final data = json.decode(response); // 解析响应字符串
+      List<dynamic> allBuses = [];
 
-      if (data['e'] == 0) {
-        List<dynamic> list = data['d']['list'];
-        List<dynamic> allBuses = [];
+      for (var response in responses) {
+        print(response); // 调试输出
 
-        for (var bus in list) {
-          var busId = bus['id'];
-          var table = bus['table'];
-          // 遍历所有班车的所有时间段
-          for (var key in table.keys) {
-            var timeSlots = table[key];
-            for (var slot in timeSlots) {
-              if (slot['row']['margin'] > 0) {
-                // 创建一个新的 Map，将 bus 的信息和 slot 的信息合并
-                Map<String, dynamic> busInfo = {
-                  'route_name': bus['name'],
-                  'bus_id': busId, // 这里确保 bus_id 正确赋值
-                  'abscissa': slot['abscissa'],
-                  'yaxis': slot['yaxis'],
-                  'row': slot['row'],
-                  'time_id': slot['time_id'],
-                };
-                // 过滤班车名称，根据要求分类
-                final name = busInfo['route_name'] ?? '';
-                final indexYan = name.indexOf('燕');
-                final indexXin = name.indexOf('新');
-                if (indexYan != -1 && indexXin != -1) {
-                  allBuses.add(busInfo);
+        final data = json.decode(response);
+
+        if (data['e'] == 0) {
+          List<dynamic> list = data['d']['list'];
+
+          for (var bus in list) {
+            var busId = bus['id'];
+            var table = bus['table'];
+            // 遍历所有班车的所有时间段
+            for (var key in table.keys) {
+              var timeSlots = table[key];
+              for (var slot in timeSlots) {
+                if (slot['row']['margin'] > 0) {
+                  Map<String, dynamic> busInfo = {
+                    'route_name': bus['name'],
+                    'bus_id': busId,
+                    'abscissa': slot['abscissa'],
+                    'yaxis': slot['yaxis'],
+                    'row': slot['row'],
+                    'time_id': slot['time_id'],
+                  };
+                  // 过滤班车名称，根据要求分类
+                  final name = busInfo['route_name'] ?? '';
+                  final indexYan = name.indexOf('燕');
+                  final indexXin = name.indexOf('新');
+                  if (indexYan != -1 && indexXin != -1) {
+                    allBuses.add(busInfo);
+                  }
                 }
               }
             }
           }
+        } else {
+          throw Exception(data['m']);
         }
-
-        _busList = allBuses;
-        _filterBusList(); // 初始过滤
-        setState(() {
-          _isLoading = false;
-        });
-      } else {
-        throw Exception(data['m']);
       }
+
+      setState(() {
+        _busList = allBuses;
+        _filterBusList(); // 更新过滤
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = '加载失败: $e';
