@@ -4,7 +4,6 @@ import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
 import 'dart:convert';
 import '../../widgets/bus_route_card.dart';
-import 'package:intl/intl.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -170,67 +169,80 @@ class _ReservationPageState extends State<ReservationPage>
               ? Center(child: Text(_errorMessage))
               : _filteredBusList.isEmpty
                   ? Center(child: Text('暂无班车信息'))
-                  : ListView.builder(
-                      itemCount: _getGroupedBusList().length,
-                      itemBuilder: (context, index) {
-                        final group = _getGroupedBusList()[index];
+                  : ListView(
+                      children: _getGroupedBusList().entries.map((entry) {
+                        final date = entry.key;
+                        final buses = entry.value;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
                               padding: EdgeInsets.all(8),
                               child: Text(
-                                _formatDate(group.key),
-                                style: Theme.of(context).textTheme.titleLarge,
+                                date, // 已去掉年份的日期
+                                style:
+                                    Theme.of(context).textTheme.headlineSmall,
                               ),
                             ),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: group.value
-                                  .map((bus) => BusRouteCard(
-                                        busData: bus,
-                                        onTap: () =>
-                                            _showBusDetails(context, bus),
-                                      ))
-                                  .toList(),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: buses.map<Widget>((busData) {
+                                  return BusRouteCard(
+                                    busData: busData,
+                                    onTap: () => _showBusDetails(busData),
+                                  );
+                                }).toList(),
+                              ),
                             ),
-                            SizedBox(height: 16),
                           ],
                         );
-                      },
+                      }).toList(),
                     ),
     );
   }
 
-  List<MapEntry<String, List<dynamic>>> _getGroupedBusList() {
-    final groupedBuses = <String, List<dynamic>>{};
+  // 修改 _getGroupedBusList 方法，按日期（去掉年份）分组
+  Map<String, List<Map<String, dynamic>>> _getGroupedBusList() {
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (var bus in _filteredBusList) {
-      final date = bus['abscissa'].split(' ')[0];
-      if (!groupedBuses.containsKey(date)) {
-        groupedBuses[date] = [];
+      String date = bus['abscissa'].split(' ')[0];
+      date = date.substring(5); // 去掉年份
+      if (!grouped.containsKey(date)) {
+        grouped[date] = [];
       }
-      groupedBuses[date]!.add(bus);
+      grouped[date]!.add(bus);
     }
-    return groupedBuses.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    return grouped;
   }
 
-  String _formatDate(String dateString) {
-    final date = DateTime.parse(dateString);
-    return DateFormat('MM-dd').format(date);
-  }
-
-  void _showBusDetails(BuildContext context, Map<String, dynamic> busData) {
+  // 添加显示详情的弹窗方法
+  void _showBusDetails(Map<String, dynamic> busData) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          content: BusRouteDetails(busData: busData),
+          title: Text('班车详情'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: [
+                Text('线路名称: ${busData['route_name']}'),
+                Text('出发日期: ${busData['abscissa']}'),
+                Text('出发时间: ${busData['yaxis']}'),
+                Text('ID: ${busData['bus_id']}'),
+                Text('Period: ${busData['time_id']}'),
+                // 添加其他需要的详情
+              ],
+            ),
+          ),
           actions: [
             TextButton(
               child: Text('关闭'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
             ),
           ],
         );

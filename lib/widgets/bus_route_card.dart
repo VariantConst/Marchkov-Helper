@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// 删除这行: import 'package:intl/intl.dart';
+// 需要确保没有遗漏任何必要的导入
 
 class BusRouteCard extends StatelessWidget {
   final Map<String, dynamic> busData;
@@ -12,13 +12,13 @@ class BusRouteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final time = busData['yaxis'] ?? '';
 
-    return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        elevation: 2,
         child: Container(
-          width: MediaQuery.of(context).size.width / 3 - 16,
-          height: 60,
+          width: (MediaQuery.of(context).size.width - 64) / 3, // 调整宽度
+          height: 80,
           alignment: Alignment.center,
           child: Text(
             time,
