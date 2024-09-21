@@ -27,51 +27,48 @@ class _ReservationPageState extends State<ReservationPage> {
 
     try {
       final today = DateTime.now();
-      final dateList = List.generate(7, (index) {
-        final date = today.add(Duration(days: index));
-        return date.toIso8601String().split('T')[0];
-      });
+      final dateString = today.toIso8601String().split('T')[0];
 
-      List<dynamic> allBuses = [];
+      final response =
+          await reservationService.fetchReservationData(dateString);
+      print(response); // 打印响应内容以调试
 
-      for (String date in dateList) {
-        final response = await reservationService.fetchReservationData(date);
-        print(response); // 打印响应内容以调试
+      final data = json.decode(response); // 解析响应字符串
 
-        final data = json.decode(response); // 解析响应字符串
+      if (data['e'] == 0) {
+        List<dynamic> list = data['d']['list'];
+        List<dynamic> allBuses = [];
 
-        if (data['e'] == 0) {
-          List<dynamic> list = data['d']['list'];
-          for (var bus in list) {
-            var busId = bus['id'];
-            var table = bus['table'];
-            if (table.containsKey(busId.toString())) {
-              var timeSlots = table[busId.toString()];
-              for (var slot in timeSlots) {
-                if (slot['row']['margin'] > 0) {
-                  // 创建一个新的 Map，将 bus 的信息和 slot 的信息合并
-                  Map<String, dynamic> busInfo = {
-                    'route_name': bus['name'],
-                    'bus_id': busId, // 这里确保 bus_id 正确赋值
-                    'abscissa': slot['abscissa'],
-                    'yaxis': slot['yaxis'],
-                    'row': slot['row'],
-                    'time_id': slot['time_id'],
-                  };
-                  allBuses.add(busInfo);
-                }
+        for (var bus in list) {
+          var busId = bus['id'];
+          var table = bus['table'];
+          // 遍历所有班车的所有时间段
+          for (var key in table.keys) {
+            var timeSlots = table[key];
+            for (var slot in timeSlots) {
+              if (slot['row']['margin'] > 0) {
+                // 创建一个新的 Map，将 bus 的信息和 slot 的信息合并
+                Map<String, dynamic> busInfo = {
+                  'route_name': bus['name'],
+                  'bus_id': busId, // 这里确保 bus_id 正确赋值
+                  'abscissa': slot['abscissa'],
+                  'yaxis': slot['yaxis'],
+                  'row': slot['row'],
+                  'time_id': slot['time_id'],
+                };
+                allBuses.add(busInfo);
               }
             }
           }
-        } else {
-          throw Exception(data['m']);
         }
-      }
 
-      setState(() {
-        _busList = allBuses;
-        _isLoading = false;
-      });
+        setState(() {
+          _busList = allBuses;
+          _isLoading = false;
+        });
+      } else {
+        throw Exception(data['m']);
+      }
     } catch (e) {
       setState(() {
         _errorMessage = '加载失败: $e';
