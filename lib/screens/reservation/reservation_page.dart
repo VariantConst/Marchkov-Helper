@@ -92,9 +92,8 @@ class _ReservationPageState extends State<ReservationPage> {
                   String dateTimeString = slot['abscissa'];
                   DateTime busDateTime = DateTime.parse(dateTimeString);
 
-                  if (busDateTime.isAfter(DateTime.now()) &&
-                      busDateTime
-                          .isBefore(DateTime.now().add(Duration(days: 7)))) {
+                  if (busDateTime
+                      .isBefore(DateTime.now().add(Duration(days: 7)))) {
                     Map<String, dynamic> busInfo = {
                       'route_name': bus['name'],
                       'bus_id': busId,
