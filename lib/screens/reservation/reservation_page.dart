@@ -190,9 +190,14 @@ class _ReservationPageState extends State<ReservationPage>
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: buses.map<Widget>((busData) {
-                                  return BusRouteCard(
-                                    busData: busData,
-                                    onTap: () => _showBusDetails(busData),
+                                  return SizedBox(
+                                    width: (MediaQuery.of(context).size.width -
+                                            40) /
+                                        4, // 调整为一行四个
+                                    child: BusRouteCard(
+                                      busData: busData,
+                                      onTap: () => _showBusDetails(busData),
+                                    ),
                                   );
                                 }).toList(),
                               ),
@@ -223,28 +228,13 @@ class _ReservationPageState extends State<ReservationPage>
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('班车详情'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: [
-                Text('线路名称: ${busData['route_name']}'),
-                Text('出发日期: ${busData['abscissa']}'),
-                Text('出发时间: ${busData['yaxis']}'),
-                Text('ID: ${busData['bus_id']}'),
-                Text('Period: ${busData['time_id']}'),
-                // 添加其他需要的详情
-              ],
-            ),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          actions: [
-            TextButton(
-              child: Text('关闭'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: BusRouteDetails(busData: busData),
         );
       },
     );
