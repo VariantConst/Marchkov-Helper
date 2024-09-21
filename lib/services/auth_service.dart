@@ -1,9 +1,10 @@
-// lib/services/auth_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AuthService extends ChangeNotifier {
   User? _user;
@@ -11,6 +12,20 @@ class AuthService extends ChangeNotifier {
   String _cookies = '';
   final http.Client _client = http.Client();
   String _password = '';
+  late PersistCookieJar _cookieJar;
+
+  AuthService() {
+    _initCookieJar();
+  }
+
+  Future<void> _initCookieJar() async {
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = tempDir.path;
+    _cookieJar = PersistCookieJar(
+      ignoreExpires: true,
+      storage: FileStorage(tempPath),
+    );
+  }
 
   bool get isLoggedIn => _user != null;
   String get username => _user?.username ?? '';
@@ -157,14 +172,17 @@ class AuthService extends ChangeNotifier {
 
   // 添加 get 方法
   Future<http.Response> get(Uri url) async {
-    // 如果需要，可以在这里添加认证逻辑
-    // 例如，添加 token 到请求头
-    String? token = _user?.token;
-    Map<String, String> headers = {};
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
-    }
+    // 从cookie jar加载cookies
+    final cookies = await _cookieJar.loadForRequest(url);
+    final cookieString =
+        cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
 
-    return await _client.get(url, headers: headers);
+    return await _client.get(
+      url,
+      headers: {
+        'Cookie': cookieString,
+        // ... 其他headers ...
+      },
+    );
   }
 }
