@@ -18,6 +18,8 @@ class _ReservationPageState extends State<ReservationPage> {
   String _errorMessage = '';
   late DateTime _selectedDate;
   late List<DateTime> _weekDates;
+  late PageController _pageController;
+  late int _currentPage;
 
   @override
   void initState() {
@@ -25,6 +27,17 @@ class _ReservationPageState extends State<ReservationPage> {
     _selectedDate = DateTime.now();
     _weekDates = _getWeekDates();
     _loadReservationData();
+    _currentPage = 0;
+    _pageController = PageController(
+      initialPage: _currentPage,
+      viewportFraction: 0.2,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   List<DateTime> _getWeekDates() {
@@ -143,51 +156,57 @@ class _ReservationPageState extends State<ReservationPage> {
 
   Widget _buildCalendar() {
     return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
+      height: 80,
+      child: PageView.builder(
+        controller: _pageController,
+        onPageChanged: (int page) {
+          setState(() {
+            _currentPage = page;
+            _selectedDate = _weekDates[page];
+            _filterBusList();
+          });
+        },
         itemCount: _weekDates.length,
         itemBuilder: (context, index) {
           final date = _weekDates[index];
-          final isSelected = date.year == _selectedDate.year &&
-              date.month == _selectedDate.month &&
-              date.day == _selectedDate.day;
+          final isSelected = index == _currentPage;
 
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDate = date;
-                _filterBusList();
-              });
-            },
-            child: Container(
-              width: 50,
-              margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? Theme.of(context).primaryColor : null,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor,
+          return AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(context).primaryColor
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey[300]!,
+                width: 2,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('E').format(date),
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black54,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    DateFormat('E').format(date),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : null,
-                    ),
+                SizedBox(height: 4),
+                Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : Colors.black,
                   ),
-                  Text(
-                    '${date.day}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : null,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
