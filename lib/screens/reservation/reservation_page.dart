@@ -209,7 +209,7 @@ class _ReservationPageState extends State<ReservationPage>
     );
   }
 
-  // 修改 _getGroupedBusList 方法，按日期（去掉年份）分组
+  // 修改 _getGroupedBusList 方法，按日期（去掉年份）分组，并按时间排序
   Map<String, List<Map<String, dynamic>>> _getGroupedBusList() {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (var bus in _filteredBusList) {
@@ -220,6 +220,12 @@ class _ReservationPageState extends State<ReservationPage>
       }
       grouped[date]!.add(bus);
     }
+
+    // 对每一天的班车列表按时间排序
+    grouped.forEach((date, busList) {
+      busList.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
+    });
+
     return grouped;
   }
 
