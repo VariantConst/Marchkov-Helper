@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
 import 'dart:convert'; // 添加导入
+import '../../widgets/bus_route_card.dart'; // 添加导入
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -10,7 +11,7 @@ class ReservationPage extends StatefulWidget {
 }
 
 class _ReservationPageState extends State<ReservationPage> {
-  List<dynamic> _busList = []; // 添加列表用于存储班车信息
+  List<dynamic> _busList = []; // 用于存储班车信息
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -42,14 +43,22 @@ class _ReservationPageState extends State<ReservationPage> {
         if (data['e'] == 0) {
           List<dynamic> list = data['d']['list'];
           for (var bus in list) {
-            var busId = bus['id'].toString();
+            var busId = bus['id'];
             var table = bus['table'];
-            if (table.containsKey(busId)) {
-              var timeSlots = table[busId];
+            if (table.containsKey(busId.toString())) {
+              var timeSlots = table[busId.toString()];
               for (var slot in timeSlots) {
                 if (slot['row']['margin'] > 0) {
-                  slot['route_name'] = bus['name']; // 添加路线名称
-                  allBuses.add(slot);
+                  // 创建一个新的 Map，将 bus 的信息和 slot 的信息合并
+                  Map<String, dynamic> busInfo = {
+                    'route_name': bus['name'],
+                    'bus_id': busId, // 这里确保 bus_id 正确赋值
+                    'abscissa': slot['abscissa'],
+                    'yaxis': slot['yaxis'],
+                    'row': slot['row'],
+                    'time_id': slot['time_id'],
+                  };
+                  allBuses.add(busInfo);
                 }
               }
             }
@@ -85,16 +94,7 @@ class _ReservationPageState extends State<ReservationPage> {
                   itemCount: _busList.length,
                   itemBuilder: (context, index) {
                     final bus = _busList[index];
-                    return ExpansionTile(
-                      title: Text(bus['route_name']),
-                      children: [
-                        Text(
-                          '日期：${bus['abscissa']} 出发时间：${bus['yaxis']} 剩余座位：${bus['row']['margin']}',
-                          maxLines: 5,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    );
+                    return BusRouteCard(busData: bus);
                   },
                 ),
     );
