@@ -96,20 +96,31 @@ class _ReservationPageState extends State<ReservationPage>
               var timeSlots = table[key];
               for (var slot in timeSlots) {
                 if (slot['row']['margin'] > 0) {
-                  Map<String, dynamic> busInfo = {
-                    'route_name': bus['name'],
-                    'bus_id': busId,
-                    'abscissa': slot['abscissa'],
-                    'yaxis': slot['yaxis'],
-                    'row': slot['row'],
-                    'time_id': slot['time_id'],
-                  };
-                  // 过滤班车名称，根据要求分类
-                  final name = busInfo['route_name'] ?? '';
-                  final indexYan = name.indexOf('燕');
-                  final indexXin = name.indexOf('新');
-                  if (indexYan != -1 && indexXin != -1) {
-                    allBuses.add(busInfo);
+                  // 获取班车的日期时间字符串
+                  String dateTimeString =
+                      slot['abscissa']; // 班车日期时间，例如 '2023-10-20 08:00:00'
+
+                  // 将字符串转换为 DateTime 对象
+                  DateTime busDateTime = DateTime.parse(dateTimeString);
+
+                  // 对比当前时间，只有在当前时间之后的班车才加入列表
+                  if (busDateTime.isAfter(DateTime.now())) {
+                    // 创建一个新的 Map，将 bus 的信息和 slot 的信息合并
+                    Map<String, dynamic> busInfo = {
+                      'route_name': bus['name'],
+                      'bus_id': busId,
+                      'abscissa': slot['abscissa'],
+                      'yaxis': slot['yaxis'],
+                      'row': slot['row'],
+                      'time_id': slot['time_id'],
+                    };
+                    // 过滤班车名称，根据要求分类
+                    final name = busInfo['route_name'] ?? '';
+                    final indexYan = name.indexOf('燕');
+                    final indexXin = name.indexOf('新');
+                    if (indexYan != -1 && indexXin != -1) {
+                      allBuses.add(busInfo);
+                    }
                   }
                 }
               }
