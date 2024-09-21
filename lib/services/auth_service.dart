@@ -20,6 +20,7 @@ class AuthService extends ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     try {
+      // 第一步: 初始登录请求
       final response = await http.post(
         Uri.parse('https://iaaa.pku.edu.cn/iaaa/oauthlogin.do'),
         body: {
@@ -40,18 +41,66 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        _user = User(username: username, token: jsonResponse['token']);
-        _cookies = response.headers['set-cookie'] ?? '';
-        _password = password; // 保存密码
-        await _saveCredentials(username, password);
-        await _saveCookies(_cookies);
-        print('Cookies: $_cookies'); // 输出到调试控制台
-        notifyListeners();
+        final token = jsonResponse['token'];
+        _user = User(username: username, token: token);
+        _password = password;
+
+        // 保存第一步的cookies
+        _updateCookies(response);
+
+        // 第二步: 追随重定向获取完整cookie
+        final redirectUrl = Uri.parse(
+            'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=$token');
+
+        final redirectResponse = await http.get(redirectUrl, headers: {
+          'Cookie': _cookies,
+          'User-Agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        });
+
+        if (redirectResponse.statusCode == 200) {
+          // 更新cookies，包括重定向后的新cookies
+          _updateCookies(redirectResponse);
+          await _saveCredentials(username, password);
+          await _saveCookies(_cookies);
+          print('Full cookies after redirect: $_cookies');
+          notifyListeners();
+        } else {
+          throw Exception('重定向请求失败: ${redirectResponse.statusCode}');
+        }
       } else {
-        throw Exception('登录失败');
+        throw Exception('登录失败: ${response.statusCode}');
       }
     } catch (e) {
+      print('登录过程中发生错误: $e');
       throw Exception('登录失败: $e');
+    }
+  }
+
+  void _updateCookies(http.Response response) {
+    final rawCookies = response.headers['set-cookie'];
+    if (rawCookies != null) {
+      final newCookies = rawCookies
+          .split(',')
+          .map((cookie) => cookie.split(';')[0].trim())
+          .toList();
+      final cookieMap = Map.fromEntries(newCookies.map((cookie) {
+        final parts = cookie.split('=');
+        return MapEntry(parts[0], parts.sublist(1).join('='));
+      }));
+
+      // 更新现有的cookies
+      final existingCookies = _cookies.isNotEmpty
+          ? Map.fromEntries(_cookies.split('; ').map((cookie) {
+              final parts = cookie.split('=');
+              return MapEntry(parts[0], parts.sublist(1).join('='));
+            }))
+          : <String, String>{};
+
+      existingCookies.addAll(cookieMap);
+
+      _cookies =
+          existingCookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
     }
   }
 

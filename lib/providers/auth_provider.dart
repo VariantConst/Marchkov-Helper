@@ -21,6 +21,8 @@ class AuthProvider with ChangeNotifier {
     _user = User(username: username, token: '');
     _loginResponse = _authRepository.loginResponse;
     _cookies = _authRepository.cookies;
+    // 确保打印完整的 cookie 字符串
+    print('Full cookies: $_cookies');
     await _saveLoginState(true);
     await _saveUsername(username);
     notifyListeners();
