@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 class AuthService extends ChangeNotifier {
   User? _user;
   String _loginResponse = '';
-  String _cookies = '';
   final http.Client _client = http.Client();
   String _password = '';
   late PersistCookieJar _cookieJar;
@@ -19,24 +18,35 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _initCookieJar() async {
-    final tempDir = await getTemporaryDirectory();
-    final tempPath = tempDir.path;
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final appDocPath = appDocDir.path;
     _cookieJar = PersistCookieJar(
       ignoreExpires: true,
-      storage: FileStorage(tempPath),
+      storage: FileStorage("$appDocPath/.cookies/"),
     );
   }
 
   bool get isLoggedIn => _user != null;
   String get username => _user?.username ?? '';
   String get loginResponse => _loginResponse;
-  String get cookies => _cookies;
   String get password => _password;
+
+  // 添加 cookies getter
+  Future<String> get cookies async {
+    final iaaaCookies =
+        await _cookieJar.loadForRequest(Uri.parse('https://iaaa.pku.edu.cn'));
+    final wprocCookies =
+        await _cookieJar.loadForRequest(Uri.parse('https://wproc.pku.edu.cn'));
+    final allCookies = [...iaaaCookies, ...wprocCookies];
+    return allCookies
+        .map((cookie) => '${cookie.name}=${cookie.value}')
+        .join('; ');
+  }
 
   Future<void> login(String username, String password) async {
     try {
       // 第一步: 初始登录请求
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('https://iaaa.pku.edu.cn/iaaa/oauthlogin.do'),
         body: {
           'appid': 'wproc',
@@ -51,6 +61,11 @@ class AuthService extends ChangeNotifier {
         },
       );
 
+      // 打印初始请求的响应信息和 cookies
+      print('初始请求响应状态码: ${response.statusCode}');
+      print('初始请求响应体: ${response.body}');
+      print('初始 Set-Cookie: ${response.headers['set-cookie']}');
+
       _loginResponse = const JsonEncoder.withIndent('  ')
           .convert(json.decode(response.body));
 
@@ -60,27 +75,48 @@ class AuthService extends ChangeNotifier {
         _user = User(username: username, token: token);
         _password = password;
 
-        // 保存第一步的cookies
-        _updateCookies(response);
+        // 保存第一步的 cookies
+        final setCookieHeader = response.headers['set-cookie'];
+        final cookies = _parseCookies(setCookieHeader);
+        await _cookieJar.saveFromResponse(
+            Uri.parse('https://iaaa.pku.edu.cn'), cookies);
 
-        // 第二步: 追随重定向获取完整cookie
+        // 第二步: 追随重定向获取完整 cookies
         final redirectUrl = Uri.parse(
             'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=$token');
 
-        final redirectResponse = await http.get(redirectUrl, headers: {
-          'Cookie': _cookies,
+        final redirectResponse = await _client.get(redirectUrl, headers: {
+          'Cookie': cookies
+              .map((cookie) => '${cookie.name}=${cookie.value}')
+              .join('; '),
           'User-Agent':
               'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
         });
 
+        // 打印重定向请求的响应信息和 cookies
+        print('重定向请求响应状态码: ${redirectResponse.statusCode}');
+        print('重定向请求响应体: ${redirectResponse.body}');
+        print('重定向 Set-Cookie: ${redirectResponse.headers['set-cookie']}');
+
         if (redirectResponse.statusCode == 200) {
-          // 更新cookies，包括重定向后的新cookies
-          _updateCookies(redirectResponse);
+          // 保���重定向后的 cookies
+          final redirectSetCookie = redirectResponse.headers['set-cookie'];
+          if (redirectSetCookie != null) {
+            final redirectCookies = _parseCookies(redirectSetCookie);
+            await _cookieJar.saveFromResponse(redirectUrl, redirectCookies);
+            print('重定向后的 cookies 已保存到 cookie jar 中。');
+          } else {
+            print('重定向响应中没有新的 cookies。');
+          }
+
+          // 打印所有保存的 cookies
+          final savedCookies = cookies;
+          print('所有保存的 cookies: $savedCookies');
+
           await _saveCredentials(username, password);
-          await _saveCookies(_cookies);
-          print('Full cookies after redirect: $_cookies');
           notifyListeners();
         } else {
+          print('重定向请求失败: ${redirectResponse.statusCode}');
           throw Exception('重定向请求失败: ${redirectResponse.statusCode}');
         }
       } else {
@@ -92,39 +128,27 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  void _updateCookies(http.Response response) {
-    final rawCookies = response.headers['set-cookie'];
-    if (rawCookies != null) {
-      final newCookies = rawCookies
-          .split(',')
-          .map((cookie) => cookie.split(';')[0].trim())
-          .toList();
-      final cookieMap = Map.fromEntries(newCookies.map((cookie) {
-        final parts = cookie.split('=');
-        return MapEntry(parts[0], parts.sublist(1).join('='));
-      }));
-
-      // 更新现有的cookies
-      final existingCookies = _cookies.isNotEmpty
-          ? Map.fromEntries(_cookies.split('; ').map((cookie) {
-              final parts = cookie.split('=');
-              return MapEntry(parts[0], parts.sublist(1).join('='));
-            }))
-          : <String, String>{};
-
-      existingCookies.addAll(cookieMap);
-
-      _cookies =
-          existingCookies.entries.map((e) => '${e.key}=${e.value}').join('; ');
+  List<Cookie> _parseCookies(String? setCookieHeader) {
+    if (setCookieHeader == null) return [];
+    final cookies = <Cookie>[];
+    final cookiePattern = RegExp(r'(?<=^|,)\s*([^=]+)=([^;]*)');
+    for (final match in cookiePattern.allMatches(setCookieHeader)) {
+      if (match.groupCount == 2) {
+        final name = match.group(1)?.trim();
+        final value = match.group(2)?.trim();
+        if (name != null && value != null) {
+          cookies.add(Cookie(name, value));
+        }
+      }
     }
+    return cookies;
   }
 
   Future<void> logout() async {
     _user = null;
     _loginResponse = '';
-    _cookies = '';
     await _clearCredentials();
-    await _clearCookies();
+    await _cookieJar.deleteAll();
     notifyListeners();
   }
 
@@ -138,16 +162,6 @@ class AuthService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('username');
     await prefs.remove('password');
-  }
-
-  Future<void> _saveCookies(String cookies) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('cookies', cookies);
-  }
-
-  Future<void> _clearCookies() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('cookies');
   }
 
   Future<void> loadUsername() async {
@@ -170,9 +184,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 添加 get 方法
   Future<http.Response> get(Uri url) async {
-    // 从cookie jar加载cookies
     final cookies = await _cookieJar.loadForRequest(url);
     final cookieString =
         cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
@@ -181,7 +193,8 @@ class AuthService extends ChangeNotifier {
       url,
       headers: {
         'Cookie': cookieString,
-        // ... 其他headers ...
+        'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       },
     );
   }
