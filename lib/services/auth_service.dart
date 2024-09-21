@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class AuthService extends ChangeNotifier {
   User? _user;
@@ -45,80 +46,97 @@ class AuthService extends ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     try {
+      // 使用 HttpClient
+      HttpClient httpClient = HttpClient();
+
       // 第一步: 初始登录请求
-      final response = await _client.post(
+      HttpClientRequest request = await httpClient.postUrl(
         Uri.parse('https://iaaa.pku.edu.cn/iaaa/oauthlogin.do'),
-        body: {
-          'appid': 'wproc',
-          'userName': username,
-          'password': password,
-          'redirUrl':
-              'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/',
-        },
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        },
+      );
+      request.followRedirects = false; // 设置为 false，手动处理重定向
+      request.headers.set(
+          HttpHeaders.contentTypeHeader, 'application/x-www-form-urlencoded');
+      request.headers.set(
+        HttpHeaders.userAgentHeader,
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       );
 
-      // 打印初始请求的响应信息和 cookies
+      // 设置请求体
+      request.write(Uri(queryParameters: {
+        'appid': 'wproc',
+        'userName': username,
+        'password': password,
+        'redirUrl':
+            'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/',
+      }).query);
+
+      // 发送请求并获取响应
+      HttpClientResponse response = await request.close();
+
+      // 读取响应
+      String responseBody = await response.transform(utf8.decoder).join();
       print('初始请求响应状态码: ${response.statusCode}');
-      print('初始请求响应体: ${response.body}');
+      print('初始请求响应体: $responseBody');
       print('初始 Set-Cookie: ${response.headers['set-cookie']}');
 
-      _loginResponse = const JsonEncoder.withIndent('  ')
-          .convert(json.decode(response.body));
+      // 保存初始请求的 cookies
+      List<Cookie> cookies = response.cookies;
+      await _cookieJar.saveFromResponse(
+          Uri.parse('https://iaaa.pku.edu.cn'), cookies);
+
+      // 检查重定向
+      if (response.headers.value(HttpHeaders.locationHeader) != null) {
+        String redirectUrl =
+            response.headers.value(HttpHeaders.locationHeader)!;
+
+        // 第二步: 手动处理重定向请求
+        HttpClientRequest redirectRequest =
+            await httpClient.getUrl(Uri.parse(redirectUrl));
+        redirectRequest.followRedirects = false; // 设置为 false
+        redirectRequest.headers.set(
+          HttpHeaders.userAgentHeader,
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        );
+
+        // 添加之前的 cookies
+        for (var cookie in cookies) {
+          redirectRequest.cookies.add(cookie);
+        }
+
+        HttpClientResponse redirectResponse = await redirectRequest.close();
+
+        // 读取重定向响应
+        String redirectResponseBody =
+            await redirectResponse.transform(utf8.decoder).join();
+        print('重定向请求响应状态码: ${redirectResponse.statusCode}');
+        print('重定向请求响应体: $redirectResponseBody');
+        print('重定向 Set-Cookie: ${redirectResponse.headers['set-cookie']}');
+
+        // 保存重定向后的 cookies
+        List<Cookie> redirectCookies = redirectResponse.cookies;
+        await _cookieJar.saveFromResponse(
+            Uri.parse(redirectUrl), redirectCookies);
+        print('重定向后的 cookies 已保存到 cookie jar 中。');
+      }
+
+      // 关闭 HttpClient
+      httpClient.close();
+
+      _loginResponse =
+          const JsonEncoder.withIndent('  ').convert(json.decode(responseBody));
 
       if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
+        final jsonResponse = json.decode(responseBody);
         final token = jsonResponse['token'];
         _user = User(username: username, token: token);
         _password = password;
 
-        // 保存第一步的 cookies
-        final setCookieHeader = response.headers['set-cookie'];
-        final cookies = _parseCookies(setCookieHeader);
-        await _cookieJar.saveFromResponse(
-            Uri.parse('https://iaaa.pku.edu.cn'), cookies);
+        // 打印所有保存的 cookies
+        final savedCookies = cookies;
+        print('所有保存的 cookies: $savedCookies');
 
-        // 第二步: 追随重定向获取完整 cookies
-        final redirectUrl = Uri.parse(
-            'https://wproc.pku.edu.cn/site/login/cas-login?redirect_url=https://wproc.pku.edu.cn/v2/reserve/&_rand=0.6441813796046802&token=$token');
-
-        final redirectResponse = await _client.get(redirectUrl, headers: {
-          'Cookie': cookies
-              .map((cookie) => '${cookie.name}=${cookie.value}')
-              .join('; '),
-          'User-Agent':
-              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        });
-
-        // 打印重定向请求的响应信息和 cookies
-        print('重定向请求响应状态码: ${redirectResponse.statusCode}');
-        print('重定向请求响应体: ${redirectResponse.body}');
-        print('重定向 Set-Cookie: ${redirectResponse.headers['set-cookie']}');
-
-        if (redirectResponse.statusCode == 200) {
-          // 保���重定向后的 cookies
-          final redirectSetCookie = redirectResponse.headers['set-cookie'];
-          if (redirectSetCookie != null) {
-            final redirectCookies = _parseCookies(redirectSetCookie);
-            await _cookieJar.saveFromResponse(redirectUrl, redirectCookies);
-            print('重定向后的 cookies 已保存到 cookie jar 中。');
-          } else {
-            print('重定向响应中没有新的 cookies。');
-          }
-
-          // 打印所有保存的 cookies
-          final savedCookies = cookies;
-          print('所有保存的 cookies: $savedCookies');
-
-          await _saveCredentials(username, password);
-          notifyListeners();
-        } else {
-          print('重定向请求失败: ${redirectResponse.statusCode}');
-          throw Exception('重定向请求失败: ${redirectResponse.statusCode}');
-        }
+        await _saveCredentials(username, password);
+        notifyListeners();
       } else {
         throw Exception('登录失败: ${response.statusCode}');
       }
@@ -126,22 +144,6 @@ class AuthService extends ChangeNotifier {
       print('登录过程中发生错误: $e');
       throw Exception('登录失败: $e');
     }
-  }
-
-  List<Cookie> _parseCookies(String? setCookieHeader) {
-    if (setCookieHeader == null) return [];
-    final cookies = <Cookie>[];
-    final cookiePattern = RegExp(r'(?<=^|,)\s*([^=]+)=([^;]*)');
-    for (final match in cookiePattern.allMatches(setCookieHeader)) {
-      if (match.groupCount == 2) {
-        final name = match.group(1)?.trim();
-        final value = match.group(2)?.trim();
-        if (name != null && value != null) {
-          cookies.add(Cookie(name, value));
-        }
-      }
-    }
-    return cookies;
   }
 
   Future<void> logout() async {
