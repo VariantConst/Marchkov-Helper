@@ -42,7 +42,9 @@ class _ReservationPageState extends State<ReservationPage>
           final name = bus['route_name'] ?? '';
           final indexYan = name.indexOf('燕');
           final indexXin = name.indexOf('新');
-          if (indexYan != -1 && indexXin != -1) {
+          final status = bus['status'] ?? 0; // 获取 status 字段
+          if (indexYan != -1 && indexXin != -1 && status == 1) {
+            // 添加 status 检查
             return indexYan < indexXin;
           }
           return false;
@@ -53,7 +55,9 @@ class _ReservationPageState extends State<ReservationPage>
           final name = bus['route_name'] ?? '';
           final indexYan = name.indexOf('燕');
           final indexXin = name.indexOf('新');
-          if (indexYan != -1 && indexXin != -1) {
+          final status = bus['status'] ?? 0; // 获取 status 字段
+          if (indexYan != -1 && indexXin != -1 && status == 1) {
+            // 添加 status 检查
             return indexXin < indexYan;
           }
           return false;
@@ -113,6 +117,7 @@ class _ReservationPageState extends State<ReservationPage>
                       'yaxis': slot['yaxis'],
                       'row': slot['row'],
                       'time_id': slot['time_id'],
+                      'status': slot['row']['status'], // 添加 status 字段
                     };
                     // 过滤班车名称，根据要求分类
                     final name = busInfo['route_name'] ?? '';
