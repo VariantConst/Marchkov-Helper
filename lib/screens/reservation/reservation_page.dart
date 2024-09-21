@@ -4,65 +4,42 @@ import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
 import 'dart:convert';
 import '../../widgets/bus_route_card.dart';
+import 'package:intl/intl.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
   State<ReservationPage> createState() => _ReservationPageState();
 }
 
-class _ReservationPageState extends State<ReservationPage>
-    with SingleTickerProviderStateMixin {
+class _ReservationPageState extends State<ReservationPage> {
   List<dynamic> _busList = []; // 原始班车列表
   List<dynamic> _filteredBusList = []; // 过滤后的班车列表
   bool _isLoading = true;
   String _errorMessage = '';
-  int _selectedIndex = 0; // 0: 去昌平, 1: 去燕园
-  late TabController _tabController;
+  late DateTime _selectedDate;
+  late List<DateTime> _weekDates;
 
   @override
   void initState() {
     super.initState();
+    _selectedDate = DateTime.now();
+    _weekDates = _getWeekDates();
     _loadReservationData();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() {
-          _selectedIndex = _tabController.index;
-          _filterBusList();
-        });
-      }
-    });
+  }
+
+  List<DateTime> _getWeekDates() {
+    DateTime now = DateTime.now();
+    return List.generate(7, (index) => now.add(Duration(days: index)));
   }
 
   void _filterBusList() {
     setState(() {
-      if (_selectedIndex == 0) {
-        // 去昌平
-        _filteredBusList = _busList.where((bus) {
-          final name = bus['route_name'] ?? '';
-          final indexYan = name.indexOf('燕');
-          final indexXin = name.indexOf('新');
-          final status = bus['status'] ?? 0; // 获取 status 字段
-          if (indexYan != -1 && indexXin != -1 && status == 1) {
-            // 添加 status 检查
-            return indexYan < indexXin;
-          }
-          return false;
-        }).toList();
-      } else {
-        // 去燕园
-        _filteredBusList = _busList.where((bus) {
-          final name = bus['route_name'] ?? '';
-          final indexYan = name.indexOf('燕');
-          final indexXin = name.indexOf('新');
-          final status = bus['status'] ?? 0; // 获取 status 字段
-          if (indexYan != -1 && indexXin != -1 && status == 1) {
-            // 添加 status 检查
-            return indexXin < indexYan;
-          }
-          return false;
-        }).toList();
-      }
+      _filteredBusList = _busList.where((bus) {
+        final busDate = DateTime.parse(bus['abscissa'].split(' ')[0]);
+        return busDate.year == _selectedDate.year &&
+            busDate.month == _selectedDate.month &&
+            busDate.day == _selectedDate.day;
+      }).toList();
     });
   }
 
@@ -74,7 +51,7 @@ class _ReservationPageState extends State<ReservationPage>
       final today = DateTime.now();
       final dateStrings = [
         today.toIso8601String().split('T')[0],
-        today.add(Duration(days: 7)).toIso8601String().split('T')[0],
+        today.add(Duration(days: 6)).toIso8601String().split('T')[0],
       ];
 
       final responses = await Future.wait(
@@ -85,8 +62,6 @@ class _ReservationPageState extends State<ReservationPage>
       List<dynamic> allBuses = [];
 
       for (var response in responses) {
-        print(response); // 调试输出
-
         final data = json.decode(response);
 
         if (data['e'] == 0) {
@@ -95,21 +70,16 @@ class _ReservationPageState extends State<ReservationPage>
           for (var bus in list) {
             var busId = bus['id'];
             var table = bus['table'];
-            // 遍历所有班车的所有时间段
             for (var key in table.keys) {
               var timeSlots = table[key];
               for (var slot in timeSlots) {
                 if (slot['row']['margin'] > 0) {
-                  // 获取班车的日期时间字符串
-                  String dateTimeString =
-                      slot['abscissa']; // 班车日期时间，例如 '2023-10-20 08:00:00'
-
-                  // 将字符串转换为 DateTime 对象
+                  String dateTimeString = slot['abscissa'];
                   DateTime busDateTime = DateTime.parse(dateTimeString);
 
-                  // 对比当前时间，只有在当前时间之后的班车才加入列表
-                  if (busDateTime.isAfter(DateTime.now())) {
-                    // 创建一个新的 Map，将 bus 的信息和 slot 的信息合并
+                  if (busDateTime.isAfter(DateTime.now()) &&
+                      busDateTime
+                          .isBefore(DateTime.now().add(Duration(days: 7)))) {
                     Map<String, dynamic> busInfo = {
                       'route_name': bus['name'],
                       'bus_id': busId,
@@ -117,9 +87,8 @@ class _ReservationPageState extends State<ReservationPage>
                       'yaxis': slot['yaxis'],
                       'row': slot['row'],
                       'time_id': slot['time_id'],
-                      'status': slot['row']['status'], // 添加 status 字段
+                      'status': slot['row']['status'],
                     };
-                    // 过滤班车名称，根据要求分类
                     final name = busInfo['route_name'] ?? '';
                     final indexYan = name.indexOf('燕');
                     final indexXin = name.indexOf('新');
@@ -138,7 +107,7 @@ class _ReservationPageState extends State<ReservationPage>
 
       setState(() {
         _busList = allBuses;
-        _filterBusList(); // 更新过滤
+        _filterBusList();
         _isLoading = false;
       });
     } catch (e) {
@@ -150,91 +119,133 @@ class _ReservationPageState extends State<ReservationPage>
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('预约'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: '去昌平'),
-            Tab(text: '去燕园'),
-          ],
-        ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage))
-              : _filteredBusList.isEmpty
-                  ? Center(child: Text('暂无班车信息'))
-                  : ListView(
-                      children: _getGroupedBusList().entries.map((entry) {
-                        final date = entry.key;
-                        final buses = entry.value;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Text(
-                                date, // 已去掉年份的日期
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall,
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: buses.map<Widget>((busData) {
-                                  return SizedBox(
-                                    width: (MediaQuery.of(context).size.width -
-                                            40) /
-                                        4, // 调整为一行四个
-                                    child: BusRouteCard(
-                                      busData: busData,
-                                      onTap: () => _showBusDetails(busData),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+      body: Column(
+        children: [
+          _buildCalendar(),
+          Expanded(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
+                    ? Center(child: Text(_errorMessage))
+                    : _filteredBusList.isEmpty
+                        ? Center(child: Text('暂无班车信息'))
+                        : _buildBusList(),
+          ),
+        ],
+      ),
     );
   }
 
-  // 修改 _getGroupedBusList 方法，按日期（去掉年份）分组，并按时间排序
-  Map<String, List<Map<String, dynamic>>> _getGroupedBusList() {
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    for (var bus in _filteredBusList) {
-      String date = bus['abscissa'].split(' ')[0];
-      date = date.substring(5); // 去掉年份
-      if (!grouped.containsKey(date)) {
-        grouped[date] = [];
-      }
-      grouped[date]!.add(bus);
-    }
+  Widget _buildCalendar() {
+    return SizedBox(
+      height: 100,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _weekDates.length,
+        itemBuilder: (context, index) {
+          final date = _weekDates[index];
+          final isSelected = date.year == _selectedDate.year &&
+              date.month == _selectedDate.month &&
+              date.day == _selectedDate.day;
 
-    // 对每一天的班车列表按时间排序
-    grouped.forEach((date, busList) {
-      busList.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
-    });
-
-    return grouped;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedDate = date;
+                _filterBusList();
+              });
+            },
+            child: Container(
+              width: 50,
+              margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? Theme.of(context).primaryColor : null,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    DateFormat('E').format(date),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : null,
+                    ),
+                  ),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
-  // 添加显示详情的弹窗方法
+  Widget _buildBusList() {
+    final toChangping = _filteredBusList.where((bus) {
+      final name = bus['route_name'] ?? '';
+      final indexYan = name.indexOf('燕');
+      final indexXin = name.indexOf('新');
+      return indexYan != -1 && indexXin != -1 && indexYan < indexXin;
+    }).toList();
+
+    final toYanyuan = _filteredBusList.where((bus) {
+      final name = bus['route_name'] ?? '';
+      final indexYan = name.indexOf('燕');
+      final indexXin = name.indexOf('新');
+      return indexYan != -1 && indexXin != -1 && indexXin < indexYan;
+    }).toList();
+
+    return ListView(
+      children: [
+        _buildBusSection('去昌平', toChangping),
+        _buildBusSection('去燕园', toYanyuan),
+      ],
+    );
+  }
+
+  Widget _buildBusSection(String title, List<dynamic> buses) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.all(8),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: buses.map<Widget>((busData) {
+            return SizedBox(
+              width: (MediaQuery.of(context).size.width - 40) / 4,
+              child: BusRouteCard(
+                busData: busData,
+                onTap: () => _showBusDetails(busData),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   void _showBusDetails(Map<String, dynamic> busData) {
     showDialog(
       context: context,
