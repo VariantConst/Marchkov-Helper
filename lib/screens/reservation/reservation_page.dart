@@ -311,10 +311,10 @@ class _ReservationPageState extends State<ReservationPage> {
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+                crossAxisCount: 4, // 将 3 改为 4
+                childAspectRatio: 0.9, // 调整子项宽高比
+                crossAxisSpacing: 8, // 减小列间距
+                mainAxisSpacing: 8, // 减小行间距
               ),
               itemCount: buses.length,
               itemBuilder: (context, index) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// 需要确保没有遗漏任何必要的导入
 
 class BusRouteCard extends StatelessWidget {
   final Map<String, dynamic> busData;
@@ -10,23 +9,31 @@ class BusRouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = busData['yaxis'] ?? '';
+    // 使用现有的“出发时间”字段
+    String departureTime = busData['yaxis'] ?? '';
 
     return GestureDetector(
       onTap: onTap,
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(8), // 减小 padding
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8), // 适当调整圆角
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
         ),
-        child: Container(
-          height: 60,
-          alignment: Alignment.center,
+        child: Center(
           child: Text(
-            time,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            departureTime, // 显示现有的“出发时间”字段
+            style: TextStyle(
+              fontSize: 16, // 增大字体大小
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
