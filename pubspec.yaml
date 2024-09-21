@@ -44,6 +44,7 @@ dependencies:
   intl: ^0.19.0 # 添加这一行
   flutter_localizations:
     sdk: flutter
+  material_design_icons_flutter: ^5.0.6595
 
 dev_dependencies:
   flutter_test:
