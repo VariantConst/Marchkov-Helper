@@ -165,7 +165,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         children: [
           QrImageView(
             data: _qrCode!,
-            version: QrVersions.auto,
             size: 200.0,
           ),
           SizedBox(height: 20),
