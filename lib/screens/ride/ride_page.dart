@@ -341,7 +341,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     // 获取底部安全区域的高度
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     // 估计底部导航栏的高度（通常是56）
-    const bottomNavBarHeight = 56.0;
+    const bottomNavBarHeight = 6.0;
 
     return Scaffold(
       body: _isInitialLoading
@@ -451,18 +451,22 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       ),
       SizedBox(height: 25),
       Container(
-        width: 200,
-        height: 200,
+        width: 220,
+        height: 220,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.blue.withOpacity(0.2), width: 2),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
+        child: Center(
           child: QrImageView(
             data: _qrCode!,
-            size: 196.0,
+            version: 13, // 固定二维码等级为13
+            size: 180.0,
+            padding: EdgeInsets.zero,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.grey[700], // 将二维码颜色改为深灰色
+            errorCorrectionLevel: QrErrorCorrectLevel.M, // 添加中等级别的错误修正
           ),
         ),
       ),
@@ -471,7 +475,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   Widget _buildReverseButton() {
     return Container(
-      width: 200, // 与二维码宽度相同
+      width: 220, // 与二维码外框同宽
+      height: 48, // 固定高度，防止刷新时变化
       child: ElevatedButton(
         onPressed: _isToggleLoading ? null : _toggleDirection,
         style: ElevatedButton.styleFrom(
@@ -482,31 +487,32 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
               ? Colors.grey
               : Theme.of(context).colorScheme.primary,
           elevation: 0, // 去掉阴影
-          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 26),
+          padding: EdgeInsets.zero, // 移除内边距，让内容居中
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_isToggleLoading)
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.primary),
+        child: _isToggleLoading
+            ? Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary),
+                  ),
                 ),
               )
-            else ...[
-              Icon(Icons.swap_horiz, size: 20),
-              SizedBox(width: 8),
-              Text('乘坐反向班车',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            ],
-          ],
-        ),
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.swap_horiz, size: 20),
+                  SizedBox(width: 8),
+                  Text('乘坐反向班车',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ],
+              ),
       ),
     );
   }
