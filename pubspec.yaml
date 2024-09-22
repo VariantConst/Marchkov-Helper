@@ -51,6 +51,8 @@ dependencies:
   image_cropper: ^5.0.0 # 将这行更新为最新版本
   path: ^1.8.2
   table_calendar: ^3.0.0
+  # 修改 fl_chart 依赖，从 GitHub 获取最新代码
+  fl_chart: ^0.69.0
 
 dev_dependencies:
   flutter_test:
