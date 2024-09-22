@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../models/bus_route.dart';
 import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
+import 'package:intl/intl.dart';
 
 class ReservationService {
   final AuthProvider _authProvider;
@@ -86,6 +87,9 @@ class ReservationService {
 
     List<dynamic> allBuses = [];
 
+    // 添加一个 Set 用于去重
+    Set<String> busSet = {};
+
     // 遍历所有的响应结果
     for (var response in responses) {
       final data = json.decode(response);
@@ -100,26 +104,38 @@ class ReservationService {
             var timeSlots = table[key];
             for (var slot in timeSlots) {
               if (slot['row']['margin'] > 0) {
-                String dateTimeString = slot['abscissa'];
-                DateTime busDateTime = DateTime.parse(dateTimeString);
+                // 解析并格式化日期和时间
+                String dateStr = slot['abscissa'].trim(); // 去除空格
+                String timeStr = slot['yaxis'].trim(); // 去除空格
 
-                if (busDateTime
-                    .isBefore(DateTime.now().add(Duration(days: 7)))) {
+                // 将日期和时间合并
+                DateTime dateTime = DateTime.parse('$dateStr $timeStr');
+
+                // 格式化日期和时间
+                String normalizedDate =
+                    DateFormat('yyyy-MM-dd').format(dateTime);
+                String normalizedTime = DateFormat('HH:mm').format(dateTime);
+
+                // 获取 time_id
+                String timeId = slot['time_id'].toString();
+
+                // 构建更加唯一的标识符，包括 busId 和 timeId
+                String uniqueKey =
+                    '${normalizedDate}_${normalizedTime}_$busId\_$timeId';
+
+                // 如果未出现过，则添加至列表
+                if (busSet.add(uniqueKey)) {
                   Map<String, dynamic> busInfo = {
                     'route_name': bus['name'],
                     'bus_id': busId,
-                    'abscissa': slot['abscissa'],
-                    'yaxis': slot['yaxis'],
+                    'abscissa': normalizedDate,
+                    'yaxis': normalizedTime,
                     'row': slot['row'],
                     'time_id': slot['time_id'],
                     'status': slot['row']['status'],
                   };
-                  final name = busInfo['route_name'] ?? '';
-                  final indexYan = name.indexOf('燕');
-                  final indexXin = name.indexOf('新');
-                  if (indexYan != -1 && indexXin != -1) {
-                    allBuses.add(busInfo);
-                  }
+
+                  allBuses.add(busInfo);
                 }
               }
             }
