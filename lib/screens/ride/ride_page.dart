@@ -38,7 +38,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     if (locationAvailable) {
       await _setDirectionBasedOnLocation();
     } else {
-      _setDirectionBasedOnTime(DateTime.now());
+      // 已经在 initState 中同步初始化过，无需再次调用
     }
     _loadRideData();
   }
@@ -81,6 +81,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     const xinxiaoqLatitude = 40.177702;
     const xinxiaoqLongitude = 116.164600;
 
+    bool isGoingToYanyuan;
     double distanceToYanyuan = Geolocator.distanceBetween(
       position.latitude,
       position.longitude,
@@ -95,14 +96,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       xinxiaoqLongitude,
     );
 
+    if (distanceToYanyuan < distanceToXinxiaoq) {
+      // 用户在燕园，去新校区
+      isGoingToYanyuan = false;
+    } else {
+      // 用户在新校区，去燕园
+      isGoingToYanyuan = true;
+    }
+
+    // 在 setState 中更新变量
     setState(() {
-      if (distanceToYanyuan < distanceToXinxiaoq) {
-        // 用户在燕园，去新校区
-        _isGoingToYanyuan = false;
-      } else {
-        // 用户在新校区，去燕园
-        _isGoingToYanyuan = true;
-      }
+      _isGoingToYanyuan = isGoingToYanyuan;
     });
   }
 
@@ -228,7 +232,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     final now = DateTime.now();
     final isGoingToYanyuan = now.hour < 12; // 假设中午12点前去燕园，之后回昌平
     return reservations.firstWhere(
-      (r) => r.resourceName.contains(isGoingToYanyuan ? '燕园' : '���平'),
+      (r) => r.resourceName.contains(isGoingToYanyuan ? '燕园' : '昌平'),
       orElse: () => reservations.first,
     );
   }
