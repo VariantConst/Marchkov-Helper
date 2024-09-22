@@ -5,6 +5,8 @@ import '../../models/reservation.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/reservation_service.dart';
 import 'package:geolocator/geolocator.dart'; // 添加此行
+import 'package:shared_preferences/shared_preferences.dart'; // 添加此行
+import 'dart:convert'; // 添加此行
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -197,9 +199,33 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   Future<Map<String, String>?> _fetchTempCode(
       ReservationService service) async {
+    // 新增代码：获取当前日期字符串
     final now = DateTime.now();
-    final buses =
-        await service.getAllBuses([now.toIso8601String().split('T')[0]]);
+    final todayString = now.toIso8601String().split('T')[0];
+
+    List<dynamic> buses;
+
+    // 尝试从缓存中加载 busData
+    final prefs = await SharedPreferences.getInstance();
+    final cachedDate = prefs.getString('cachedDate');
+
+    if (cachedDate == todayString) {
+      // 如果缓存的日期是今天，使用缓存的 busData
+      final cachedBusDataString = prefs.getString('cachedBusData');
+      if (cachedBusDataString != null) {
+        buses = jsonDecode(cachedBusDataString);
+      } else {
+        // 如果缓存为空，调用接口获取 busData
+        buses = await service.getAllBuses([todayString]);
+      }
+    } else {
+      // 如果缓存的日期不是今天，调用接口获取 busData
+      buses = await service.getAllBuses([todayString]);
+      // 更新缓存
+      await prefs.setString('cachedBusData', jsonEncode(buses));
+      await prefs.setString('cachedDate', todayString);
+    }
+
     final validBuses = buses
         .where((bus) => _isWithinTimeRange(Reservation(
               id: 0,
