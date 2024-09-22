@@ -31,7 +31,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   void initState() {
     super.initState();
-    _setDirectionBasedOnTime(DateTime.now()); // 同步初始化
+    // 仅在初始时设定方向，不在刷新时改变方向
+    _setDirectionBasedOnTime(DateTime.now());
     _initialize(); // 异步初始化
   }
 
@@ -39,8 +40,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     bool locationAvailable = await _determinePosition();
     if (locationAvailable) {
       await _setDirectionBasedOnLocation();
-    } else {
-      // 已经在 initState 中同步初始化过，无需再次调用
     }
     _loadRideData();
   }
@@ -288,24 +287,28 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     super.build(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_isGoingToYanyuan ? '去燕园' : '去昌平'),
-            IconButton(
-              icon: Icon(Icons.swap_horiz),
-              onPressed: _toggleDirection,
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: SingleChildScrollView(
+          // 使用可滚动组件
+          physics: AlwaysScrollableScrollPhysics(), // 确保可以下拉刷新
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height,
             ),
-          ],
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
+                    ? Center(child: Text(_errorMessage))
+                    : _buildQRCodeDisplay(),
+          ),
         ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage))
-              : _buildQRCodeDisplay(),
     );
+  }
+
+  Future<void> _onRefresh() async {
+    await _loadRideData(); // 刷新数据，但不改变方向
   }
 
   Widget _buildQRCodeDisplay() {
@@ -334,9 +337,10 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 20),
+          // 添加"乘坐反向班车"小按钮
           ElevatedButton(
-            onPressed: _loadRideData,
-            child: Text('刷新'),
+            onPressed: _toggleDirection,
+            child: Text('乘坐反向班车'),
           ),
         ],
       ),
