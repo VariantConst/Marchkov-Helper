@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/ride_history_provider.dart';
 import '../../models/ride_info.dart';
+// 添加以下导入
+import 'ride_calendar_card.dart';
 
 class VisualizationSettingsPage extends StatefulWidget {
   @override
@@ -28,16 +30,11 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
       appBar: AppBar(
         title: Text('可视化设置'),
       ),
-      body: Column(
-        children: [
-          rideHistoryProvider.isLoading
-              ? Center(child: CircularProgressIndicator())
-              : rideHistoryProvider.error != null
-                  ? Center(
-                      child: Text('加载乘车历史失败: ${rideHistoryProvider.error}'))
-                  : _buildRideHistoryStats(rideHistoryProvider.rides),
-        ],
-      ),
+      body: rideHistoryProvider.isLoading
+          ? Center(child: CircularProgressIndicator())
+          : rideHistoryProvider.error != null
+              ? Center(child: Text('加载乘车历史失败: ${rideHistoryProvider.error}'))
+              : _buildRideHistoryStats(rideHistoryProvider.rides),
     );
   }
 
@@ -45,8 +42,9 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
     return Padding(
       padding: EdgeInsets.all(16.0),
       child: Column(
+        mainAxisSize: MainAxisSize.max, // 确保 Column 占据最大可用空间
         children: [
-          // 将预约信息数量放入一个卡片中
+          // 已有的预约信息卡片
           Card(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.0),
@@ -61,6 +59,10 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
             ),
           ),
           SizedBox(height: 16),
+          // 使用 Flexible 替换 Expanded
+          Flexible(
+            child: RideCalendarCard(rides: rides),
+          ),
         ],
       ),
     );
