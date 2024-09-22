@@ -237,6 +237,30 @@ class ReservationService {
     }
   }
 
+  Future<String> getTempQRCode(String resourceId, String startTime) async {
+    final uri = Uri.parse(
+      'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?type=1&resource_id=$resourceId&text=$startTime',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['e'] == 0) {
+        return data['d']['code'];
+      } else {
+        throw Exception(data['m']);
+      }
+    } else {
+      throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
+  }
+
   Future<void> cancelReservation(
       String appointmentId, String hallAppointmentDataId) async {
     if (!_authProvider.isLoggedIn) {
