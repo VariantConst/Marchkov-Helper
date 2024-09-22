@@ -20,6 +20,7 @@ class _ReservationPageState extends State<ReservationPage> {
   late PageController _calendarController;
   late PageController _mainPageController;
   int _currentPage = 0; // 添加这行来定义 _currentPage
+  Map<String, dynamic> _reservedBuses = {}; // 记录已预约的班车
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _ReservationPageState extends State<ReservationPage> {
       viewportFraction: 0.2,
     );
     _mainPageController = PageController(initialPage: _currentPage);
+    _loadMyReservations();
   }
 
   @override
@@ -81,6 +83,88 @@ class _ReservationPageState extends State<ReservationPage> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _loadMyReservations() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final reservationService = ReservationService(authProvider);
+
+    try {
+      final reservations = await reservationService.fetchMyReservations();
+      setState(() {
+        _reservedBuses.clear();
+        for (var reservation in reservations) {
+          String resourceId = reservation['resource_id'].toString();
+          String appointmentTime =
+              reservation['appointment_tim'].trim(); // 去除前导空格
+          String key = '$resourceId$appointmentTime';
+          _reservedBuses[key] = {
+            'id': reservation['id'],
+            'hall_appointment_data_id': reservation['hall_appointment_data_id'],
+          };
+        }
+      });
+    } catch (e) {
+      print('加载已预约班车失败: $e');
+    }
+  }
+
+  void _onBusCardTap(Map<String, dynamic> busData) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final reservationService = ReservationService(authProvider);
+
+    String resourceId = busData['bus_id'].toString();
+    String date = busData['abscissa']; // 日期
+    String period = busData['time_id'].toString();
+    String time = busData['yaxis'];
+    String appointmentTime = '$date $time';
+    String key = '$resourceId$appointmentTime';
+
+    if (_reservedBuses.containsKey(key)) {
+      // 已预约，执行取消预约
+      try {
+        String appointmentId = _reservedBuses[key]['id'].toString();
+        String hallAppointmentDataId =
+            _reservedBuses[key]['hall_appointment_data_id'].toString();
+        await reservationService.cancelReservation(
+            appointmentId, hallAppointmentDataId);
+
+        setState(() {
+          // 移除高亮状态，删除相关属性
+          _reservedBuses.remove(key);
+        });
+      } catch (e) {
+        _showErrorDialog('取消预约失败', e.toString());
+      }
+    } else {
+      // 未预约，执行预约
+      try {
+        await reservationService.makeReservation(resourceId, date, period);
+        await _loadMyReservations();
+      } catch (e) {
+        _showErrorDialog('预约失败', e.toString());
+      }
+    }
+  }
+
+  void _onBusCardLongPress(Map<String, dynamic> busData) {
+    _showBusDetails(busData);
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -271,9 +355,13 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
               itemCount: buses.length,
               itemBuilder: (context, index) {
+                var busData = buses[index];
+                bool isReserved = _isBusReserved(busData);
                 return BusRouteCard(
-                  busData: buses[index],
-                  onTap: () => _showBusDetails(buses[index]),
+                  busData: busData,
+                  isReserved: isReserved,
+                  onTap: () => _onBusCardTap(busData),
+                  onLongPress: () => _onBusCardLongPress(busData), // 添加长按事件
                 );
               },
             ),
@@ -281,6 +369,15 @@ class _ReservationPageState extends State<ReservationPage> {
         ),
       ),
     );
+  }
+
+  bool _isBusReserved(Map<String, dynamic> busData) {
+    String resourceId = busData['bus_id'].toString();
+    String date = busData['abscissa'];
+    String time = busData['yaxis'];
+    String appointmentTime = '$date $time';
+    String key = '$resourceId$appointmentTime';
+    return _reservedBuses.containsKey(key);
   }
 
   void _showBusDetails(Map<String, dynamic> busData) {

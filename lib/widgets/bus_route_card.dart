@@ -3,9 +3,16 @@ import 'package:flutter/material.dart';
 class BusRouteCard extends StatelessWidget {
   final Map<String, dynamic> busData;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress; // 添加可选的 onLongPress 参数
+  final bool isReserved;
 
-  const BusRouteCard({Key? key, required this.busData, required this.onTap})
-      : super(key: key);
+  const BusRouteCard({
+    Key? key,
+    required this.busData,
+    required this.onTap,
+    this.onLongPress,
+    this.isReserved = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -13,12 +20,12 @@ class BusRouteCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress, // 添加长按事件
       child: Container(
-        padding:
-            EdgeInsets.symmetric(vertical: 4, horizontal: 8), // 缩小纵向 padding
+        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
+          color: isReserved ? Colors.amberAccent : Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -26,11 +33,13 @@ class BusRouteCard extends StatelessWidget {
               offset: Offset(0, 2),
             ),
           ],
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.grey.shade100],
-          ),
+          gradient: isReserved
+              ? null
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.white, Colors.grey.shade100],
+                ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -40,7 +49,7 @@ class BusRouteCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).primaryColor,
+                color: isReserved ? Colors.red : Theme.of(context).primaryColor,
               ),
             ),
           ],

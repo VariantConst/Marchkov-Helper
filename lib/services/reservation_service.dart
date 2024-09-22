@@ -76,10 +76,18 @@ class ReservationService {
   }
 
   Future<List<dynamic>> getAllBuses(List<String> dateStrings) async {
+    // 创建一个 Future 列表，每个 Future 都是一个 fetchReservationData 调用
+    List<Future<String>> futures = dateStrings.map((dateString) {
+      return fetchReservationData(dateString);
+    }).toList();
+
+    // 并行等待所有请求完成
+    List<String> responses = await Future.wait(futures);
+
     List<dynamic> allBuses = [];
 
-    for (var dateString in dateStrings) {
-      final response = await fetchReservationData(dateString);
+    // 遍历所有的响应结果
+    for (var response in responses) {
       final data = json.decode(response);
 
       if (data['e'] == 0) {
@@ -123,5 +131,93 @@ class ReservationService {
     }
 
     return allBuses;
+  }
+
+  Future<void> makeReservation(
+      String resourceId, String date, String period) async {
+    if (!_authProvider.isLoggedIn) {
+      throw Exception('未登录，请先登录');
+    }
+
+    final uri = Uri.parse('https://wproc.pku.edu.cn/site/reservation/launch');
+    final response = await http.post(
+      // 修改为 http.post
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+      body: {
+        'resource_id': resourceId,
+        'data': '[{"date": "$date", "period": $period, "sub_resource_id": 0}]',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['m'] == '操作成功') {
+        // 预约成功
+        return;
+      } else {
+        throw Exception(data['m']);
+      }
+    } else {
+      throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
+  }
+
+  Future<List<dynamic>> fetchMyReservations() async {
+    final uri = Uri.parse(
+      'https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=2&sort_time=true&sort=asc',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['e'] == 0) {
+        return data['d']['data'];
+      } else {
+        throw Exception(data['m']);
+      }
+    } else {
+      throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
+  }
+
+  Future<void> cancelReservation(
+      String appointmentId, String hallAppointmentDataId) async {
+    if (!_authProvider.isLoggedIn) {
+      throw Exception('未登录，请先登录');
+    }
+
+    final uri = Uri.parse(
+        'https://wproc.pku.edu.cn/site/reservation/single-time-cancel');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+      body: {
+        'appointment_id': appointmentId,
+        'data_id[0]': hallAppointmentDataId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['m'] == '操作成功') {
+        // 取消预约成功
+        return;
+      } else {
+        throw Exception(data['m']);
+      }
+    } else {
+      throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
   }
 }
