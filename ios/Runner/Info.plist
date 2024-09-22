@@ -48,5 +48,9 @@
 	<!-- 在 <dict> 标签内添加以下内容 -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>需要访问您的位置信息以确定您的当前位置。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires access to the photo library for profile picture selection.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires access to the camera for profile picture capture.</string>
 </dict>
 </plist>

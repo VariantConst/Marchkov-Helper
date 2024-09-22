@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.0.0
-  http: ^1.1.0
+  http: ^1.2.2
   permission_handler: ^10.0.0
   geolocator: ^9.0.0
   shared_preferences: ^2.0.6
@@ -47,6 +47,8 @@ dependencies:
   material_design_icons_flutter: ^5.0.6595
   qr_flutter: ^4.0.0
   flutter_svg: ^1.0.0 # 或更新的版本
+  image_picker: ^0.8.7+5
+  image_cropper: ^5.0.0 # 将这行更新为最新版本
 
 dev_dependencies:
   flutter_test:

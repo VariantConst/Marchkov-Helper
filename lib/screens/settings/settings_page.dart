@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart'; // 新增
 import '../login/login_page.dart';
@@ -16,6 +19,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String studentId = '';
   String college = '';
   late UserService _userService;
+  File? _imageFile;
 
   @override
   void initState() {
@@ -34,6 +38,48 @@ class _SettingsPageState extends State<SettingsPage> {
       });
     } catch (e) {
       print('获取用户信息失败: $e');
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      if (!mounted) return; // 添加这行检查
+
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        compressQuality: 100,
+        maxWidth: 256,
+        maxHeight: 256,
+        compressFormat: ImageCompressFormat.png,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: '裁剪图片',
+            toolbarColor: Theme.of(context).primaryColor,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(
+            title: '裁剪图片',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        if (!mounted) return; // 再次添加检查
+
+        setState(() {
+          _imageFile = File(croppedFile.path);
+        });
+        // 这里可以添加上传图片到服务器的逻辑
+        // await _userService.uploadAvatar(_imageFile);
+      }
     }
   }
 
@@ -58,12 +104,23 @@ class _SettingsPageState extends State<SettingsPage> {
                     padding: EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Theme.of(context).primaryColor,
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: TextStyle(fontSize: 32, color: Colors.white),
+                        GestureDetector(
+                          onTap: _pickImage,
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Theme.of(context).primaryColor,
+                            backgroundImage: _imageFile != null
+                                ? FileImage(_imageFile!)
+                                : null,
+                            child: _imageFile == null
+                                ? Text(
+                                    name.isNotEmpty
+                                        ? name[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                        fontSize: 32, color: Colors.white),
+                                  )
+                                : null,
                           ),
                         ),
                         SizedBox(height: 16),
