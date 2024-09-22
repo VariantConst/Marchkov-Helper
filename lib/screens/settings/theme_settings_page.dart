@@ -38,7 +38,6 @@ class ThemeSettingsPage extends StatelessWidget {
     final isSelected = themeProvider.themeMode == themeMode;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // 定义文字颜色逻辑
     Color textColor;
     if (isSelected) {
       textColor = isDarkMode ? Colors.white : Theme.of(context).primaryColor;
@@ -48,89 +47,94 @@ class ThemeSettingsPage extends StatelessWidget {
 
     return Column(
       children: [
-        InkWell(
-          onTap: () => themeProvider.setThemeMode(themeMode),
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.7, // 缩小到70%的屏幕宽度
-            height: MediaQuery.of(context).size.width * 0.7 * 9 / 16,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                children: [
-                  ColorFiltered(
-                    colorFilter: ColorFilter.matrix(isSelected
-                        ? [
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                          ]
-                        : [
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0.2126,
-                            0.7152,
-                            0.0722,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                          ]),
-                    child: SvgPicture.asset(
-                      svgPath,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-                  ),
-                  if (isSelected)
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).primaryColor,
-                          width: 4,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
+        AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          width: MediaQuery.of(context).size.width * 0.7,
+          height: MediaQuery.of(context).size.width * 0.7 * 9 / 16,
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => themeProvider.setThemeMode(themeMode),
+                child: Stack(
+                  children: [
+                    ColorFiltered(
+                      colorFilter: ColorFilter.matrix(isSelected
+                          ? [
+                              1,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              1,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              1,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              1,
+                              0
+                            ]
+                          : [
+                              0.2126,
+                              0.7152,
+                              0.0722,
+                              0,
+                              0,
+                              0.2126,
+                              0.7152,
+                              0.0722,
+                              0,
+                              0,
+                              0.2126,
+                              0.7152,
+                              0.0722,
+                              0,
+                              0,
+                              0,
+                              0,
+                              0,
+                              1,
+                              0
+                            ]),
+                      child: SvgPicture.asset(
+                        svgPath,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
                     ),
-                ],
+                    if (isSelected)
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context).primaryColor,
+                            width: 4,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

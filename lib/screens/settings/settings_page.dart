@@ -43,66 +43,100 @@ class _SettingsPageState extends State<SettingsPage> {
     Provider.of<ThemeProvider>(context); // 修改这一行
 
     return Scaffold(
-      appBar: AppBar(title: Text('设置')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Column(
                       children: [
-                        Text(name,
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Theme.of(context).primaryColor,
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                            style: TextStyle(fontSize: 32, color: Colors.white),
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          name,
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
                         SizedBox(height: 8),
-                        Text(college, style: TextStyle(fontSize: 16)),
+                        Text(
+                          college,
+                          style:
+                              TextStyle(fontSize: 18, color: Colors.grey[600]),
+                        ),
                         SizedBox(height: 8),
-                        Text(studentId, style: TextStyle(fontSize: 16)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.school,
+                                size: 20, color: Colors.grey[600]),
+                            SizedBox(width: 8),
+                            Text(
+                              studentId,
+                              style: TextStyle(
+                                  fontSize: 16, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                    IconButton(
-                      icon: Icon(Icons.exit_to_app),
-                      onPressed: () {
-                        authProvider.logout();
-                        Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(builder: (_) => LoginPage()));
-                      },
-                      tooltip: '退出登录',
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                SizedBox(height: 16),
+                // 主题设置按钮
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ThemeSettingsPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    minimumSize: Size(double.infinity, 50),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('主题设置'),
+                      Icon(Icons.arrow_forward_ios),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+                // 退出登录按钮
+                ElevatedButton.icon(
+                  icon: Icon(Icons.exit_to_app),
+                  label: Text('退出登录'),
+                  onPressed: () {
+                    authProvider.logout();
+                    Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => LoginPage()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    minimumSize: Size(double.infinity, 50),
+                    backgroundColor: Colors.red,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            // 新增主题设置按钮
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ThemeSettingsPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                minimumSize: Size(double.infinity, 50),
-              ),
-              child: Row(
-                // 将 child 移到最后
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('主题设置'),
-                  Icon(Icons.arrow_forward_ios),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
