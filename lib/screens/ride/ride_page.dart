@@ -33,7 +33,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   void initState() {
     super.initState();
-    // 仅在初始时设定方向，不在刷新时改变方向
+    // 仅在初始时设定向，不在刷新时改变方向
     _setDirectionBasedOnTime(DateTime.now());
     _initialize(); // 异步初始化
   }
@@ -126,7 +126,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     } else if (_isRefreshing) {
       // 在下拉刷新时，不改变任何加载状态
     } else if (_isToggleLoading) {
-      // 在切换方向时，不改变任何加载状态
+      // 在切换方向，不改变任何加载状态
     }
 
     final reservationProvider =
@@ -314,16 +314,31 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
 
+    // 获取底部安全区域的高度
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    // 估计底部导航栏的高度（通常是56）
+    const bottomNavBarHeight = 56.0;
+
     return Scaffold(
       body: _isInitialLoading
           ? Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _onRefresh,
-              child: Center(
-                child: SingleChildScrollView(
-                  physics: AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-                  child: _buildCard(),
+              child: SafeArea(
+                bottom: false, // 不考虑底部安全区域
+                child: Center(
+                  child: SingleChildScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 40,
+                      bottom: 40 +
+                          bottomNavBarHeight +
+                          bottomPadding, // 考虑底部导航栏和安全区域
+                    ),
+                    child: _buildCard(),
+                  ),
                 ),
               ),
             ),
@@ -335,8 +350,12 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         _errorMessage == '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
 
     return Card(
-      elevation: 10,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 6, // 降低阴影高度
+      shadowColor: Colors.black.withOpacity(0.1), // 使用半透明的黑色作为阴影颜色
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -371,6 +390,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Center(
         child: Text(
