@@ -40,7 +40,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final themeProvider = Provider.of<ThemeProvider>(context); // 修改这一行
+    Provider.of<ThemeProvider>(context); // 修改这一行
 
     return Scaffold(
       appBar: AppBar(title: Text('设置')),

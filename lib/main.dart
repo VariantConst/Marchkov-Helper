@@ -22,6 +22,12 @@ void main() {
       child: MyApp(),
     ),
   );
+
+  // 添加全局错误处理
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint(details.toString());
+  };
 }
 
 class MyApp extends StatelessWidget {

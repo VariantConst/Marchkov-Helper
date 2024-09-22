@@ -514,7 +514,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   Widget _buildReverseButton(Color buttonColor, Color textColor) {
-    return Container(
+    return SizedBox(
       width: 220,
       height: 48,
       child: ElevatedButton(
