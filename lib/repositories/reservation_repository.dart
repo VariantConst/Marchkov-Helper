@@ -15,4 +15,12 @@ class ReservationRepository {
   Future<List<BusRoute>> getBusRoutes(int hallId, String time) {
     return _reservationService.fetchBusRoutes(hallId, time);
   }
+
+  Future<List<dynamic>> fetchMyReservations() {
+    return _reservationService.fetchMyReservations();
+  }
+
+  Future<String> getReservationQRCode(String id, String hallAppointmentDataId) {
+    return _reservationService.getReservationQRCode(id, hallAppointmentDataId);
+  }
 }

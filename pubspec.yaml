@@ -45,6 +45,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   material_design_icons_flutter: ^5.0.6595
+  qr_flutter: ^4.0.0
 
 dev_dependencies:
   flutter_test:

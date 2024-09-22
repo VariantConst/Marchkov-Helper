@@ -165,6 +165,7 @@ class ReservationService {
     }
   }
 
+  // 添加获取用户预约列表的方法
   Future<List<dynamic>> fetchMyReservations() async {
     final uri = Uri.parse(
       'https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=2&sort_time=true&sort=asc',
@@ -181,6 +182,32 @@ class ReservationService {
       final data = json.decode(response.body);
       if (data['e'] == 0) {
         return data['d']['data'];
+      } else {
+        throw Exception(data['m']);
+      }
+    } else {
+      throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
+  }
+
+  // 添加获取二维码的方法
+  Future<String> getReservationQRCode(
+      String id, String hallAppointmentDataId) async {
+    final uri = Uri.parse(
+      'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?id=$id&type=0&hall_appointment_data_id=$hallAppointmentDataId',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['e'] == 0) {
+        return data['d']['code'];
       } else {
         throw Exception(data['m']);
       }

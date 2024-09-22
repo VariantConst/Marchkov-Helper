@@ -12,7 +12,8 @@ void main() {
         ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ReservationProvider>(
           create: (context) => ReservationProvider(
-              Provider.of<AuthProvider>(context, listen: false)),
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
           update: (context, auth, previous) => ReservationProvider(auth),
         ),
       ],
