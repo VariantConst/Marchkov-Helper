@@ -37,7 +37,7 @@ class DepartureTimeBarChart extends StatelessWidget {
                       interval: 1,
                       getTitlesWidget: (double value, TitleMeta meta) {
                         return Text(
-                          value.toInt().toString(),
+                          value.toInt().abs().toString(),
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 10,
@@ -77,8 +77,22 @@ class DepartureTimeBarChart extends StatelessWidget {
                 gridData: FlGridData(show: true),
                 borderData: FlBorderData(show: false),
                 barGroups: data['barGroups'],
+                // 添加图例
+                extraLinesData: ExtraLinesData(horizontalLines: [
+                  HorizontalLine(y: 0, color: Colors.black, strokeWidth: 1),
+                ]),
               ),
             ),
+          ),
+          SizedBox(height: 8),
+          // 添加自定义图例
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              LegendItem(color: Colors.redAccent, text: '去昌平'),
+              SizedBox(width: 16),
+              LegendItem(color: Colors.blueAccent, text: '去燕园'),
+            ],
           ),
         ],
       ),
@@ -93,9 +107,20 @@ class DepartureTimeBarChart extends StatelessWidget {
       DateTime appointmentTime = DateTime.parse(ride.appointmentTime);
       int hour = appointmentTime.hour;
 
-      if (ride.resourceName.contains('燕园')) {
+      String resourceName = ride.resourceName;
+      int indexYan = resourceName.indexOf('燕');
+      int indexXin = resourceName.indexOf('新');
+
+      if (indexYan == -1 || indexXin == -1) {
+        // 无法判断方向，跳过
+        continue;
+      }
+
+      if (indexXin < indexYan) {
+        // 去燕园
         toYanyuan[hour] = (toYanyuan[hour] ?? 0) + 1;
-      } else if (ride.resourceName.contains('昌平')) {
+      } else if (indexYan < indexXin) {
+        // 去昌平
         toChangping[hour] = (toChangping[hour] ?? 0) + 1;
       }
     }
@@ -109,25 +134,26 @@ class DepartureTimeBarChart extends StatelessWidget {
       int toYanyuanCount = toYanyuan[i] ?? 0;
       int toChangpingCount = toChangping[i] ?? 0;
 
-      if (toYanyuanCount > maxY) maxY = toYanyuanCount.toDouble();
-      if (-toChangpingCount < minY) minY = -toChangpingCount.toDouble();
+      // 调整最大最小值
+      if (toChangpingCount > maxY) maxY = toChangpingCount.toDouble();
+      if (-toYanyuanCount < minY) minY = -toYanyuanCount.toDouble();
 
       barGroups.add(
         BarChartGroupData(
           x: i,
           barRods: [
-            // 去燕园（正值）
+            // 去昌平（正值）
             BarChartRodData(
               fromY: 0,
-              toY: toYanyuanCount.toDouble(),
-              color: Colors.blueAccent,
+              toY: toChangpingCount.toDouble(),
+              color: Colors.redAccent,
               width: 8,
             ),
-            // 去昌平（负值）
+            // 去燕园（负值）
             BarChartRodData(
               fromY: 0,
-              toY: -toChangpingCount.toDouble(),
-              color: Colors.redAccent,
+              toY: -toYanyuanCount.toDouble(),
+              color: Colors.blueAccent,
               width: 8,
             ),
           ],
@@ -144,5 +170,24 @@ class DepartureTimeBarChart extends StatelessWidget {
       'maxY': maxY,
       'minY': minY,
     };
+  }
+}
+
+// 添加图例项组件
+class LegendItem extends StatelessWidget {
+  final Color color;
+  final String text;
+
+  LegendItem({required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 16, height: 16, color: color),
+        SizedBox(width: 4),
+        Text(text),
+      ],
+    );
   }
 }
