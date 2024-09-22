@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/ride_history_provider.dart';
 import '../../models/ride_info.dart';
-import 'ride_calendar_card.dart'; // 新增
+// import 'ride_calendar_card.dart'; // 暂时注释掉
 
 class VisualizationSettingsPage extends StatefulWidget {
   @override
@@ -29,11 +29,16 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
       appBar: AppBar(
         title: Text('可视化设置'),
       ),
-      body: rideHistoryProvider.isLoading
-          ? Center(child: CircularProgressIndicator())
-          : rideHistoryProvider.error != null
-              ? Center(child: Text('加载乘车历史失败: ${rideHistoryProvider.error}'))
-              : _buildRideHistoryStats(rideHistoryProvider.rides),
+      body: Column(
+        children: [
+          rideHistoryProvider.isLoading
+              ? Center(child: CircularProgressIndicator())
+              : rideHistoryProvider.error != null
+                  ? Center(
+                      child: Text('加载乘车历史失败: ${rideHistoryProvider.error}'))
+                  : _buildRideHistoryStats(rideHistoryProvider.rides),
+        ],
+      ),
     );
   }
 
@@ -57,18 +62,19 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
             ),
           ),
           SizedBox(height: 16),
-          Expanded(
-            child: Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              elevation: 4,
-              child: Padding(
-                padding: EdgeInsets.all(8.0),
-                child: RideCalendarCard(rides: rides),
-              ),
-            ),
-          ),
+          // 暂时注释掉乘车日历卡片
+          // Expanded(
+          //   child: Card(
+          //     shape: RoundedRectangleBorder(
+          //       borderRadius: BorderRadius.circular(16.0),
+          //     ),
+          //     elevation: 4,
+          //     child: Padding(
+          //       padding: EdgeInsets.all(8.0),
+          //       child: RideCalendarCard(rides: rides),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

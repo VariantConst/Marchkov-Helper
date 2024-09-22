@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart'; // 添加此行
 import '../../models/ride_info.dart';
 
 class RideCalendarCard extends StatefulWidget {
@@ -12,9 +13,10 @@ class RideCalendarCard extends StatefulWidget {
 }
 
 class RideCalendarCardState extends State<RideCalendarCard> {
-  late Map<DateTime, List<RideInfo>> _groupedRides;
+  late Map<String, List<RideInfo>> _groupedRides;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
   void initState() {
@@ -26,61 +28,47 @@ class RideCalendarCardState extends State<RideCalendarCard> {
   void _groupEvents(List<RideInfo> rides) {
     _groupedRides = {};
     for (var ride in rides) {
-      DateTime rideDate = DateTime.parse(ride.appointmentTime.split(' ')[0]);
-      if (_groupedRides[rideDate] == null) _groupedRides[rideDate] = [];
-      _groupedRides[rideDate]!.add(ride);
+      String rideDateKey =
+          ride.appointmentTime.split(' ')[0]; // 提取 'yyyy-MM-dd'
+      if (_groupedRides[rideDateKey] == null) _groupedRides[rideDateKey] = [];
+      _groupedRides[rideDateKey]!.add(ride);
     }
   }
 
   List<RideInfo> _getEventsForDay(DateTime date) {
-    return _groupedRides[date] ?? [];
+    String key = DateFormat('yyyy-MM-dd').format(date); // 转换为 'yyyy-MM-dd' 格式
+    return _groupedRides[key] ?? [];
   }
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          TableCalendar<RideInfo>(
-            firstDay: _getFirstDay(),
-            lastDay: _getLastDay(),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            eventLoader: _getEventsForDay,
-            startingDayOfWeek: StartingDayOfWeek.monday,
-            calendarFormat: CalendarFormat.month,
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-            },
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, date, events) {
-                if (events.isNotEmpty) {
-                  return Positioned(
-                    bottom: 1,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  );
-                }
-                return null;
-              },
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          // 使用 Expanded 包裹列表，确保其填充剩余空间
-          Expanded(
-            child: _buildRideList(),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        TableCalendar<RideInfo>(
+          firstDay: _getFirstDay(),
+          lastDay: _getLastDay(),
+          focusedDay: _focusedDay,
+          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+          eventLoader: _getEventsForDay,
+          startingDayOfWeek: StartingDayOfWeek.monday,
+          calendarFormat: _calendarFormat,
+          onFormatChanged: (format) {
+            setState(() {
+              _calendarFormat = format;
+            });
+          },
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+        ),
+        const SizedBox(height: 8.0),
+        Expanded(
+          child: _buildRideList(),
+        ),
+      ],
     );
   }
 
