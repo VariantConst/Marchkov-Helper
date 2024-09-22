@@ -4,6 +4,7 @@ import '../../providers/reservation_provider.dart';
 import '../../models/reservation.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/reservation_service.dart';
+import 'package:geolocator/geolocator.dart'; // 添加此行
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -23,14 +24,94 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   String _routeName = '';
   String _codeType = '';
 
-  late bool _isGoingToYanyuan; // 新增变量
+  late bool _isGoingToYanyuan;
 
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _isGoingToYanyuan = now.hour < 12; // 根据当前时间设置默认方向
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadRideData());
+    _setDirectionBasedOnTime(DateTime.now()); // 同步初始化
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initialize());
+  }
+
+  Future<void> _initialize() async {
+    bool locationAvailable = await _determinePosition();
+    if (locationAvailable) {
+      await _setDirectionBasedOnLocation();
+    } else {
+      _setDirectionBasedOnTime(DateTime.now());
+    }
+    _loadRideData();
+  }
+
+  Future<bool> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // 检查位置服务是否启用
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // 位置服务未启用
+      return false;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      // 请求权限
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // 用户拒绝授予权限
+        return false;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // 用户永久拒绝授予权限
+      return false;
+    }
+
+    // 权限已获取
+    return true;
+  }
+
+  Future<void> _setDirectionBasedOnLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+
+      // 燕园和新校区的坐标
+      const yanyuanLat = 39.990855;
+      const yanyuanLon = 116.310715;
+      const xinxiaoquLat = 40.177515;
+      const xinxiaoquLon = 116.164635;
+
+      double distanceToYanyuan = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        yanyuanLat,
+        yanyuanLon,
+      );
+
+      double distanceToXinxiaoqu = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        xinxiaoquLat,
+        xinxiaoquLon,
+      );
+
+      setState(() {
+        // 用户离哪个地点近，认为他在那个地点，方向为前往另一个地点
+        _isGoingToYanyuan = distanceToYanyuan > distanceToXinxiaoqu;
+      });
+    } catch (e) {
+      // 获取位置失败，使用时间推测
+      final now = DateTime.now();
+      _setDirectionBasedOnTime(now);
+    }
+  }
+
+  void _setDirectionBasedOnTime(DateTime now) {
+    setState(() {
+      _isGoingToYanyuan = now.hour < 12; // 根据当前时间设置默认方向
+    });
   }
 
   void _toggleDirection() {

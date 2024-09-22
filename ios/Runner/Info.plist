@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- 添加位置权限描述 -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>需要您的位置信息以确定校区方向</string>
 </dict>
 </plist>
