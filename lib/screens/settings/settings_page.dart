@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart'; // 新增
@@ -19,13 +20,14 @@ class _SettingsPageState extends State<SettingsPage> {
   String studentId = '';
   String college = '';
   late UserService _userService;
-  File? _imageFile;
+  String? _avatarPath; // 修改：存储头像的本地路径
 
   @override
   void initState() {
     super.initState();
     _userService = UserService(context.read<AuthProvider>());
     fetchUserInfo();
+    _loadAvatarPath(); // 新增：加载保存的头像路径
   }
 
   Future<void> fetchUserInfo() async {
@@ -39,6 +41,18 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       print('获取用户信息失败: $e');
     }
+  }
+
+  Future<void> _loadAvatarPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _avatarPath = prefs.getString('avatarPath');
+    });
+  }
+
+  Future<void> _saveAvatarPath(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('avatarPath', path);
   }
 
   Future<void> _pickImage() async {
@@ -75,10 +89,9 @@ class _SettingsPageState extends State<SettingsPage> {
         if (!mounted) return; // 再次添加检查
 
         setState(() {
-          _imageFile = File(croppedFile.path);
+          _avatarPath = croppedFile.path;
         });
-        // 这里可以添加上传图片到服务器的逻辑
-        // await _userService.uploadAvatar(_imageFile);
+        await _saveAvatarPath(croppedFile.path); // 保存头像路径
       }
     }
   }
@@ -96,58 +109,84 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               children: [
                 Card(
-                  elevation: 4,
+                  elevation: 8,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
+                  child: Container(
+                    width: double.infinity, // 设置卡片宽度为无限
+                    padding: EdgeInsets.all(24.0),
                     child: Column(
                       children: [
                         GestureDetector(
                           onTap: _pickImage,
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Theme.of(context).primaryColor,
-                            backgroundImage: _imageFile != null
-                                ? FileImage(_imageFile!)
-                                : null,
-                            child: _imageFile == null
-                                ? Text(
-                                    name.isNotEmpty
-                                        ? name[0].toUpperCase()
-                                        : '?',
-                                    style: TextStyle(
-                                        fontSize: 32, color: Colors.white),
-                                  )
-                                : null,
+                          child: Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.8),
+                                backgroundImage: _avatarPath != null
+                                    ? FileImage(File(_avatarPath!))
+                                    : null,
+                                child: _avatarPath == null
+                                    ? Text(
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : '?',
+                                        style: TextStyle(
+                                            fontSize: 48, color: Colors.white),
+                                      )
+                                    : null,
+                              ),
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Theme.of(context).primaryColor,
+                                child: Icon(Icons.camera_alt,
+                                    color: Colors.white, size: 20),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 16),
+                        SizedBox(height: 24),
                         Text(
                           name,
                           style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold),
+                              fontSize: 26, fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 8),
+                        SizedBox(height: 12),
                         Text(
                           college,
                           style:
-                              TextStyle(fontSize: 18, color: Colors.grey[600]),
+                              TextStyle(fontSize: 20, color: Colors.grey[700]),
                         ),
-                        SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.school,
-                                size: 20, color: Colors.grey[600]),
-                            SizedBox(width: 8),
-                            Text(
-                              studentId,
-                              style: TextStyle(
-                                  fontSize: 16, color: Colors.grey[600]),
-                            ),
-                          ],
+                        SizedBox(height: 16),
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color:
+                                Theme.of(context).primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.school,
+                                  size: 24,
+                                  color: Theme.of(context).primaryColor),
+                              SizedBox(width: 8),
+                              Text(
+                                studentId,
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    color: Theme.of(context).primaryColor,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
