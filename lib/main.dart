@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/reservation_provider.dart';
+import 'providers/ride_provider.dart';
 import 'screens/login/login_page.dart';
 import 'screens/main/main_page.dart';
+import 'services/reservation_service.dart'; // 添加这行
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => AuthProvider()),
-        ChangeNotifierProxyProvider<AuthProvider, ReservationProvider>(
-          create: (context) => ReservationProvider(
-            Provider.of<AuthProvider>(context, listen: false),
-          ),
-          update: (context, auth, previous) => ReservationProvider(auth),
-        ),
+        ChangeNotifierProvider(
+            create: (context) => ReservationProvider(
+                Provider.of<AuthProvider>(context, listen: false))),
+        ChangeNotifierProvider(
+            create: (context) => RideProvider(
+                  Provider.of<ReservationProvider>(context, listen: false),
+                  ReservationService(
+                      Provider.of<AuthProvider>(context, listen: false)),
+                )),
       ],
       child: MyApp(),
     ),
