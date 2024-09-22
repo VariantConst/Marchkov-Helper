@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/ride_history_provider.dart';
 import '../../models/ride_info.dart';
-// import 'ride_calendar_card.dart'; // 暂时注释掉
 
 class VisualizationSettingsPage extends StatefulWidget {
   @override
@@ -62,19 +61,6 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
             ),
           ),
           SizedBox(height: 16),
-          // 暂时注释掉乘车日历卡片
-          // Expanded(
-          //   child: Card(
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(16.0),
-          //     ),
-          //     elevation: 4,
-          //     child: Padding(
-          //       padding: EdgeInsets.all(8.0),
-          //       child: RideCalendarCard(rides: rides),
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
