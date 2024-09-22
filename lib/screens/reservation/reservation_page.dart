@@ -29,13 +29,12 @@ class _ReservationPageState extends State<ReservationPage> {
     super.initState();
     _selectedDate = DateTime.now();
     _weekDates = _getWeekDates();
-    _loadReservationData();
     _calendarController = PageController(
       initialPage: _currentPage,
       viewportFraction: 0.2,
     );
     _mainPageController = PageController(initialPage: _currentPage);
-    _loadMyReservations();
+    _loadReservationData(); // 只需调用一次
   }
 
   @override
@@ -71,6 +70,15 @@ class _ReservationPageState extends State<ReservationPage> {
       final cachedBusDataString = prefs.getString('cachedBusData');
       if (cachedBusDataString != null) {
         final cachedBusData = jsonDecode(cachedBusDataString);
+
+        // 尝试从缓存中加载已预约班车列表
+        final cachedReservedBusesString =
+            prefs.getString('cachedReservedBuses');
+        if (cachedReservedBusesString != null) {
+          _reservedBuses =
+              Map<String, dynamic>.from(jsonDecode(cachedReservedBusesString));
+        }
+
         setState(() {
           _busList = cachedBusData;
           _filterBusList();
@@ -105,6 +113,9 @@ class _ReservationPageState extends State<ReservationPage> {
 
       // 更新缓存
       await _cacheBusData();
+
+      // 获取最新的已预约班车列表并更新缓存
+      await _fetchAndCacheMyReservations();
     } catch (e) {
       setState(() {
         _errorMessage = '加载失败: $e';
@@ -121,7 +132,7 @@ class _ReservationPageState extends State<ReservationPage> {
     await prefs.setString('cachedDate', todayString);
   }
 
-  Future<void> _loadMyReservations() async {
+  Future<void> _fetchAndCacheMyReservations() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
@@ -131,8 +142,7 @@ class _ReservationPageState extends State<ReservationPage> {
         _reservedBuses.clear();
         for (var reservation in reservations) {
           String resourceId = reservation['resource_id'].toString();
-          String appointmentTime =
-              reservation['appointment_tim'].trim(); // 去除前导空格
+          String appointmentTime = reservation['appointment_tim'].trim();
           String key = '$resourceId$appointmentTime';
           _reservedBuses[key] = {
             'id': reservation['id'],
@@ -140,9 +150,18 @@ class _ReservationPageState extends State<ReservationPage> {
           };
         }
       });
+      // 更新缓存
+      await _cacheReservedBuses();
     } catch (e) {
       print('加载已预约班车失败: $e');
     }
+  }
+
+  // 添加��于缓存已预约班车列表的函数
+  Future<void> _cacheReservedBuses() async {
+    final prefs = await SharedPreferences.getInstance();
+    final reservedBusesString = jsonEncode(_reservedBuses);
+    await prefs.setString('cachedReservedBuses', reservedBusesString);
   }
 
   void _onBusCardTap(Map<String, dynamic> busData) async {
@@ -169,6 +188,9 @@ class _ReservationPageState extends State<ReservationPage> {
           // 移除高亮状态，删除相关属性
           _reservedBuses.remove(key);
         });
+
+        // 更新缓存
+        await _cacheReservedBuses();
       } catch (e) {
         _showErrorDialog('取消预约失败', e.toString());
       }
@@ -176,7 +198,7 @@ class _ReservationPageState extends State<ReservationPage> {
       // 未预约，执行预约
       try {
         await reservationService.makeReservation(resourceId, date, period);
-        await _loadMyReservations();
+        await _fetchAndCacheMyReservations();
       } catch (e) {
         _showErrorDialog('预约失败', e.toString());
       }
