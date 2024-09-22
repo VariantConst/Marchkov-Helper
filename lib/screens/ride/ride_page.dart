@@ -20,14 +20,15 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   bool get wantKeepAlive => true;
 
   String? _qrCode;
-  bool _isLoading = true;
+  bool _isInitialLoading = true; // 初次加载的加载状态
+  bool _isRefreshing = false; // 下拉刷新状态
+  bool _isToggleLoading = false; // 切换方向的加载状态
   String _errorMessage = '';
   String _departureTime = '';
   String _routeName = '';
   String _codeType = '';
 
   bool _isGoingToYanyuan = true; // 给定初始值
-  bool _isToggleLoading = false; // 新增状态变量，表示是否正在切换方向
 
   @override
   void initState() {
@@ -42,7 +43,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     if (locationAvailable) {
       await _setDirectionBasedOnLocation();
     }
-    _loadRideData();
+    await _loadRideData(isInitialLoad: true); // 传入参数，表示初次加载
   }
 
   Future<bool> _determinePosition() async {
@@ -116,23 +117,18 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     _isGoingToYanyuan = now.hour < 12;
   }
 
-  void _toggleDirection() async {
-    setState(() {
-      _isToggleLoading = true; // 开始切换方向，按钮显示加载状态
-      _isGoingToYanyuan = !_isGoingToYanyuan; // 切换方向
-      _errorMessage = ''; // 清空错误信息
-    });
-    await _loadRideData(); // 重新加载数据
-    setState(() {
-      _isToggleLoading = false; // 完成切换，按钮恢复可用
-    });
-  }
+  Future<void> _loadRideData({bool isInitialLoad = false}) async {
+    if (isInitialLoad) {
+      setState(() {
+        _isInitialLoading = true; // 初次加载时设置为 true
+        _errorMessage = ''; // 清空错误信息
+      });
+    } else if (_isRefreshing) {
+      // 在下拉刷新时，不改变任何加载状态
+    } else if (_isToggleLoading) {
+      // 在切换方向时，不改变任何加载状态
+    }
 
-  Future<void> _loadRideData() async {
-    setState(() {
-      _isLoading = true; // 开始加载数据
-      _errorMessage = ''; // 清空错误信息
-    });
     final reservationProvider =
         Provider.of<ReservationProvider>(context, listen: false);
     final reservationService =
@@ -162,20 +158,32 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
             _departureTime = tempCode['departureTime']!;
             _routeName = tempCode['routeName']!;
             _codeType = '临时码';
-            _isLoading = false;
           });
         } else {
           setState(() {
             _errorMessage = '这会没有班车可坐😅';
-            _isLoading = false;
           });
         }
       }
     } catch (e) {
       setState(() {
         _errorMessage = '加载数据时出错: $e';
-        _isLoading = false;
       });
+    } finally {
+      // 确保在所有情况下都重置加载状态
+      if (isInitialLoad) {
+        setState(() {
+          _isInitialLoading = false;
+        });
+      } else if (_isRefreshing) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      } else if (_isToggleLoading) {
+        setState(() {
+          _isToggleLoading = false;
+        });
+      }
     }
   }
 
@@ -191,12 +199,10 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         _departureTime = reservation.appointmentTime;
         _routeName = reservation.resourceName;
         _codeType = '乘车码';
-        _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = '获取二维码时出错: $e';
-        _isLoading = false;
       });
     }
   }
@@ -287,48 +293,61 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
+  Future<void> _onRefresh() async {
+    setState(() {
+      _isRefreshing = true; // 开始刷新
+      _errorMessage = ''; // 清空错误信息
+    });
+    await _loadRideData(); // 不传入参数，使用默认值 isInitialLoad = false
+  }
+
+  void _toggleDirection() async {
+    setState(() {
+      _isToggleLoading = true; // 开始切换方向，按钮显示加载状态
+      _isGoingToYanyuan = !_isGoingToYanyuan; // 切换方向
+      _errorMessage = ''; // 清空错误信息
+    });
+    await _loadRideData(); // 不传入参数，使用默认值
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _onRefresh,
-        child: ListView(
-          physics: AlwaysScrollableScrollPhysics(),
-          children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height - kToolbarHeight,
-              child: Center(
-                child: _errorMessage.isNotEmpty
-                    ? Text(_errorMessage)
-                    : _buildQRCodeDisplay(),
+      body: _isInitialLoading
+          ? Center(child: CircularProgressIndicator()) // 初次加载时显示加载指示器
+          : RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: ListView(
+                physics: AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height - kToolbarHeight,
+                    child: Center(
+                      child: _errorMessage.isNotEmpty
+                          ? Text(_errorMessage)
+                          : _buildQRCodeDisplay(),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
-  }
-
-  Future<void> _onRefresh() async {
-    await _loadRideData(); // 刷新数据
   }
 
   Widget _buildQRCodeDisplay() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            QrImageView(
-              data: _qrCode!,
-              size: 200.0,
-            ),
-            if (_isLoading) CircularProgressIndicator(), // 在二维码上方显示加载指示器
-          ],
-        ),
+        // 检查 _qrCode 是否为 null，避免空值异常
+        if (_qrCode != null && _qrCode!.isNotEmpty)
+          QrImageView(
+            data: _qrCode!,
+            size: 200.0,
+          )
+        else
+          Text('暂无二维码'),
         SizedBox(height: 20),
         Text(
           _departureTime,
