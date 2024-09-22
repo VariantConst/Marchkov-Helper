@@ -167,6 +167,23 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
+  // 添加一个函数来判断班车是否为今天
+  bool _isToday(String dateStr) {
+    DateTime busDate = DateTime.parse(dateStr);
+    DateTime now = DateTime.now();
+    return busDate.year == now.year &&
+        busDate.month == now.month &&
+        busDate.day == now.day;
+  }
+
+  // 添加一个函数来判断班车是否已经过期
+  bool _isBusInPast(Map<String, dynamic> busData) {
+    String dateStr = busData['abscissa']; // 日期
+    String timeStr = busData['yaxis']; // 时间
+    DateTime busDateTime = DateTime.parse("$dateStr $timeStr");
+    return busDateTime.isBefore(DateTime.now());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -357,11 +374,19 @@ class _ReservationPageState extends State<ReservationPage> {
               itemBuilder: (context, index) {
                 var busData = buses[index];
                 bool isReserved = _isBusReserved(busData);
+                bool isPast = false;
+
+                // 如果是今天的班车，检查是否过期
+                if (_isToday(busData['abscissa'])) {
+                  isPast = _isBusInPast(busData);
+                }
+
                 return BusRouteCard(
                   busData: busData,
                   isReserved: isReserved,
-                  onTap: () => _onBusCardTap(busData),
-                  onLongPress: () => _onBusCardLongPress(busData), // 添加长按事件
+                  isPast: isPast, // 传递是否过期的信息
+                  onTap: isPast ? null : () => _onBusCardTap(busData),
+                  onLongPress: () => _onBusCardLongPress(busData), // 长按显示详情
                 );
               },
             ),

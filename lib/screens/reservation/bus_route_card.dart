@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 
 class BusRouteCard extends StatelessWidget {
   final Map<String, dynamic> busData;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress; // 添加可选的 onLongPress 参数
+  final VoidCallback? onTap; // 将 onTap 改为可空类型
+  final VoidCallback? onLongPress;
   final bool isReserved;
+  final bool isPast; // 新增 isPast 参数
 
   const BusRouteCard({
     Key? key,
     required this.busData,
-    required this.onTap,
+    this.onTap, // 修改为可空类型
     this.onLongPress,
     this.isReserved = false,
+    this.isPast = false, // 初始化 isPast 参数
   }) : super(key: key);
 
   @override
@@ -19,8 +21,8 @@ class BusRouteCard extends StatelessWidget {
     String departureTime = busData['yaxis'] ?? '';
 
     return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress, // 添加长按事件
+      onTap: onTap, // 保持不变，onTap 已经是可空类型
+      onLongPress: onLongPress,
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
@@ -49,7 +51,11 @@ class BusRouteCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isReserved ? Colors.red : Theme.of(context).primaryColor,
+                color: isReserved
+                    ? Colors.red
+                    : isPast // 根据 isPast 改变文本颜色
+                        ? Colors.grey
+                        : Theme.of(context).primaryColor,
               ),
             ),
           ],
