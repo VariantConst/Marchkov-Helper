@@ -104,46 +104,52 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     if (reservationProvider.isLoadingQRCode) {
       return Center(child: CircularProgressIndicator());
     } else if (reservationProvider.qrCode != null) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          QrImageView(
-            data: reservationProvider.qrCode!,
-            version: QrVersions.auto,
-            size: 200.0,
-          ),
-          SizedBox(height: 20),
-          Text(
-            '预约：${reservations[_currentReservationIndex].resourceName}',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            '发车时间：${reservations[_currentReservationIndex].appointmentTime}',
-            style: TextStyle(fontSize: 16),
-          ),
-          SizedBox(height: 20),
-          if (reservations.length > 1)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: _currentReservationIndex > 0
-                      ? () => _switchReservation(
-                          reservationProvider, reservations, -1)
-                      : null,
-                  child: Text('上一个'),
-                ),
-                SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: _currentReservationIndex < reservations.length - 1
-                      ? () => _switchReservation(
-                          reservationProvider, reservations, 1)
-                      : null,
-                  child: Text('下一个'),
-                ),
-              ],
+      return Center(
+        // 添加这个 Center 组件
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            QrImageView(
+              data: reservationProvider.qrCode!,
+              version: QrVersions.auto,
+              size: 200.0,
             ),
-        ],
+            SizedBox(height: 20),
+            Text(
+              '预约：${reservations[_currentReservationIndex].resourceName}',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center, // 添加文本居中
+            ),
+            Text(
+              '发车时间：${reservations[_currentReservationIndex].appointmentTime}',
+              style: TextStyle(fontSize: 16),
+              textAlign: TextAlign.center, // 添加文本居中
+            ),
+            SizedBox(height: 20),
+            if (reservations.length > 1)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _currentReservationIndex > 0
+                        ? () => _switchReservation(
+                            reservationProvider, reservations, -1)
+                        : null,
+                    child: Text('上一个'),
+                  ),
+                  SizedBox(width: 20),
+                  ElevatedButton(
+                    onPressed:
+                        _currentReservationIndex < reservations.length - 1
+                            ? () => _switchReservation(
+                                reservationProvider, reservations, 1)
+                            : null,
+                    child: Text('下一个'),
+                  ),
+                ],
+              ),
+          ],
+        ),
       );
     } else {
       return Center(
