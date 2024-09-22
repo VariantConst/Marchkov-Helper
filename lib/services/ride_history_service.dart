@@ -95,10 +95,22 @@ class RideHistoryService {
 
   List<RideInfo> _mergeRides(List<RideInfo> cachedRides,
       List<RideInfo> newRides, DateTime lastFetchDate) {
-    // 过滤掉缓存中最后一次请求日期及之后的记录
+    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss'); // 指定日期格式
     final filteredCachedRides = cachedRides.where((ride) {
-      final rideDate = DateTime.parse(ride.appointmentTime);
-      return rideDate.isBefore(lastFetchDate);
+      try {
+        if (ride.appointmentTime.isEmpty) {
+          print('appointmentTime 为空，ride id: ${ride.id}');
+          return false;
+        }
+        // 尝试解析日期，并打印出正在解析的日期字符串
+        print('正在解析日期：${ride.appointmentTime}');
+        final rideDate = dateFormat.parse(ride.appointmentTime);
+        return rideDate.isBefore(lastFetchDate);
+      } catch (e) {
+        // 如果解析失败，打印无法解析的日期字符串、对应的 ride id 和错误信息
+        print('无法解析日期：${ride.appointmentTime}，ride id: ${ride.id}，错误信息：$e');
+        return false; // 或根据需要进行处理
+      }
     }).toList();
 
     // 创建一个 Map 以便合并

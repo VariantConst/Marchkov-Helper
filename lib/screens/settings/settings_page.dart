@@ -30,7 +30,7 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _userService = UserService(context.read<AuthProvider>());
     _loadUserInfo();
-    _loadAvatarPath();
+    _loadAvatarPath(); // 确保加载头像路径
   }
 
   Future<void> _loadUserInfo() async {
@@ -69,14 +69,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAvatarPath() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _avatarPath = prefs.getString('avatarPath');
-    });
+    final fileName = prefs.getString('avatarFileName');
+    if (fileName != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      setState(() {
+        _avatarPath = path.join(appDir.path, fileName);
+      });
+    }
   }
 
-  Future<void> _saveAvatarPath(String path) async {
+  Future<void> _saveAvatarFileName(String fileName) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('avatarPath', path);
+    await prefs.setString('avatarFileName', fileName);
   }
 
   Future<void> _pickImage() async {
@@ -115,6 +119,8 @@ class _SettingsPageState extends State<SettingsPage> {
         // 获取应用的文档目录
         final appDir = await getApplicationDocumentsDirectory();
         final fileName = path.basename(croppedFile.path);
+
+        // 将裁剪后的图片复制到文档目录
         final savedImage =
             await File(croppedFile.path).copy('${appDir.path}/$fileName');
 
@@ -122,7 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _avatarPath = savedImage.path;
         });
 
-        await _saveAvatarPath(savedImage.path); // 保存头像路径
+        await _saveAvatarFileName(fileName); // 保存头像文件名
       }
     }
   }
