@@ -53,12 +53,22 @@ class RideHistoryService {
   }
 
   Future<List<RideInfo>> _fetchRideHistory(String url) async {
+    // 打印请求的链接和参数
+    print('请求链接: $url');
+    print('请求头: ${{
+      'Cookie': _authProvider.cookies,
+    }}');
+
     final response = await http.get(
       Uri.parse(url),
       headers: {
         'Cookie': _authProvider.cookies,
       },
     );
+
+    // 打印响应状态码和返回值
+    print('响应状态码: ${response.statusCode}');
+    print('响应内容: ${response.body}');
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -95,22 +105,13 @@ class RideHistoryService {
 
   List<RideInfo> _mergeRides(List<RideInfo> cachedRides,
       List<RideInfo> newRides, DateTime lastFetchDate) {
-    final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss'); // 指定日期格式
+    // 使用字符串比较避免日期解析错误
+    final lastFetchTimeString =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(lastFetchDate);
+
+    // 过滤掉缓存中在 lastFetchDate 之后的记录
     final filteredCachedRides = cachedRides.where((ride) {
-      try {
-        if (ride.appointmentTime.isEmpty) {
-          print('appointmentTime 为空，ride id: ${ride.id}');
-          return false;
-        }
-        // 尝试解析日期，并打印出正在解析的日期字符串
-        print('正在解析日期：${ride.appointmentTime}');
-        final rideDate = dateFormat.parse(ride.appointmentTime);
-        return rideDate.isBefore(lastFetchDate);
-      } catch (e) {
-        // 如果解析失败，打印无法解析的日期字符串、对应的 ride id 和错误信息
-        print('无法解析日期：${ride.appointmentTime}，ride id: ${ride.id}，错误信息：$e');
-        return false; // 或根据需要进行处理
-      }
+      return ride.appointmentTime.compareTo(lastFetchTimeString) < 0;
     }).toList();
 
     // 创建一个 Map 以便合并

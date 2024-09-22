@@ -307,5 +307,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('studentId');
     await prefs.remove('college');
     await prefs.remove('avatarPath');
+    // 添加以下代码，清除历史乘车记录的缓存
+    await prefs.remove('cachedRideHistory');
   }
 }

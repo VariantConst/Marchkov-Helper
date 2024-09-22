@@ -15,11 +15,13 @@ class RideInfo {
 
   factory RideInfo.fromJson(Map<String, dynamic> json) {
     return RideInfo(
-      id: json['id'],
-      statusName: json['status_name'],
-      resourceName: json['resource_name'],
-      appointmentTime: json['appointment_time']?.trim() ?? '',
-      appointmentSignTime: json['appointment_sign_time']?.trim() ?? '',
+      id: json['id'] as int,
+      statusName: json['status_name'] as String,
+      resourceName: json['resource_name'] as String,
+      appointmentTime: (json['appointment_tim'] as String).trim(),
+      appointmentSignTime: json['appointment_sign_time'] != null
+          ? (json['appointment_sign_time'] as String).trim()
+          : null,
     );
   }
 
@@ -28,7 +30,7 @@ class RideInfo {
       'id': id,
       'status_name': statusName,
       'resource_name': resourceName,
-      'appointment_time': appointmentTime,
+      'appointment_tim': appointmentTime,
       'appointment_sign_time': appointmentSignTime,
     };
   }
