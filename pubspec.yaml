@@ -49,6 +49,7 @@ dependencies:
   flutter_svg: ^1.0.0 # 或更新的版本
   image_picker: ^0.8.7+5
   image_cropper: ^5.0.0 # 将这行更新为最新版本
+  path: ^1.8.2
 
 dev_dependencies:
   flutter_test:

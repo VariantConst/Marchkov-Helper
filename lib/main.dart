@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/reservation_provider.dart';
 import 'providers/theme_provider.dart'; // 新增
+import 'providers/ride_history_provider.dart'; // 新增
 import 'screens/login/login_page.dart';
 import 'screens/main/main_page.dart';
 
@@ -17,6 +18,12 @@ void main() {
             Provider.of<AuthProvider>(context, listen: false),
           ),
           update: (context, auth, previous) => ReservationProvider(auth),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, RideHistoryProvider>(
+          create: (context) => RideHistoryProvider(
+            Provider.of<AuthProvider>(context, listen: false),
+          ),
+          update: (context, auth, previous) => RideHistoryProvider(auth),
         ),
       ],
       child: MyApp(),
