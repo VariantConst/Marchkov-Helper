@@ -11,7 +11,7 @@ import '../../providers/theme_provider.dart'; // 新增
 import '../login/login_page.dart';
 import '../../services/user_service.dart';
 import 'theme_settings_page.dart'; // 新增
-import 'visualization_page.dart'; // 新增
+import '../visualization/visualization_page.dart'; // 新增
 
 class SettingsPage extends StatefulWidget {
   @override
