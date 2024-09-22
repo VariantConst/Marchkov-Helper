@@ -9,6 +9,7 @@ import '../../providers/theme_provider.dart'; // 新增
 import '../login/login_page.dart';
 import '../../services/user_service.dart';
 import 'theme_settings_page.dart'; // 新增
+import 'visualization_settings_page.dart'; // 新增
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -26,8 +27,21 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _userService = UserService(context.read<AuthProvider>());
-    fetchUserInfo();
-    _loadAvatarPath(); // 新增：加载保存的头像路径
+    _loadUserInfo();
+    _loadAvatarPath();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      name = prefs.getString('name') ?? '';
+      studentId = prefs.getString('studentId') ?? '';
+      college = prefs.getString('college') ?? '';
+    });
+
+    if (name.isEmpty || studentId.isEmpty || college.isEmpty) {
+      await fetchUserInfo();
+    }
   }
 
   Future<void> fetchUserInfo() async {
@@ -38,9 +52,17 @@ class _SettingsPageState extends State<SettingsPage> {
         studentId = userInfo['studentId'] ?? '';
         college = userInfo['college'] ?? '';
       });
+      _saveUserInfo();
     } catch (e) {
       print('获取用户信息失败: $e');
     }
+  }
+
+  Future<void> _saveUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('name', name);
+    await prefs.setString('studentId', studentId);
+    await prefs.setString('college', college);
   }
 
   Future<void> _loadAvatarPath() async {
@@ -215,13 +237,39 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 SizedBox(height: 16),
+                // 可视化设置按钮
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => VisualizationSettingsPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    minimumSize: Size(double.infinity, 50),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('可视化设置'),
+                      Icon(Icons.arrow_forward_ios),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
                 // 退出登录按钮
                 ElevatedButton.icon(
                   icon: Icon(Icons.exit_to_app),
                   label: Text('退出登录'),
-                  onPressed: () {
-                    authProvider.logout();
-                    Navigator.of(context).pushReplacement(
+                  onPressed: () async {
+                    final navigator =
+                        Navigator.of(context); // 在异步操作前获取 navigator
+                    await _clearUserInfo();
+                    await authProvider.logout();
+                    if (!mounted) return; // 检查组件是否仍然挂载
+                    navigator.pushReplacement(
                         MaterialPageRoute(builder: (_) => LoginPage()));
                   },
                   style: ElevatedButton.styleFrom(
@@ -236,5 +284,13 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _clearUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('name');
+    await prefs.remove('studentId');
+    await prefs.remove('college');
+    await prefs.remove('avatarPath');
   }
 }
