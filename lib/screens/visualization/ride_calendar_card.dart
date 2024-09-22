@@ -34,13 +34,18 @@ class RideCalendarCardState extends State<RideCalendarCard> {
     _groupedRides = {};
     for (var ride in rides) {
       DateTime rideDate = DateTime.parse(ride.appointmentTime.split(' ')[0]);
+      // 将时间部分设置为零点
+      rideDate = DateTime(rideDate.year, rideDate.month, rideDate.day);
       if (_groupedRides[rideDate] == null) _groupedRides[rideDate] = [];
       _groupedRides[rideDate]!.add(ride);
     }
   }
 
   List<RideInfo> _getEventsForDay(DateTime date) {
-    return _groupedRides[date] ?? [];
+    DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+    print('查询日期：$normalizedDate');
+    print('已有事件日期：${_groupedRides.keys}');
+    return _groupedRides[normalizedDate] ?? [];
   }
 
   DateTime _getFirstDay() {
