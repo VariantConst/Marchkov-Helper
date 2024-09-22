@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
 import 'bus_route_card.dart';
@@ -60,6 +62,29 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   Future<void> _loadReservationData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedDate = prefs.getString('cachedDate');
+    final todayString = DateTime.now().toIso8601String().split('T')[0];
+
+    if (cachedDate == todayString) {
+      // 今天已有缓存，使用缓存的数据
+      final cachedBusDataString = prefs.getString('cachedBusData');
+      if (cachedBusDataString != null) {
+        final cachedBusData = jsonDecode(cachedBusDataString);
+        setState(() {
+          _busList = cachedBusData;
+          _filterBusList();
+          _isLoading = false;
+        });
+      }
+    } else {
+      // 没有今天的缓存，显示加载指示器
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
+    // 无论是否有缓存，都在后台请求最新数据
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
@@ -77,12 +102,23 @@ class _ReservationPageState extends State<ReservationPage> {
         _filterBusList();
         _isLoading = false;
       });
+
+      // 更新缓存
+      await _cacheBusData();
     } catch (e) {
       setState(() {
         _errorMessage = '加载失败: $e';
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _cacheBusData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final busDataString = jsonEncode(_busList);
+    final todayString = DateTime.now().toIso8601String().split('T')[0];
+    await prefs.setString('cachedBusData', busDataString);
+    await prefs.setString('cachedDate', todayString);
   }
 
   Future<void> _loadMyReservations() async {
