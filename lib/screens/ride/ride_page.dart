@@ -23,13 +23,29 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   String _routeName = '';
   String _codeType = '';
 
+  late bool _isGoingToYanyuan; // 新增变量
+
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _isGoingToYanyuan = now.hour < 12; // 根据当前时间设置默认方向
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadRideData());
   }
 
+  void _toggleDirection() {
+    setState(() {
+      _isGoingToYanyuan = !_isGoingToYanyuan;
+      _errorMessage = ''; // 清空错误信息
+    });
+    _loadRideData();
+  }
+
   Future<void> _loadRideData() async {
+    setState(() {
+      _isLoading = true; // 在这里设置为 true
+      _errorMessage = ''; // 清空错误信息
+    });
     final reservationProvider =
         Provider.of<ReservationProvider>(context, listen: false);
     final reservationService =
@@ -39,6 +55,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       await reservationProvider.loadCurrentReservations();
       final validReservations = reservationProvider.currentReservations
           .where(_isWithinTimeRange)
+          .where(
+              (reservation) => _isInSelectedDirection(reservation.resourceName))
           .toList();
 
       if (validReservations.isNotEmpty) {
@@ -61,7 +79,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           });
         } else {
           setState(() {
-            _errorMessage = '没有班车可坐😅';
+            _errorMessage = '这会没有班车可坐😅';
             _isLoading = false;
           });
         }
@@ -108,13 +126,18 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
               appointmentTime: '${bus['abscissa']} ${bus['yaxis']}',
               resourceName: bus['route_name'],
             )))
+        .where((bus) => _isInSelectedDirection(bus['route_name']))
         .toList();
 
+    print("validBuses: $validBuses");
     if (validBuses.isNotEmpty) {
       final bus = validBuses.first;
       final resourceId = bus['bus_id'].toString();
       final startTime = '${bus['abscissa']} ${bus['yaxis']}';
+      print("resourceId: $resourceId");
+      print("startTime: $startTime");
       final code = await service.getTempQRCode(resourceId, startTime);
+      print("code: $code");
       return {
         'code': code,
         'departureTime': bus['yaxis'],
@@ -142,13 +165,33 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         diffInMinutes <= 30;
   }
 
+  bool _isInSelectedDirection(String routeName) {
+    final indexYan = routeName.indexOf('燕');
+    final indexXin = routeName.indexOf('新');
+    if (indexYan == -1 || indexXin == -1) return false;
+    if (_isGoingToYanyuan) {
+      return indexXin < indexYan;
+    } else {
+      return indexYan < indexXin;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('乘车'),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_isGoingToYanyuan ? '去燕园' : '去昌平'),
+            IconButton(
+              icon: Icon(Icons.swap_horiz),
+              onPressed: _toggleDirection,
+            ),
+          ],
+        ),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -169,23 +212,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           ),
           SizedBox(height: 20),
           Text(
-            '请使用此二维码乘车',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 10),
-          Text(
-            '发车时间: $_departureTime',
+            _departureTime,
             style: TextStyle(fontSize: 16),
             textAlign: TextAlign.center,
           ),
           Text(
-            '路线名称: $_routeName',
+            _routeName,
             style: TextStyle(fontSize: 16),
             textAlign: TextAlign.center,
           ),
           Text(
-            '类型: $_codeType',
+            _codeType,
             style: TextStyle(fontSize: 16),
             textAlign: TextAlign.center,
           ),
