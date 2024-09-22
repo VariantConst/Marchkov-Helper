@@ -319,16 +319,12 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           ? Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _onRefresh,
-              child: ListView(
-                physics: AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height - kToolbarHeight,
-                    child: Center(
-                      child: _buildCard(),
-                    ),
-                  ),
-                ],
+              child: Center(
+                child: SingleChildScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                  child: _buildCard(),
+                ),
               ),
             ),
     );
@@ -368,7 +364,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   Widget _buildCardHeader() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.blue.withOpacity(0.2), Colors.blue.withOpacity(0.05)],
@@ -376,23 +372,15 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           end: Alignment.bottomCenter,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            _codeType,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.blue,
-            ),
+      child: Center(
+        child: Text(
+          _codeType,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.blue,
           ),
-          TextButton.icon(
-            onPressed: _onRefresh,
-            icon: Icon(Icons.refresh, color: Colors.blue),
-            label: Text('刷新', style: TextStyle(color: Colors.blue)),
-          ),
-        ],
+        ),
       ),
     );
   }
