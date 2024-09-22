@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/reservation_provider.dart';
 import '../../models/reservation.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/reservation_service.dart';
 import 'package:geolocator/geolocator.dart'; // 添加此行
 import 'package:shared_preferences/shared_preferences.dart'; // 添加此行
 import 'dart:convert'; // 添加此行
+import 'package:qr_flutter/qr_flutter.dart'; // 添加此行
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -325,9 +325,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                   SizedBox(
                     height: MediaQuery.of(context).size.height - kToolbarHeight,
                     child: Center(
-                      child: _errorMessage.isNotEmpty
-                          ? Text(_errorMessage)
-                          : _buildQRCodeDisplay(),
+                      child:
+                          _buildQRCodeDisplay(), // 始终调用 _buildQRCodeDisplay()
                     ),
                   ),
                 ],
@@ -340,8 +339,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // 检查 _qrCode 是否为 null，避免空值异常
-        if (_qrCode != null && _qrCode!.isNotEmpty)
+        if (_errorMessage.isNotEmpty)
+          Text(_errorMessage)
+        else if (_qrCode != null && _qrCode!.isNotEmpty)
           QrImageView(
             data: _qrCode!,
             size: 200.0,

@@ -79,6 +79,7 @@ class _ReservationPageState extends State<ReservationPage> {
               Map<String, dynamic>.from(jsonDecode(cachedReservedBusesString));
         }
 
+        if (!mounted) return; // 检查组件是否仍然挂载
         setState(() {
           _busList = cachedBusData;
           _filterBusList();
@@ -87,6 +88,7 @@ class _ReservationPageState extends State<ReservationPage> {
       }
     } else {
       // 没有今天的缓存，显示加载指示器
+      if (!mounted) return; // 检查组件是否仍然挂载
       setState(() {
         _isLoading = true;
       });
@@ -140,6 +142,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
     try {
       final reservations = await reservationService.fetchMyReservations();
+      if (!mounted) return; // 检查组件是否仍然挂载
       setState(() {
         _reservedBuses.clear();
         for (var reservation in reservations) {
@@ -186,6 +189,7 @@ class _ReservationPageState extends State<ReservationPage> {
         await reservationService.cancelReservation(
             appointmentId, hallAppointmentDataId);
 
+        if (!mounted) return; // 检查组件是否仍然挂载
         setState(() {
           // 移除高亮状态，删除相关属性
           _reservedBuses.remove(key);
@@ -255,6 +259,7 @@ class _ReservationPageState extends State<ReservationPage> {
               child: PageView.builder(
                 controller: _mainPageController,
                 onPageChanged: (int page) {
+                  if (!mounted) return; // 检查组件是否仍然挂载
                   setState(() {
                     _currentPage = page;
                     _selectedDate = _weekDates[page];
