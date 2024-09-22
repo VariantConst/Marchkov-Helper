@@ -43,5 +43,3 @@ app.*.map.json
 /android/app/release
 
 ios/build/
-
-assets/
