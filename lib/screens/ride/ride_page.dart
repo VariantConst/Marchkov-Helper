@@ -161,7 +161,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           });
         } else {
           setState(() {
-            _errorMessage = '这会没有班车可坐😅';
+            _errorMessage = '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
           });
         }
       }
@@ -336,6 +336,10 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   Widget _buildQRCodeDisplay() {
+    // 检查错误信息是否为特定的"没有班车可坐"提示
+    bool isNoBusAvailable =
+        _errorMessage == '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -348,22 +352,24 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           )
         else
           Text('暂无二维码'),
-        SizedBox(height: 20),
-        Text(
-          _departureTime,
-          style: TextStyle(fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-        Text(
-          _routeName,
-          style: TextStyle(fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-        Text(
-          _codeType,
-          style: TextStyle(fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
+        if (!isNoBusAvailable) ...[
+          SizedBox(height: 20),
+          Text(
+            _departureTime,
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            _routeName,
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            _codeType,
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ],
         SizedBox(height: 20),
         ElevatedButton(
           onPressed: _isToggleLoading ? null : _toggleDirection,
