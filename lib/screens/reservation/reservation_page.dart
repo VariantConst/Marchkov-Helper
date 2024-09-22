@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
-import 'dart:convert';
 import '../../widgets/bus_route_card.dart';
 import 'package:intl/intl.dart';
 
@@ -69,55 +68,7 @@ class _ReservationPageState extends State<ReservationPage> {
         today.add(Duration(days: 6)).toIso8601String().split('T')[0],
       ];
 
-      final responses = await Future.wait(
-        dateStrings.map((dateString) =>
-            reservationService.fetchReservationData(dateString)),
-      );
-
-      List<dynamic> allBuses = [];
-
-      for (var response in responses) {
-        final data = json.decode(response);
-
-        if (data['e'] == 0) {
-          List<dynamic> list = data['d']['list'];
-
-          for (var bus in list) {
-            var busId = bus['id'];
-            var table = bus['table'];
-            for (var key in table.keys) {
-              var timeSlots = table[key];
-              for (var slot in timeSlots) {
-                if (slot['row']['margin'] > 0) {
-                  String dateTimeString = slot['abscissa'];
-                  DateTime busDateTime = DateTime.parse(dateTimeString);
-
-                  if (busDateTime
-                      .isBefore(DateTime.now().add(Duration(days: 7)))) {
-                    Map<String, dynamic> busInfo = {
-                      'route_name': bus['name'],
-                      'bus_id': busId,
-                      'abscissa': slot['abscissa'],
-                      'yaxis': slot['yaxis'],
-                      'row': slot['row'],
-                      'time_id': slot['time_id'],
-                      'status': slot['row']['status'],
-                    };
-                    final name = busInfo['route_name'] ?? '';
-                    final indexYan = name.indexOf('燕');
-                    final indexXin = name.indexOf('新');
-                    if (indexYan != -1 && indexXin != -1) {
-                      allBuses.add(busInfo);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        } else {
-          throw Exception(data['m']);
-        }
-      }
+      final allBuses = await reservationService.getAllBuses(dateStrings);
 
       setState(() {
         _busList = allBuses;
