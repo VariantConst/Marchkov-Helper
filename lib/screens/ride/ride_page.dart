@@ -27,6 +27,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   String _codeType = '';
 
   bool _isGoingToYanyuan = true; // 给定初始值
+  bool _isToggleLoading = false; // 新增状态变量，表示是否正在切换方向
 
   @override
   void initState() {
@@ -115,17 +116,21 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     _isGoingToYanyuan = now.hour < 12;
   }
 
-  void _toggleDirection() {
+  void _toggleDirection() async {
     setState(() {
-      _isGoingToYanyuan = !_isGoingToYanyuan;
+      _isToggleLoading = true; // 开始切换方向，按钮显示加载状态
+      _isGoingToYanyuan = !_isGoingToYanyuan; // 切换方向
       _errorMessage = ''; // 清空错误信息
     });
-    _loadRideData();
+    await _loadRideData(); // 重新加载数据
+    setState(() {
+      _isToggleLoading = false; // 完成切换，按钮恢复可用
+    });
   }
 
   Future<void> _loadRideData() async {
     setState(() {
-      _isLoading = true; // 在这里设置为 true
+      _isLoading = true; // 开始加载数据
       _errorMessage = ''; // 清空错误信息
     });
     final reservationProvider =
@@ -289,61 +294,72 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        child: SingleChildScrollView(
-          // 使用可滚动组件
-          physics: AlwaysScrollableScrollPhysics(), // 确保可以下拉刷新
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height,
-            ),
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(child: Text(_errorMessage))
+        child: ListView(
+          physics: AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height - kToolbarHeight,
+              child: Center(
+                child: _errorMessage.isNotEmpty
+                    ? Text(_errorMessage)
                     : _buildQRCodeDisplay(),
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Future<void> _onRefresh() async {
-    await _loadRideData(); // 刷新数据，但不改变方向
+    await _loadRideData(); // 刷新数据
   }
 
   Widget _buildQRCodeDisplay() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          QrImageView(
-            data: _qrCode!,
-            size: 200.0,
-          ),
-          SizedBox(height: 20),
-          Text(
-            _departureTime,
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            _routeName,
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            _codeType,
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 20),
-          // 添加"乘坐反向班车"小按钮
-          ElevatedButton(
-            onPressed: _toggleDirection,
-            child: Text('乘坐反向班车'),
-          ),
-        ],
-      ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            QrImageView(
+              data: _qrCode!,
+              size: 200.0,
+            ),
+            if (_isLoading) CircularProgressIndicator(), // 在二维码上方显示加载指示器
+          ],
+        ),
+        SizedBox(height: 20),
+        Text(
+          _departureTime,
+          style: TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          _routeName,
+          style: TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          _codeType,
+          style: TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _isToggleLoading ? null : _toggleDirection,
+          child: _isToggleLoading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text('乘坐反向班车'),
+        ),
+      ],
     );
   }
 }
