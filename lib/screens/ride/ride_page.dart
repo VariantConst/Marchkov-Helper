@@ -194,9 +194,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         reservation.id.toString(),
         reservation.hallAppointmentDataId.toString(),
       );
+
+      // 获取实际发车时间
+      final actualDepartureTime = await _getActualDepartureTime(reservation);
+
       setState(() {
         _qrCode = provider.qrCode;
-        _departureTime = reservation.appointmentTime;
+        _departureTime = actualDepartureTime; // 使用实际发车时间
         _routeName = reservation.resourceName;
         _codeType = '乘车码';
       });
@@ -205,6 +209,26 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         _errorMessage = '获取二维码时出错: $e';
       });
     }
+  }
+
+  // 新增方法：获取实际发车时间
+  Future<String> _getActualDepartureTime(Reservation reservation) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedBusDataString = prefs.getString('cachedBusData');
+    if (cachedBusDataString != null) {
+      final buses = jsonDecode(cachedBusDataString);
+      final matchingBus = buses.firstWhere(
+        (bus) =>
+            bus['route_name'] == reservation.resourceName &&
+            '${bus['abscissa']} ${bus['yaxis']}' == reservation.appointmentTime,
+        orElse: () => null,
+      );
+      if (matchingBus != null) {
+        return matchingBus['yaxis'];
+      }
+    }
+    // 如果没有找到匹配的 bus 数据，返回原始的 appointmentTime
+    return reservation.appointmentTime.split(' ')[1];
   }
 
   Future<Map<String, String>?> _fetchTempCode(
@@ -257,7 +281,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       print("code: $code");
       return {
         'code': code,
-        'departureTime': bus['yaxis'],
+        'departureTime': bus['yaxis'], // 这里已经是正确的发车时间
         'routeName': bus['route_name'],
       };
     }
