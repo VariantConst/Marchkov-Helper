@@ -53,22 +53,12 @@ class RideHistoryService {
   }
 
   Future<List<RideInfo>> _fetchRideHistory(String url) async {
-    // 打印请求的链接和参数
-    print('请求链接: $url');
-    print('请求头: ${{
-      'Cookie': _authProvider.cookies,
-    }}');
-
     final response = await http.get(
       Uri.parse(url),
       headers: {
         'Cookie': _authProvider.cookies,
       },
     );
-
-    // 打印响应状态码和返回值
-    print('响应状态码: ${response.statusCode}');
-    print('响应内容: ${response.body}');
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);

@@ -43,8 +43,6 @@ class RideCalendarCardState extends State<RideCalendarCard> {
 
   List<RideInfo> _getEventsForDay(DateTime date) {
     DateTime normalizedDate = DateTime(date.year, date.month, date.day);
-    print('查询日期：$normalizedDate');
-    print('已有事件日期：${_groupedRides.keys}');
     return _groupedRides[normalizedDate] ?? [];
   }
 
