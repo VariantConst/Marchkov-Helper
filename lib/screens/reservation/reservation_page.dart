@@ -92,7 +92,7 @@ class _ReservationPageState extends State<ReservationPage> {
       });
     }
 
-    // 无论是否有缓存，都在后台请求最新数据
+    // 提前获取 authProvider，避免在异步操作后使用 context
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
@@ -105,6 +105,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
       final allBuses = await reservationService.getAllBuses(dateStrings);
 
+      if (!mounted) return; // 检查组件是否仍然挂载
       setState(() {
         _busList = allBuses;
         _filterBusList();
@@ -117,6 +118,7 @@ class _ReservationPageState extends State<ReservationPage> {
       // 获取最新的已预约班车列表并更新缓存
       await _fetchAndCacheMyReservations();
     } catch (e) {
+      if (!mounted) return; // 检查组件是否仍然挂载
       setState(() {
         _errorMessage = '加载失败: $e';
         _isLoading = false;
@@ -157,7 +159,7 @@ class _ReservationPageState extends State<ReservationPage> {
     }
   }
 
-  // 添加��于缓存已预约班车列表的函数
+  // 添加于缓存已预约班车列表的函数
   Future<void> _cacheReservedBuses() async {
     final prefs = await SharedPreferences.getInstance();
     final reservedBusesString = jsonEncode(_reservedBuses);
@@ -388,13 +390,21 @@ class _ReservationPageState extends State<ReservationPage> {
       return indexYan != -1 && indexXin != -1 && indexXin < indexYan;
     }).toList();
 
-    return ListView(
-      children: [
-        _buildBusCard('去昌平', toChangping, Colors.blue[100]!),
-        SizedBox(height: 20),
-        _buildBusCard('去燕园', toYanyuan, Colors.green[100]!),
-      ],
+    return RefreshIndicator(
+      onRefresh: _onRefresh, // 添加刷新回调函数
+      child: ListView(
+        children: [
+          _buildBusCard('去昌平', toChangping, Colors.blue[100]!),
+          SizedBox(height: 20),
+          _buildBusCard('去燕园', toYanyuan, Colors.green[100]!),
+        ],
+      ),
     );
+  }
+
+  // 添加一个刷新函数
+  Future<void> _onRefresh() async {
+    await _loadReservationData(); // 调用数据加载函数刷新数据
   }
 
   Widget _buildBusCard(String title, List<dynamic> buses, Color cardColor) {
