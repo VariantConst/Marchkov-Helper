@@ -453,45 +453,60 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       Container(
         width: 200,
         height: 200,
-        color: Colors.white,
-        child: QrImageView(
-          data: _qrCode!,
-          size: 200.0,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.blue.withOpacity(0.2), width: 2),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: QrImageView(
+            data: _qrCode!,
+            size: 196.0,
+          ),
         ),
       ),
     ];
   }
 
   Widget _buildReverseButton() {
-    return ElevatedButton(
-      onPressed: _isToggleLoading ? null : _toggleDirection,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _isToggleLoading
-            ? Colors.grey.shade200
-            : Colors.blue.withOpacity(0.08),
-        foregroundColor: _isToggleLoading ? Colors.grey : Colors.blue,
-        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 26),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (_isToggleLoading)
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-            )
-          else ...[
-            Icon(Icons.swap_horiz, size: 20),
-            SizedBox(width: 8),
-            Text('乘坐反向班车',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+    return Container(
+      width: 200, // 与二维码宽度相同
+      child: ElevatedButton(
+        onPressed: _isToggleLoading ? null : _toggleDirection,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _isToggleLoading
+              ? Colors.grey.shade200
+              : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          foregroundColor: _isToggleLoading
+              ? Colors.grey
+              : Theme.of(context).colorScheme.primary,
+          elevation: 0, // 去掉阴影
+          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 26),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isToggleLoading)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary),
+                ),
+              )
+            else ...[
+              Icon(Icons.swap_horiz, size: 20),
+              SizedBox(width: 8),
+              Text('乘坐反向班车',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
