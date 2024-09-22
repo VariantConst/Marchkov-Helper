@@ -12,7 +12,7 @@ class AuthService extends ChangeNotifier {
   String _loginResponse = '';
   final http.Client _client = http.Client();
   String _password = '';
-  late PersistCookieJar _cookieJar;
+  PersistCookieJar? _cookieJar; // 改为可空类型
 
   AuthService() {
     _initCookieJar();
@@ -25,6 +25,7 @@ class AuthService extends ChangeNotifier {
       ignoreExpires: true,
       storage: FileStorage("$appDocPath/.cookies/"),
     );
+    notifyListeners(); // 通知监听器 _cookieJar 已初始化
   }
 
   bool get isLoggedIn => _user != null;
@@ -34,10 +35,13 @@ class AuthService extends ChangeNotifier {
 
   // 添加 cookies getter
   Future<String> get cookies async {
+    if (_cookieJar == null) {
+      await _initCookieJar(); // 如果 _cookieJar 还没初始化，等待初始化完成
+    }
     final iaaaCookies =
-        await _cookieJar.loadForRequest(Uri.parse('https://iaaa.pku.edu.cn'));
+        await _cookieJar!.loadForRequest(Uri.parse('https://iaaa.pku.edu.cn'));
     final wprocCookies =
-        await _cookieJar.loadForRequest(Uri.parse('https://wproc.pku.edu.cn'));
+        await _cookieJar!.loadForRequest(Uri.parse('https://wproc.pku.edu.cn'));
     final allCookies = [...iaaaCookies, ...wprocCookies];
     return allCookies
         .map((cookie) => '${cookie.name}=${cookie.value}')
@@ -46,6 +50,9 @@ class AuthService extends ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     try {
+      if (_cookieJar == null) {
+        await _initCookieJar();
+      }
       // 使用 HttpClient
       HttpClient httpClient = HttpClient();
 
@@ -81,8 +88,8 @@ class AuthService extends ChangeNotifier {
 
       // 保存初始请求的 cookies
       List<Cookie> cookies = response.cookies;
-      await _cookieJar.saveFromResponse(
-          Uri.parse('https://iaaa.pku.edu.cn'), cookies);
+      await _cookieJar!
+          .saveFromResponse(Uri.parse('https://iaaa.pku.edu.cn'), cookies);
 
       // 解析 token
       if (response.statusCode == 200) {
@@ -97,7 +104,7 @@ class AuthService extends ChangeNotifier {
         _password = password;
 
         // 打印所有保存的 cookies
-        final savedCookies = await _cookieJar
+        final savedCookies = await _cookieJar!
             .loadForRequest(Uri.parse('https://wproc.pku.edu.cn'));
         print('所有保存的 wproc cookies: $savedCookies');
 
@@ -140,8 +147,8 @@ class AuthService extends ChangeNotifier {
 
     // 保存第二次请求的 cookies
     List<Cookie> wprocCookies = getResponse.cookies;
-    await _cookieJar.saveFromResponse(
-        Uri.parse('https://wproc.pku.edu.cn'), wprocCookies);
+    await _cookieJar!
+        .saveFromResponse(Uri.parse('https://wproc.pku.edu.cn'), wprocCookies);
 
     print('wproc 的 cookies 已保存到 cookie jar 中。');
   }
@@ -150,7 +157,9 @@ class AuthService extends ChangeNotifier {
     _user = null;
     _loginResponse = '';
     await _clearCredentials();
-    await _cookieJar.deleteAll();
+    if (_cookieJar != null) {
+      await _cookieJar!.deleteAll();
+    }
     notifyListeners();
   }
 
@@ -187,7 +196,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<http.Response> get(Uri url) async {
-    final cookies = await _cookieJar.loadForRequest(url);
+    if (_cookieJar == null) {
+      await _initCookieJar();
+    }
+    final cookies = await _cookieJar!.loadForRequest(url);
     final cookieString =
         cookies.map((cookie) => '${cookie.name}=${cookie.value}').join('; ');
 
