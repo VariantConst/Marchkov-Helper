@@ -95,6 +95,7 @@ class _ReservationPageState extends State<ReservationPage> {
     }
 
     // 提前获取 authProvider，避免在异步操作后使用 context
+    // ignore: use_build_context_synchronously
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 

@@ -316,7 +316,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     return Scaffold(
       body: _isInitialLoading
-          ? Center(child: CircularProgressIndicator()) // 初次加载时显示加载指示器
+          ? Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _onRefresh,
               child: ListView(
@@ -325,8 +325,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                   SizedBox(
                     height: MediaQuery.of(context).size.height - kToolbarHeight,
                     child: Center(
-                      child:
-                          _buildQRCodeDisplay(), // 始终调用 _buildQRCodeDisplay()
+                      child: _buildCard(),
                     ),
                   ),
                 ],
@@ -335,56 +334,133 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildQRCodeDisplay() {
-    // 检查错误信息是否为特定的"没有班车可坐"提示
+  Widget _buildCard() {
     bool isNoBusAvailable =
         _errorMessage == '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (_errorMessage.isNotEmpty)
-          Text(_errorMessage)
-        else if (_qrCode != null && _qrCode!.isNotEmpty)
-          QrImageView(
-            data: _qrCode!,
-            size: 200.0,
-          )
-        else
-          Text('暂无二维码'),
-        if (!isNoBusAvailable) ...[
-          SizedBox(height: 20),
-          Text(
-            _departureTime,
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            _routeName,
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          Text(
-            _codeType,
-            style: TextStyle(fontSize: 16),
-            textAlign: TextAlign.center,
+    return Card(
+      elevation: 10,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isNoBusAvailable) _buildCardHeader(),
+          Padding(
+            padding: EdgeInsets.all(25),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isNoBusAvailable)
+                  Text(_errorMessage, style: TextStyle(fontSize: 16))
+                else if (_qrCode != null && _qrCode!.isNotEmpty)
+                  ..._buildQRCodeContent()
+                else
+                  Text('暂无二维码', style: TextStyle(fontSize: 16)),
+                SizedBox(height: 20),
+                _buildReverseButton(),
+              ],
+            ),
           ),
         ],
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: _isToggleLoading ? null : _toggleDirection,
-          child: _isToggleLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text('乘坐反向班车'),
+      ),
+    );
+  }
+
+  Widget _buildCardHeader() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.withOpacity(0.2), Colors.blue.withOpacity(0.05)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-      ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            _codeType,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.blue,
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _onRefresh,
+            icon: Icon(Icons.refresh, color: Colors.blue),
+            label: Text('刷新', style: TextStyle(color: Colors.blue)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildQRCodeContent() {
+    return [
+      Text(
+        _routeName,
+        style: TextStyle(
+          fontSize: _routeName.length > 10 ? 16 : 20,
+          fontWeight: FontWeight.w500,
+          color: Colors.grey[700],
+        ),
+        textAlign: TextAlign.center,
+      ),
+      SizedBox(height: 12),
+      Text(
+        _departureTime,
+        style: TextStyle(
+          fontSize: 34,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue,
+        ),
+      ),
+      SizedBox(height: 25),
+      Container(
+        width: 200,
+        height: 200,
+        color: Colors.white,
+        child: QrImageView(
+          data: _qrCode!,
+          size: 200.0,
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildReverseButton() {
+    return ElevatedButton(
+      onPressed: _isToggleLoading ? null : _toggleDirection,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _isToggleLoading
+            ? Colors.grey.shade200
+            : Colors.blue.withOpacity(0.08),
+        foregroundColor: _isToggleLoading ? Colors.grey : Colors.blue,
+        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 26),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (_isToggleLoading)
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+              ),
+            )
+          else ...[
+            Icon(Icons.swap_horiz, size: 20),
+            SizedBox(width: 8),
+            Text('乘坐反向班车',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          ],
+        ],
+      ),
     );
   }
 }
