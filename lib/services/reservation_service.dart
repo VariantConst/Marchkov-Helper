@@ -121,7 +121,7 @@ class ReservationService {
 
                 // 构建更加唯一的标识符，包括 busId 和 timeId
                 String uniqueKey =
-                    '${normalizedDate}_${normalizedTime}_$busId\_$timeId';
+                    '${normalizedDate}_${normalizedTime}_${busId}_$timeId';
 
                 // 如果未出现过，则添加至列表
                 if (busSet.add(uniqueKey)) {
@@ -213,22 +213,27 @@ class ReservationService {
       'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?id=$id&type=0&hall_appointment_data_id=$hallAppointmentDataId',
     );
 
-    final response = await http.get(
-      uri,
-      headers: {
-        'Cookie': _authProvider.cookies,
-      },
-    );
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Cookie': _authProvider.cookies,
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['e'] == 0) {
-        return data['d']['code'];
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['e'] == 0) {
+          return data['d']['code'];
+        } else {
+          throw Exception(data['m']);
+        }
       } else {
-        throw Exception(data['m']);
+        throw Exception('请求失败，状态码: ${response.statusCode}');
       }
-    } else {
-      throw Exception('请求失败，状态码: ${response.statusCode}');
+    } catch (e) {
+      print('获取二维码时出错: $e');
+      rethrow;
     }
   }
 
@@ -247,7 +252,7 @@ class ReservationService {
       },
       body: {
         'appointment_id': appointmentId,
-        'data_id[0]': hallAppointmentDataId,
+        'data_id[0]': hallAppointmentDataId, // 移除了反斜杠
       },
     );
 

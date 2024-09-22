@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/reservation_provider.dart';
 import '../../models/reservation.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -17,6 +18,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   Reservation? _singleReservation;
   bool _isQRCodeFetched = false;
+  int _currentReservationIndex = 0;
 
   @override
   void initState() {
@@ -27,38 +29,43 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   void _loadReservations() async {
     final reservationProvider =
         Provider.of<ReservationProvider>(context, listen: false);
-    await reservationProvider.loadCurrentReservations();
+    try {
+      await reservationProvider.loadCurrentReservations();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    final reservations = reservationProvider.currentReservations
-        .where(_isWithinTimeRange)
-        .toList();
+      final reservations = reservationProvider.currentReservations
+          .where(_isWithinTimeRange)
+          .toList();
 
-    if (reservations.length == 1) {
-      setState(() {
-        _singleReservation = reservations.first;
-      });
-      _fetchQRCode();
+      if (reservations.isNotEmpty) {
+        setState(() {
+          _currentReservationIndex = 0;
+        });
+        _fetchQRCodeForCurrentReservation(reservationProvider, reservations);
+      }
+    } catch (e) {
+      print('加载预约时出错: $e');
+      // 可以在这里显示一个错误提示
     }
   }
 
-  void _fetchQRCode() async {
-    if (_isQRCodeFetched || _singleReservation == null) return;
-
-    final reservationProvider =
-        Provider.of<ReservationProvider>(context, listen: false);
-
-    await reservationProvider.fetchQRCode(
-      _singleReservation!.id.toString(),
-      _singleReservation!.hallAppointmentDataId.toString(),
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _isQRCodeFetched = true;
-    });
+  void _fetchQRCodeForCurrentReservation(
+      ReservationProvider reservationProvider, List<Reservation> reservations) {
+    if (reservations.isEmpty) {
+      print('没有可用的预约');
+      return;
+    }
+    final currentReservation = reservations[_currentReservationIndex];
+    try {
+      reservationProvider.fetchQRCode(
+        currentReservation.id.toString(),
+        currentReservation.hallAppointmentDataId.toString(),
+      );
+    } catch (e) {
+      print('获取二维码时出错: $e');
+      // 可以在这里显示一个错误提示
+    }
   }
 
   @override
@@ -82,52 +89,87 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
             if (reservations.isEmpty) {
               return Center(child: Text('暂时没有可用预约'));
-            } else if (reservations.length == 1) {
-              if (reservationProvider.isLoadingQRCode || !_isQRCodeFetched) {
-                return Center(child: CircularProgressIndicator());
-              } else if (reservationProvider.qrCode != null) {
-                return _buildQRCodeDisplay(reservationProvider.qrCode!);
-              } else {
-                return Center(child: Text('无法获取二维码'));
-              }
             } else {
-              // 有多个预约，显示列表
-              return ListView.builder(
-                itemCount: reservations.length,
-                itemBuilder: (context, index) {
-                  final reservation = reservations[index];
-                  return Card(
-                    child: ListTile(
-                      title: Text(reservation.resourceName),
-                      subtitle: Text('发车时间：${reservation.appointmentTime}'),
-                      onTap: () async {
-                        await reservationProvider.fetchQRCode(
-                          reservation.id.toString(),
-                          reservation.hallAppointmentDataId.toString(),
-                        );
-
-                        if (!mounted) return;
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => QRCodeDisplayPage(
-                              qrCode: reservationProvider.qrCode!,
-                              reservations: reservations,
-                              initialIndex: index,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              );
+              return _buildReservationDisplay(
+                  reservationProvider, reservations);
             }
           }
         },
       ),
     );
+  }
+
+  Widget _buildReservationDisplay(
+      ReservationProvider reservationProvider, List<Reservation> reservations) {
+    if (reservationProvider.isLoadingQRCode) {
+      return Center(child: CircularProgressIndicator());
+    } else if (reservationProvider.qrCode != null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          QrImageView(
+            data: reservationProvider.qrCode!,
+            version: QrVersions.auto,
+            size: 200.0,
+          ),
+          SizedBox(height: 20),
+          Text(
+            '预约：${reservations[_currentReservationIndex].resourceName}',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            '发车时间：${reservations[_currentReservationIndex].appointmentTime}',
+            style: TextStyle(fontSize: 16),
+          ),
+          SizedBox(height: 20),
+          if (reservations.length > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _currentReservationIndex > 0
+                      ? () => _switchReservation(
+                          reservationProvider, reservations, -1)
+                      : null,
+                  child: Text('上一个'),
+                ),
+                SizedBox(width: 20),
+                ElevatedButton(
+                  onPressed: _currentReservationIndex < reservations.length - 1
+                      ? () => _switchReservation(
+                          reservationProvider, reservations, 1)
+                      : null,
+                  child: Text('下一个'),
+                ),
+              ],
+            ),
+        ],
+      );
+    } else {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('无法获取二维码'),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _fetchQRCodeForCurrentReservation(
+                  reservationProvider, reservations),
+              child: Text('重试'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _switchReservation(ReservationProvider reservationProvider,
+      List<Reservation> reservations, int direction) {
+    setState(() {
+      _currentReservationIndex = (_currentReservationIndex + direction)
+          .clamp(0, reservations.length - 1);
+    });
+    _fetchQRCodeForCurrentReservation(reservationProvider, reservations);
   }
 
   bool _isWithinTimeRange(Reservation reservation) {
@@ -138,111 +180,5 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     return appointmentTime.day == now.day &&
         diffInMinutes >= -10 &&
         diffInMinutes <= 30;
-  }
-
-  Widget _buildQRCodeDisplay(String qrCode) {
-    return Center(
-      child: Text('二维码：$qrCode'),
-      // 您可以使用 QR 码库将字符串生成真正的二维码图片
-    );
-  }
-}
-
-class QRCodeDisplayPage extends StatefulWidget {
-  final String qrCode;
-  final List<Reservation> reservations;
-  final int initialIndex;
-
-  QRCodeDisplayPage({
-    required this.qrCode,
-    required this.reservations,
-    required this.initialIndex,
-  });
-
-  @override
-  QRCodeDisplayPageState createState() => QRCodeDisplayPageState();
-}
-
-class QRCodeDisplayPageState extends State<QRCodeDisplayPage> {
-  late int _currentIndex;
-  late String _currentQRCode;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-    _currentQRCode = widget.qrCode;
-  }
-
-  void _loadQRCode(int index) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final reservationProvider =
-        Provider.of<ReservationProvider>(context, listen: false);
-    final reservation = widget.reservations[index];
-    await reservationProvider.fetchQRCode(
-      reservation.id.toString(),
-      reservation.hallAppointmentDataId.toString(),
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _currentQRCode = reservationProvider.qrCode!;
-      _currentIndex = index;
-      _isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('二维码'),
-      ),
-      body: Center(
-        child: _isLoading
-            ? CircularProgressIndicator()
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('二维码：$_currentQRCode'),
-                  // 您可以使用 QR 码库将字符串生成真正的二维码图片
-                  SizedBox(height: 20),
-                  Text(
-                    '预约：${widget.reservations[_currentIndex].resourceName}',
-                  ),
-                  Text(
-                    '发车时间：${widget.reservations[_currentIndex].appointmentTime}',
-                  ),
-                  SizedBox(height: 20),
-                  _buildNavigationButtons(),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildNavigationButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton(
-          onPressed:
-              _currentIndex > 0 ? () => _loadQRCode(_currentIndex - 1) : null,
-          child: Text('上一个'),
-        ),
-        SizedBox(width: 20),
-        ElevatedButton(
-          onPressed: _currentIndex < widget.reservations.length - 1
-              ? () => _loadQRCode(_currentIndex + 1)
-              : null,
-          child: Text('下一个'),
-        ),
-      ],
-    );
   }
 }

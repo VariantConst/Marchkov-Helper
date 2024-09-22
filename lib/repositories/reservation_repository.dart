@@ -20,7 +20,14 @@ class ReservationRepository {
     return _reservationService.fetchMyReservations();
   }
 
-  Future<String> getReservationQRCode(String id, String hallAppointmentDataId) {
-    return _reservationService.getReservationQRCode(id, hallAppointmentDataId);
+  Future<String> getReservationQRCode(
+      String id, String hallAppointmentDataId) async {
+    try {
+      return await _reservationService.getReservationQRCode(
+          id, hallAppointmentDataId);
+    } catch (e) {
+      print('获取二维码时出错: $e');
+      rethrow;
+    }
   }
 }

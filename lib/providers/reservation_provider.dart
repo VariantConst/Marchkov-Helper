@@ -82,7 +82,7 @@ class ReservationProvider with ChangeNotifier {
     }
   }
 
-  // 获取二维��
+  // 获取二维
   Future<void> fetchQRCode(String id, String hallAppointmentDataId) async {
     _isLoadingQRCode = true;
     _error = null;
@@ -94,6 +94,7 @@ class ReservationProvider with ChangeNotifier {
       _isLoadingQRCode = false;
       notifyListeners();
     } catch (e) {
+      print('获取二维码时出错: $e');
       _error = e.toString();
       _isLoadingQRCode = false;
       notifyListeners();
