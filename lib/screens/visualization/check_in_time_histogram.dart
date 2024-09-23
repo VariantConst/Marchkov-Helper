@@ -15,35 +15,39 @@ class CheckInTimeHistogram extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight;
-        final chartHeight = availableHeight * 2 / 3;
+        final chartHeight = availableHeight * 3 / 5; // 将图表高度设置为页面高度的 3/5
 
         return Padding(
           padding: EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              SizedBox(
-                height: chartHeight,
-                child: BarChart(
-                  BarChartData(
-                      alignment: BarChartAlignment.center,
-                      minY: 0, // Y轴从0开始
-                      maxY: data['maxY'],
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            interval: data['interval'],
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              return Text(
-                                value.toInt().toString(),
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 10,
-                                ),
-                              );
-                            },
+          child: Center(
+            // 添加 Center 小部件，使内容居中
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center, // 在垂直方向上居中对齐
+              children: [
+                SizedBox(
+                  height: chartHeight,
+                  child: BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.center,
+                        minY: 0, // Y轴从0开始
+                        maxY: data['maxY'],
+                        barTouchData: BarTouchData(enabled: false),
+                        titlesData: FlTitlesData(
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 40,
+                              interval: data['interval'],
+                              getTitlesWidget: (double value, TitleMeta meta) {
+                                return Text(
+                                  value.toInt().toString(),
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 10,
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
                         bottomTitles: AxisTitles(
@@ -84,18 +88,18 @@ class CheckInTimeHistogram extends StatelessWidget {
                       barGroups: data['barGroups'],
                       baselineY: 0),
                 ),
-              ),
-              SizedBox(height: 8),
-              // 添加图例
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  LegendItem(color: Colors.green, text: '提前签到'),
-                  SizedBox(width: 16),
-                  LegendItem(color: Colors.red, text: '迟到签到'),
-                ],
-              ),
-            ],
+                SizedBox(height: 8),
+                // 添加图例
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    LegendItem(color: Colors.amber, text: '提前签到'), // 改为琥珀色
+                    SizedBox(width: 16),
+                    LegendItem(color: Colors.teal, text: '迟到签到'), // 改为青色
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -135,9 +139,14 @@ class CheckInTimeHistogram extends StatelessWidget {
           barRods: [
             BarChartRodData(
               toY: (frequencyMap[i] ?? 0).toDouble(),
-              color: i < 0 ? Colors.green : Colors.red, // 负数为绿色，正数为红色
-              width: 4,
-              borderRadius: BorderRadius.circular(0),
+              color: i < 0 ? Colors.amber : Colors.teal, // 提前签到为琥珀色，迟到签到青色
+              width: 8, // 调整柱子宽度，与出发时间统计图表一致
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(4),
+                bottomLeft: Radius.circular(0),
+                bottomRight: Radius.circular(0),
+              ), // 调整圆角样式，与出发时间统计图表一致
             ),
           ],
         ),

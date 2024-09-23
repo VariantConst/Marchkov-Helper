@@ -11,16 +11,18 @@ class CheckedInReservedPieChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = _preparePieData();
 
-    return Padding(
-      padding: EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center, // 居中对齐
-        children: [
-          Expanded(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final chartHeight = availableHeight * 3 / 5; // 将图表高度设置为页面高度的 3/5
+
+        return Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Center(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, // 居中对齐
               children: [
-                Flexible(
+                SizedBox(
+                  height: chartHeight,
                   child: PieChart(
                     PieChartData(
                       sections: data,
@@ -30,21 +32,21 @@ class CheckedInReservedPieChart extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: 16), // 饼图和图例之间的间距
-                // 图例紧接着饼图下方
+                SizedBox(height: 16),
+                // 图例
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    LegendItem(color: Colors.blue, text: '已签到'),
+                    LegendItem(color: Colors.teal, text: '已签到'),
                     SizedBox(width: 16),
-                    LegendItem(color: Colors.orange, text: '已预约'),
+                    LegendItem(color: Colors.amber, text: '已预约'),
                   ],
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -73,7 +75,7 @@ class CheckedInReservedPieChart extends StatelessWidget {
     // 修改 _preparePieData 方法中的 PieChartSectionData，添加具体数量并将文字移到饼外部
     return [
       PieChartSectionData(
-        color: Colors.blue,
+        color: Colors.teal, // 修改颜色为柔和的青色
         value: checkedInPercentage,
         title:
             '${checkedInPercentage.toStringAsFixed(1)}% ($checkedInCount)', // 保留数量
@@ -83,7 +85,7 @@ class CheckedInReservedPieChart extends StatelessWidget {
         titlePositionPercentageOffset: 1.6, // 将标题位置进一步偏移到饼图外部
       ),
       PieChartSectionData(
-        color: Colors.orange,
+        color: Colors.amber, // 修改颜色为柔和的琥珀色
         value: reservedPercentage,
         title:
             '${reservedPercentage.toStringAsFixed(1)}% ($reservedCount)', // 保留数量

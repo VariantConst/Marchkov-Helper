@@ -119,9 +119,9 @@ class DepartureTimeBarChart extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    LegendItem(color: Colors.redAccent, text: '去昌平'),
+                    LegendItem(color: Colors.teal, text: '去昌平'),
                     SizedBox(width: 16),
-                    LegendItem(color: Colors.blueAccent, text: '去燕园'),
+                    LegendItem(color: Colors.amber, text: '去燕园'),
                   ],
                 ),
               ],
@@ -180,7 +180,7 @@ class DepartureTimeBarChart extends StatelessWidget {
             BarChartRodData(
               fromY: 0,
               toY: toChangpingCount.toDouble(),
-              color: Colors.redAccent,
+              color: Colors.teal, // 修改颜色为柔和的青色
               width: 8,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
@@ -193,7 +193,7 @@ class DepartureTimeBarChart extends StatelessWidget {
             BarChartRodData(
               fromY: 0,
               toY: -toYanyuanCount.toDouble(),
-              color: Colors.blueAccent,
+              color: Colors.amber, // 修改颜色为柔和的琥珀色
               width: 8,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(0),
@@ -219,7 +219,7 @@ class DepartureTimeBarChart extends StatelessWidget {
   }
 }
 
-// 添加图例项组件
+// 添加���例项组件
 class LegendItem extends StatelessWidget {
   final Color color;
   final String text;
