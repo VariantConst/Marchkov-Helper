@@ -16,6 +16,13 @@ class ThemeSettingsPage extends StatelessWidget {
             padding: EdgeInsets.all(16.0),
             child: Column(
               children: [
+                // 添加提示信息
+                Text(
+                  '🐦：目前尚未适配深色模式，请耐心等待😊',
+                  style: TextStyle(
+                    fontSize: 16,
+                  ),
+                ),
                 SizedBox(height: 16),
                 _buildThemeOption(context, '浅色模式', 'assets/day_mode.svg',
                     ThemeMode.light, themeProvider),
