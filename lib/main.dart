@@ -116,8 +116,9 @@ class _SplashScreenState extends State<SplashScreen> {
             SizedBox(height: 20),
             Text('Marchkov Helper',
                 style: Theme.of(context).textTheme.headlineMedium),
-            SizedBox(height: 20),
-            CircularProgressIndicator(),
+            // 删除转圈动画
+            // SizedBox(height: 20),
+            // CircularProgressIndicator(),
           ],
         ),
       ),
