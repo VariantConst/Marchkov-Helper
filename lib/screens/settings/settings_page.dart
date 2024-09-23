@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart'; // 新增
-import 'package:path/path.dart' as path; // 新增
 import '../../providers/auth_provider.dart';
-// 新增
 import '../login/login_page.dart';
 import '../../services/user_service.dart';
-import 'theme_settings_page.dart'; // 新增
-import '../visualization/visualization_page.dart'; // 新增
-import 'about_page.dart'; // 新增
+import 'theme_settings_page.dart';
+import '../visualization/visualization_page.dart';
+import 'about_page.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
-  State<SettingsPage> createState() => _SettingsPageState(); // 修改这一行
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
@@ -24,14 +18,14 @@ class _SettingsPageState extends State<SettingsPage> {
   String studentId = '';
   String college = '';
   late UserService _userService;
-  String? _avatarPath; // 修改：存储头像的本地路径
+  String _selectedEmoji = '🐴'; // 修改：存储选择的 emoji
 
   @override
   void initState() {
     super.initState();
     _userService = UserService(context.read<AuthProvider>());
     _loadUserInfo();
-    _loadAvatarPath(); // 确保加载头像路径
+    _loadSelectedEmoji(); // 确保加载选择的 emoji
   }
 
   Future<void> _loadUserInfo() async {
@@ -68,69 +62,92 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setString('college', college);
   }
 
-  Future<void> _loadAvatarPath() async {
+  Future<void> _loadSelectedEmoji() async {
     final prefs = await SharedPreferences.getInstance();
-    final fileName = prefs.getString('avatarFileName');
-    if (fileName != null) {
-      final appDir = await getApplicationDocumentsDirectory();
+    setState(() {
+      _selectedEmoji = prefs.getString('selectedEmoji') ?? '🐴';
+    });
+  }
+
+  Future<void> _saveSelectedEmoji(String emoji) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedEmoji', emoji);
+  }
+
+  void _selectEmoji() async {
+    final List<String> emojis = [
+      '🐴',
+      '😀',
+      '😎',
+      '🎉',
+      '🚀',
+      '🐼',
+      '🦄',
+      '🐶',
+      '🐱',
+      '🦊',
+      '🦁',
+      '🐯',
+      '🐨',
+      '🐻',
+      '🐸',
+      '🐙',
+      '🐵',
+      '🐷',
+      '🐮',
+      '🐔',
+      '🦉',
+      '🦇',
+      '🦋',
+      '🐝',
+      '🐞'
+    ];
+    final String? selectedEmoji = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('选择一个 Emoji'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 5,
+                childAspectRatio: 1,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: emojis.length,
+              itemBuilder: (context, index) {
+                return InkWell(
+                  onTap: () {
+                    Navigator.pop(context, emojis[index]);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        emojis[index],
+                        style: TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selectedEmoji != null) {
       setState(() {
-        _avatarPath = path.join(appDir.path, fileName);
+        _selectedEmoji = selectedEmoji;
       });
-    }
-  }
-
-  Future<void> _saveAvatarFileName(String fileName) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('avatarFileName', fileName);
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      if (!mounted) return; // 添加这行检查
-
-      final croppedFile = await ImageCropper().cropImage(
-        sourcePath: pickedFile.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-        compressQuality: 100,
-        maxWidth: 256,
-        maxHeight: 256,
-        compressFormat: ImageCompressFormat.png,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: '裁剪图片',
-            toolbarColor: Theme.of(context).primaryColor,
-            toolbarWidgetColor: Colors.white,
-            initAspectRatio: CropAspectRatioPreset.square,
-            lockAspectRatio: true,
-          ),
-          IOSUiSettings(
-            title: '裁剪图片',
-            aspectRatioLockEnabled: true,
-            resetAspectRatioEnabled: false,
-          ),
-        ],
-      );
-
-      if (croppedFile != null) {
-        if (!mounted) return; // 再次添加检查
-
-        // 获取应用的文档目录
-        final appDir = await getApplicationDocumentsDirectory();
-        final fileName = path.basename(croppedFile.path);
-
-        // 将裁剪后的图片复制到文档目录
-        final savedImage =
-            await File(croppedFile.path).copy('${appDir.path}/$fileName');
-
-        setState(() {
-          _avatarPath = savedImage.path;
-        });
-
-        await _saveAvatarFileName(fileName); // 保存头像文件名
-      }
+      await _saveSelectedEmoji(selectedEmoji);
     }
   }
 
@@ -139,26 +156,20 @@ class _SettingsPageState extends State<SettingsPage> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.white, // 设置背景颜色为白色
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // 头像和用户信息
             SizedBox(height: 16),
             GestureDetector(
-              onTap: _pickImage,
+              onTap: _selectEmoji,
               child: CircleAvatar(
                 radius: 36,
                 backgroundColor: Color(0xFFF0F2F5),
-                backgroundImage:
-                    _avatarPath != null ? FileImage(File(_avatarPath!)) : null,
-                child: _avatarPath == null
-                    ? Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style:
-                            TextStyle(fontSize: 48, color: Color(0xFF60708A)),
-                      )
-                    : null,
+                child: Text(
+                  _selectedEmoji,
+                  style: TextStyle(fontSize: 48),
+                ),
               ),
             ),
             SizedBox(height: 16),
@@ -187,7 +198,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             SizedBox(height: 16),
-            // 设置选项列表
             Expanded(
               child: ListView(
                 children: [
@@ -224,7 +234,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   ),
                   SizedBox(height: 16),
-                  // 退出登录按钮
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: ElevatedButton.icon(
@@ -238,17 +247,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         navigator.pushReplacement(
                             MaterialPageRoute(builder: (_) => LoginPage()));
                       },
-                      style: ElevatedButton.styleFrom(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        minimumSize: Size(double.infinity, 50),
-                        backgroundColor: Color(0xFFF0F2F5),
-                        foregroundColor: Color(0xFF111418),
-                        textStyle: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -260,7 +258,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSettingOption(
+  ListTile _buildSettingOption(
       {required String title,
       required IconData icon,
       required VoidCallback onTap}) {
@@ -283,8 +281,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('name');
     await prefs.remove('studentId');
     await prefs.remove('college');
-    await prefs.remove('avatarPath');
-    // 添加以下代码，清除历史乘车记录的缓存
+    await prefs.remove('selectedEmoji'); // 清除选择的 emoji
     await prefs.remove('cachedRideHistory');
   }
 }

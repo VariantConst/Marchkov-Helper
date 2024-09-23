@@ -48,13 +48,12 @@ dependencies:
   material_design_icons_flutter: ^5.0.6595
   qr_flutter: ^4.0.0
   flutter_svg: ^1.0.0 # 或更新的版本
-  image_picker: ^0.8.7+5
-  image_cropper: ^5.0.0 # 将这行更新为最新版本
   path: ^1.8.2
   # 修改 fl_chart 依赖，从 GitHub 获取最新代码
   fl_chart: ^0.69.0
   url_launcher: ^6.1.5 # 新增
   package_info_plus: ^8.0.2 # 用于获取应用程序信息
+  emoji_picker_flutter: ^1.0.0 # 用于表情符号选择
 
 dev_dependencies:
   flutter_test:

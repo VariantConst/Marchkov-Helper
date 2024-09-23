@@ -1,11 +1,8 @@
 PODS:
+  - emoji_picker_flutter (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
   - geolocator_apple (1.2.0):
-    - Flutter
-  - image_cropper (0.0.4):
-    - Flutter
-    - TOCropViewController (~> 2.6.1)
-  - image_picker_ios (0.0.1):
     - Flutter
   - package_info_plus (0.4.5):
     - Flutter
@@ -17,34 +14,26 @@ PODS:
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - TOCropViewController (2.6.1)
   - url_launcher_ios (0.0.1):
     - Flutter
 
 DEPENDENCIES:
+  - emoji_picker_flutter (from `.symlinks/plugins/emoji_picker_flutter/ios`)
   - Flutter (from `Flutter`)
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/ios`)
-  - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
-  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
-SPEC REPOS:
-  trunk:
-    - TOCropViewController
-
 EXTERNAL SOURCES:
+  emoji_picker_flutter:
+    :path: ".symlinks/plugins/emoji_picker_flutter/ios"
   Flutter:
     :path: Flutter
   geolocator_apple:
     :path: ".symlinks/plugins/geolocator_apple/ios"
-  image_cropper:
-    :path: ".symlinks/plugins/image_cropper/ios"
-  image_picker_ios:
-    :path: ".symlinks/plugins/image_picker_ios/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
@@ -57,15 +46,13 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
+  emoji_picker_flutter: fe2e6151c5b548e975d546e6eeb567daf0962a58
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   geolocator_apple: 6cbaf322953988e009e5ecb481f07efece75c450
-  image_cropper: a3291c624a953049bc6a02e1f8c8ceb162a24b25
-  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
   package_info_plus: 58f0028419748fad15bf008b270aaa8e54380b1c
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: e76247795d700c14ea09e3a2d8855d41ee80a2e6
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
-  TOCropViewController: edfd4f25713d56905ad1e0b9f5be3fbe0f59c863
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
 
 PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796

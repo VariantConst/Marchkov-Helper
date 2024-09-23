@@ -6,14 +6,14 @@
 
 #include "generated_plugin_registrant.h"
 
-#include <file_selector_windows/file_selector_windows.h>
+#include <emoji_picker_flutter/emoji_picker_flutter_plugin_c_api.h>
 #include <geolocator_windows/geolocator_windows.h>
 #include <permission_handler_windows/permission_handler_windows_plugin.h>
 #include <url_launcher_windows/url_launcher_windows.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
-  FileSelectorWindowsRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("FileSelectorWindows"));
+  EmojiPickerFlutterPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("EmojiPickerFlutterPluginCApi"));
   GeolocatorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("GeolocatorWindows"));
   PermissionHandlerWindowsPluginRegisterWithRegistrar(
