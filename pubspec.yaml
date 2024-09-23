@@ -1,5 +1,5 @@
 name: marchkov_flutter
-description: "A new Flutter project."
+description: "马池口班车预约"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.0.1+1
+version: 2.0.0+1
 
 environment:
   sdk: ">=2.17.0 <3.0.0"
@@ -54,6 +54,7 @@ dependencies:
   # 修改 fl_chart 依赖，从 GitHub 获取最新代码
   fl_chart: ^0.69.0
   url_launcher: ^6.1.5 # 新增
+  package_info_plus: ^8.0.2 # 用于获取应用程序信息
 
 dev_dependencies:
   flutter_test:
