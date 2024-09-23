@@ -118,7 +118,7 @@ class _ReservationPageState extends State<ReservationPage> {
       // 更新缓存
       await _cacheBusData();
 
-      // 获取最新的已预约班车列表并更新缓存
+      // 获取最新已预约班车列表并更新缓存
       await _fetchAndCacheMyReservations();
     } catch (e) {
       if (!mounted) return; // 检查组件是否仍然挂载
@@ -382,6 +382,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   Widget _buildBusList() {
+    // 按方向分类
     final toChangping = _filteredBusList.where((bus) {
       final name = bus['route_name'] ?? '';
       final indexYan = name.indexOf('燕');
@@ -396,13 +397,152 @@ class _ReservationPageState extends State<ReservationPage> {
       return indexYan != -1 && indexXin != -1 && indexXin < indexYan;
     }).toList();
 
+    // 新增：按照发车时间段分类
+    // 去昌平方向
+    final morningBusesChangping = toChangping.where(_isMorningBus).toList();
+    final noonBusesChangping = toChangping.where(_isNoonBus).toList();
+    final eveningBusesChangping = toChangping.where(_isEveningBus).toList();
+
+    // 去燕园方向
+    final morningBusesYanyuan = toYanyuan.where(_isMorningBus).toList();
+    final noonBusesYanyuan = toYanyuan.where(_isNoonBus).toList();
+    final eveningBusesYanyuan = toYanyuan.where(_isEveningBus).toList();
+
     return RefreshIndicator(
       onRefresh: _onRefresh, // 添加刷新回调函数
       child: ListView(
         children: [
-          _buildBusCard('去昌平', toChangping, Colors.blue[100]!),
+          // 去昌平方向
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              '去昌平',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+          // 早班车
+          _buildBusSection(
+            Icons.brightness_5, // 使用 brightness_5 图标
+            morningBusesChangping,
+            Colors.blue[100]!,
+          ),
+          // 午班车
+          _buildBusSection(
+            Icons.wb_sunny,
+            noonBusesChangping,
+            Colors.blue[100]!,
+          ),
+          // 晚班车
+          _buildBusSection(
+            Icons.nights_stay,
+            eveningBusesChangping,
+            Colors.blue[100]!,
+          ),
           SizedBox(height: 20),
-          _buildBusCard('去燕园', toYanyuan, Colors.green[100]!),
+          // 去燕园方向
+          Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              '去燕园',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
+          // 早班车
+          _buildBusSection(
+            Icons.brightness_5, // 使用 brightness_5 图标
+            morningBusesYanyuan,
+            Colors.green[100]!,
+          ),
+          // 午班车
+          _buildBusSection(
+            Icons.wb_sunny,
+            noonBusesYanyuan,
+            Colors.green[100]!,
+          ),
+          // 晚班车
+          _buildBusSection(
+            Icons.nights_stay,
+            eveningBusesYanyuan,
+            Colors.green[100]!,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 新增：根据发车时间判断班车属于早、中、晚班车
+  bool _isMorningBus(bus) {
+    final timeStr = bus['yaxis'];
+    final hour = int.parse(timeStr.split(':')[0]);
+    return hour >= 5 && hour < 12;
+  }
+
+  bool _isNoonBus(bus) {
+    final timeStr = bus['yaxis'];
+    final hour = int.parse(timeStr.split(':')[0]);
+    return hour >= 12 && hour < 17;
+  }
+
+  bool _isEveningBus(bus) {
+    final timeStr = bus['yaxis'];
+    final hour = int.parse(timeStr.split(':')[0]);
+    return hour >= 17 && hour <= 23;
+  }
+
+  // 修改了方法名称，使其更符合语义
+  Widget _buildBusSection(
+      IconData iconData, List<dynamic> buses, Color cardColor) {
+    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis'])); // 按发车时间排序
+
+    final displayedBuses = buses.take(4).toList(); // 只取前4个班车
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // 修改为居中对齐
+        children: [
+          Icon(iconData, size: 32),
+          SizedBox(width: 8),
+          Expanded(
+            child: Row(
+              children: displayedBuses.map((busData) {
+                bool isReserved = _isBusReserved(busData);
+                bool isPast = false;
+
+                // 如果是今天的班车，检查是否过期
+                if (_isToday(busData['abscissa'])) {
+                  isPast = _isBusInPast(busData);
+                }
+
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4.0),
+                    child: BusRouteCard(
+                      busData: busData,
+                      isReserved: isReserved,
+                      isPast: isPast,
+                      onTap: isPast ? null : () => _onBusCardTap(busData),
+                      onLongPress: () => _onBusCardLongPress(busData),
+                      cardColor: isReserved
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.1)
+                          : Colors.grey[200]!,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );
@@ -411,61 +551,6 @@ class _ReservationPageState extends State<ReservationPage> {
   // 添加一个刷新函数
   Future<void> _onRefresh() async {
     await _loadReservationData(); // 调用数据加载函数刷新数据
-  }
-
-  Widget _buildBusCard(String title, List<dynamic> buses, Color cardColor) {
-    // 按发车时间排序
-    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
-
-    return Padding(
-      padding: EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          SizedBox(height: 12),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 1.2, // 调整宽高比，使卡片更扁平
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: buses.length,
-            itemBuilder: (context, index) {
-              var busData = buses[index];
-              bool isReserved = _isBusReserved(busData);
-              bool isPast = false;
-
-              // 如果是今天的班车，检查是否过期
-              if (_isToday(busData['abscissa'])) {
-                isPast = _isBusInPast(busData);
-              }
-
-              return BusRouteCard(
-                busData: busData,
-                isReserved: isReserved,
-                isPast: isPast, // 传递是否过期的信息
-                onTap: isPast ? null : () => _onBusCardTap(busData),
-                onLongPress: () => _onBusCardLongPress(busData), // 长按显示详情
-                cardColor: isReserved
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                    : Colors.grey[200]!, // 使用银白色调
-              );
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   bool _isBusReserved(Map<String, dynamic> busData) {

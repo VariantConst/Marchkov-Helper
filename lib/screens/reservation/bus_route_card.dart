@@ -25,75 +25,75 @@ class BusRouteCard extends StatelessWidget {
     return GestureDetector(
       onTap: isPast ? null : onTap, // 如果过期，不可点击
       onLongPress: onLongPress,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: isReserved
-              ? isPast
-                  ? Colors.grey[300] // 已过期的预约班车用淡灰色
-                  : Theme.of(context).colorScheme.primary.withOpacity(0.1)
-              : cardColor, // 使用传入的 cardColor
-          border: isReserved
-              ? Border.all(
-                  color: isPast
-                      ? Colors.grey // 已过期的预约班车边框用灰色
-                      : Theme.of(context).colorScheme.primary,
-                  width: 2)
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Center(
-              // 确保文本居中
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    departureTime,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isReserved
-                          ? isPast
-                              ? Colors.grey // 已过期的预约班车文本用灰色
-                              : Theme.of(context).colorScheme.primary
-                          : isPast
-                              ? Colors.grey // 已过期的非预约班车文本用灰色
-                              : Colors.black, // 为非预约状态设置黑色文本
+      child: SizedBox(
+        // 包裹一个SizedBox，设置固定高度
+        height: 50, // 设置固定高度，根据需要调整
+        child: Container(
+          padding:
+              EdgeInsets.symmetric(vertical: 2, horizontal: 4), // 缩小 padding
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isReserved
+                ? isPast
+                    ? Colors.grey[300] // 已过期的预约班车用淡灰色
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                : cardColor, // 使用传入的 cardColor
+            border: isReserved
+                ? Border.all(
+                    color: isPast
+                        ? Colors.grey // 已过期的预约班车边框用灰色
+                        : Theme.of(context).colorScheme.primary,
+                    width: 2)
+                : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.none, // 允许溢出部分显示
+          child: Stack(
+            clipBehavior: Clip.none, // 允许溢出部分显示
+            children: [
+              Center(
+                // 确保文本居中
+                child: Text(
+                  departureTime,
+                  style: TextStyle(
+                    fontSize: 16, // 缩小文字
+                    fontWeight: FontWeight.bold,
+                    color: isReserved
+                        ? isPast
+                            ? Colors.grey // 已过期的预约班车文本用灰色
+                            : Theme.of(context).colorScheme.primary
+                        : isPast
+                            ? Colors.grey // 已过期的非预约班车文本用灰色
+                            : Colors.black, // 非预约状态下的文本颜色
+                  ),
+                ),
+              ),
+              if (isReserved)
+                Positioned(
+                  top: -12, // 调整位置，使其悬浮在边框内
+                  right: -12,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white, // 背景色为白色，确保图标清晰可见
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle,
+                      color: isPast
+                          ? Colors.grey
+                          : Theme.of(context).colorScheme.primary,
+                      size: 24, // 将尺寸从16调整为20
                     ),
                   ),
-                ],
-              ),
-            ),
-            if (isReserved && !isPast)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Icon(
-                  Icons.check_circle,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 16,
                 ),
-              ),
-            if (isReserved && isPast)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Icon(
-                  Icons.check_circle,
-                  color: Colors.grey,
-                  size: 16,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
