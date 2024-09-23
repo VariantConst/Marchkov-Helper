@@ -6,6 +6,7 @@ class BusRouteCard extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool isReserved;
   final bool isPast; // 新增 isPast 参数
+  final Color cardColor; // 新增 cardColor 参数
 
   const BusRouteCard({
     Key? key,
@@ -14,6 +15,7 @@ class BusRouteCard extends StatelessWidget {
     this.onLongPress,
     this.isReserved = false,
     this.isPast = false, // 初始化 isPast 参数
+    required this.cardColor, // 添加 cardColor 参数
   }) : super(key: key);
 
   @override
@@ -21,7 +23,7 @@ class BusRouteCard extends StatelessWidget {
     String departureTime = busData['yaxis'] ?? '';
 
     return GestureDetector(
-      onTap: onTap, // 保持不变，onTap 已经是可空类型
+      onTap: isPast ? null : onTap, // 如果过期，不可点击
       onLongPress: onLongPress,
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -29,37 +31,47 @@ class BusRouteCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           color: isReserved
               ? isPast
-                  ? Colors.grey.withOpacity(0.5) // 如果过期，显示灰色
+                  ? Colors.grey[300] // 已过期的预约班车用淡灰色
                   : Theme.of(context).colorScheme.primary.withOpacity(0.1)
-              : Colors.transparent,
+              : cardColor, // 使用传入的 cardColor
           border: isReserved
               ? Border.all(
                   color: isPast
-                      ? Colors.grey // 如果过期，边框也显示灰色
+                      ? Colors.grey // 已过期的预约班车边框用灰色
                       : Theme.of(context).colorScheme.primary,
                   width: 2)
               : null,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Stack(
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  departureTime,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isReserved
-                        ? isPast
-                            ? Colors.grey // 如果过期，文本颜色也显示灰色
-                            : Theme.of(context).colorScheme.primary
-                        : isPast // 根据 isPast 改变文本颜色
-                            ? Colors.grey
-                            : Theme.of(context).primaryColor,
+            Center(
+              // 确保文本居中
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    departureTime,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isReserved
+                          ? isPast
+                              ? Colors.grey // 已过期的预约班车文本用灰色
+                              : Theme.of(context).colorScheme.primary
+                          : isPast
+                              ? Colors.grey // 已过期的非预约班车文本用灰色
+                              : Colors.black, // 为非预约状态设置黑色文本
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             if (isReserved && !isPast)
               Positioned(
@@ -68,6 +80,16 @@ class BusRouteCard extends StatelessWidget {
                 child: Icon(
                   Icons.check_circle,
                   color: Theme.of(context).colorScheme.primary,
+                  size: 16,
+                ),
+              ),
+            if (isReserved && isPast)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Icon(
+                  Icons.check_circle,
+                  color: Colors.grey,
                   size: 16,
                 ),
               ),

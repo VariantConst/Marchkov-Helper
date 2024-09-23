@@ -232,7 +232,7 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
-  // 添加一个��数来判断班车是否���今天
+  // 添加一个数来断班车是否今天
   bool _isToday(String dateStr) {
     DateTime busDate = DateTime.parse(dateStr);
     DateTime now = DateTime.now();
@@ -457,6 +457,9 @@ class _ReservationPageState extends State<ReservationPage> {
                 isPast: isPast, // 传递是否过期的信息
                 onTap: isPast ? null : () => _onBusCardTap(busData),
                 onLongPress: () => _onBusCardLongPress(busData), // 长按显示详情
+                cardColor: isReserved
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    : Colors.grey[200]!, // 使用银白色调
               );
             },
           ),
