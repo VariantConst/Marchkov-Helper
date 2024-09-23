@@ -16,11 +16,6 @@ class CheckedInReservedPieChart extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center, // 居中对齐
         children: [
-          Text(
-            '已签到与已预约比例',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 16),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center, // 居中对齐

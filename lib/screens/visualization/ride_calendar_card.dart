@@ -91,22 +91,24 @@ class RideCalendarCardState extends State<RideCalendarCard> {
             });
           },
           calendarBuilders: CalendarBuilders(
-            markerBuilder: (context, date, events) {
-              if (events.isNotEmpty) {
-                return Positioned(
-                  bottom: 1,
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.blueAccent,
-                    ),
+            defaultBuilder: (context, date, _) {
+              if (_getEventsForDay(date).isNotEmpty) {
+                return Container(
+                  margin: const EdgeInsets.all(6.0),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.blueAccent, width: 2),
+                  ),
+                  child: Text(
+                    '${date.day}',
+                    style: TextStyle(color: Colors.black),
                   ),
                 );
               }
               return null;
             },
+            markerBuilder: (context, date, events) => SizedBox.shrink(), // 添加此行
           ),
         ),
         const SizedBox(height: 8.0),
@@ -128,9 +130,12 @@ class RideCalendarCardState extends State<RideCalendarCard> {
         itemCount: selectedEvents.length,
         itemBuilder: (context, index) {
           RideInfo ride = selectedEvents[index];
-          return ListTile(
-            title: Text('乘车时间: ${ride.appointmentTime}'),
-            subtitle: Text('状态: ${ride.statusName}'),
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: ListTile(
+              title: Text('乘车时间: ${ride.appointmentTime}'),
+              subtitle: Text('状态: ${ride.statusName}'),
+            ),
           );
         },
       );

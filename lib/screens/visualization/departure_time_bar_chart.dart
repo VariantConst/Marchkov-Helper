@@ -42,11 +42,6 @@ class DepartureTimeBarChart extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '各时段出发班次统计',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 16),
                 SizedBox(
                   height: chartHeight,
                   child: BarChart(

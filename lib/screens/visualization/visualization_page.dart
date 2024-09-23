@@ -31,7 +31,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
   // 添加选择的时间范围变量，默认值为全部
   TimeRange _selectedTimeRange = TimeRange.all;
 
-  // 根据选定的时间范围过滤乘车数据
+  // 根据选定的时间范围过滤乘���
   List<RideInfo> _filterRides(List<RideInfo> rides) {
     final now = DateTime.now();
     late DateTime startDate;
@@ -63,7 +63,35 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('乘车数据可视化'),
+        title: Text('乘车历史'),
+        actions: [
+          PopupMenuButton<TimeRange>(
+            icon: Icon(Icons.filter_list),
+            onSelected: (TimeRange newValue) {
+              setState(() {
+                _selectedTimeRange = newValue;
+              });
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<TimeRange>>[
+              PopupMenuItem<TimeRange>(
+                value: TimeRange.threeMonths,
+                child: Text('过去3个月'),
+              ),
+              PopupMenuItem<TimeRange>(
+                value: TimeRange.sixMonths,
+                child: Text('过去半年'),
+              ),
+              PopupMenuItem<TimeRange>(
+                value: TimeRange.oneYear,
+                child: Text('过去一年'),
+              ),
+              PopupMenuItem<TimeRange>(
+                value: TimeRange.all,
+                child: Text('全部'),
+              ),
+            ],
+          ),
+        ],
       ),
       body: rideHistoryProvider.isLoading
           ? Center(child: CircularProgressIndicator())
@@ -71,46 +99,6 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
               ? Center(child: Text('加载乘车历史失败: ${rideHistoryProvider.error}'))
               : Column(
                   children: [
-                    // 添加顶部栏下拉框
-                    Container(
-                      color: Colors.grey[200],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          Text('选择时间范围: '),
-                          SizedBox(width: 8),
-                          DropdownButton<TimeRange>(
-                            value: _selectedTimeRange,
-                            onChanged: (TimeRange? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _selectedTimeRange = newValue;
-                                });
-                              }
-                            },
-                            items: [
-                              DropdownMenuItem(
-                                value: TimeRange.threeMonths,
-                                child: Text('过去3个月'),
-                              ),
-                              DropdownMenuItem(
-                                value: TimeRange.sixMonths,
-                                child: Text('过去半年'),
-                              ),
-                              DropdownMenuItem(
-                                value: TimeRange.oneYear,
-                                child: Text('过去一年'),
-                              ),
-                              DropdownMenuItem(
-                                value: TimeRange.all,
-                                child: Text('全部'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                     // 显示过滤后的数据
                     Expanded(
                       child: _buildVisualizationCards(
@@ -124,10 +112,54 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
   Widget _buildVisualizationCards(List<RideInfo> rides) {
     return PageView(
       children: [
-        RideCalendarCard(rides: rides),
-        DepartureTimeBarChart(rides: rides),
-        CheckInTimeHistogram(rides: rides), // 添加签到时间差直方图
-        CheckedInReservedPieChart(rides: rides), // 添加饼图页面
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                '乘车日历',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(child: RideCalendarCard(rides: rides)),
+          ],
+        ),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                '各时段出发班次统计',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(child: DepartureTimeBarChart(rides: rides)),
+          ],
+        ),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                '签到时间差（分钟）分布',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(child: CheckInTimeHistogram(rides: rides)),
+          ],
+        ),
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                '已签到与已预约比例',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(child: CheckedInReservedPieChart(rides: rides)),
+          ],
+        ),
       ],
     );
   }

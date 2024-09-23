@@ -21,11 +21,6 @@ class CheckInTimeHistogram extends StatelessWidget {
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
-              Text(
-                '签到时间差（分钟）分布',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 16),
               SizedBox(
                 height: chartHeight,
                 child: BarChart(

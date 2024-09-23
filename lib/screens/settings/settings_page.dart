@@ -143,25 +143,12 @@ class _SettingsPageState extends State<SettingsPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 顶部导航栏
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Text(
-                'Profile',
-                style: TextStyle(
-                  color: Color(0xFF111418),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
             // 头像和用户信息
             SizedBox(height: 16),
             GestureDetector(
               onTap: _pickImage,
               child: CircleAvatar(
-                radius: 60,
+                radius: 36,
                 backgroundColor: Color(0xFFF0F2F5),
                 backgroundImage:
                     _avatarPath != null ? FileImage(File(_avatarPath!)) : null,
@@ -183,6 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            SizedBox(height: 8),
             Text(
               college,
               style: TextStyle(
@@ -190,6 +178,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 fontSize: 16,
               ),
             ),
+            SizedBox(height: 8),
             Text(
               'ID: $studentId',
               style: TextStyle(
