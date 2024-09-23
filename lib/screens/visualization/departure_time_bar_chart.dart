@@ -34,7 +34,7 @@ class DepartureTimeBarChart extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight;
-        final chartHeight = availableHeight * 1 / 2;
+        final chartHeight = availableHeight * 2 / 3;
 
         return Padding(
           padding: EdgeInsets.all(16.0),
