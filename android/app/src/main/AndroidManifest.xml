@@ -29,6 +29,7 @@
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
+            android:label="MarchKov Helper"
             android:value="2" />
     </application>
     <!-- Required to query activities that can process text, see:

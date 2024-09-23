@@ -153,7 +153,7 @@ class AboutPageState extends State<AboutPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'MCK Helper',
+                    'MarchKov Helper',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   SizedBox(height: 16),

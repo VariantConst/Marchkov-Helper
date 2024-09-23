@@ -37,9 +37,7 @@ class LoginPageState extends State<LoginPage> {
           title: Text('用户协议'),
           content: SingleChildScrollView(
             child: Text(
-              '这是一个示例用户协议。在实际应用中，您需要在此处添加完整的用户协议内容。'
-              '用户协议通常包括使用条款、隐私政策、免责声明等重要信息。'
-              '请确保用户仔细阅读并同意这些条款before使用您的应用。',
+              '还没写呢，先凑合同意呗。',
             ),
           ),
           actions: <Widget>[

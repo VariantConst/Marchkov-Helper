@@ -1,6 +1,6 @@
 {
-  "name": "马池口班车预约",
-  "short_name": "马池口班车预约",
+  "name": "MCK Helper",
+  "short_name": "MCK Helper",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0175C2",

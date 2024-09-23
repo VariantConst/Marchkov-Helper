@@ -1,5 +1,5 @@
 name: marchkov_flutter
-description: "马池口班车预约"
+description: "MarchKov Helper"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -62,6 +62,12 @@ dev_dependencies:
   mockito: ^5.0.0
   build_runner: ^2.1.0 # 添加这行
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.10.0 # 请检查最新版本
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
