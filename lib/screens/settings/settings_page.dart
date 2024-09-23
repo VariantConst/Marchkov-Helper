@@ -12,6 +12,7 @@ import '../login/login_page.dart';
 import '../../services/user_service.dart';
 import 'theme_settings_page.dart'; // 新增
 import '../visualization/visualization_page.dart'; // 新增
+import 'about_page.dart'; // 新增
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -269,6 +270,27 @@ class _SettingsPageState extends State<SettingsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('乘车历史'),
+                      Icon(Icons.arrow_forward_ios),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
+                // 关于按钮
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AboutPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    minimumSize: Size(double.infinity, 50),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('关于'),
                       Icon(Icons.arrow_forward_ios),
                     ],
                   ),
