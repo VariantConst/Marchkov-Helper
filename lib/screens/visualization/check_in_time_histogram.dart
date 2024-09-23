@@ -111,8 +111,8 @@ class CheckInTimeHistogram extends StatelessWidget {
     List<int> timeDifferences = [];
 
     for (var ride in rides) {
-      if (ride.appointmentSignTime != null &&
-          ride.appointmentSignTime!.isNotEmpty) {
+      if (ride.statusName == '已签到') {
+        // 根据 statusName 过滤
         try {
           DateTime appointmentTime = DateTime.parse(ride.appointmentTime);
           DateTime signTime = DateTime.parse(ride.appointmentSignTime!);
@@ -131,7 +131,7 @@ class CheckInTimeHistogram extends StatelessWidget {
       frequencyMap[clampedDiff] = (frequencyMap[clampedDiff] ?? 0) + 1;
     }
 
-    // 确保包含所有从 -10 ��� 10 的 x 值
+    // 确保包含所有从 -10 到 10 的 x 值
     List<BarChartGroupData> barGroups = [];
     for (int i = -10; i <= 10; i++) {
       barGroups.add(

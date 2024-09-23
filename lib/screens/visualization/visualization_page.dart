@@ -6,6 +6,7 @@ import 'ride_calendar_card.dart';
 // 添加以下导入
 import 'departure_time_bar_chart.dart';
 import 'check_in_time_histogram.dart'; // 恢复导入
+import 'checked_in_reserved_pie_chart.dart'; // 添加导入
 
 // 将 TimeRange 枚举移动到类外部
 enum TimeRange { threeMonths, sixMonths, oneYear, all }
@@ -126,6 +127,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
         RideCalendarCard(rides: rides),
         DepartureTimeBarChart(rides: rides),
         CheckInTimeHistogram(rides: rides), // 添加签到时间差直方图
+        CheckedInReservedPieChart(rides: rides), // 添加饼图页面
       ],
     );
   }

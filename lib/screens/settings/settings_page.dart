@@ -268,7 +268,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('可视化设置'),
+                      Text('乘车历史'),
                       Icon(Icons.arrow_forward_ios),
                     ],
                   ),
