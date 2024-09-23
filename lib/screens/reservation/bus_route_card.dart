@@ -27,37 +27,50 @@ class BusRouteCard extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: isReserved ? Colors.amberAccent : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-          gradient: isReserved
-              ? null
-              : LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.grey.shade100],
-                ),
+          color: isReserved
+              ? isPast
+                  ? Colors.grey.withOpacity(0.5) // 如果过期，显示灰色
+                  : Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              : Colors.transparent,
+          border: isReserved
+              ? Border.all(
+                  color: isPast
+                      ? Colors.grey // 如果过期，边框也显示灰色
+                      : Theme.of(context).colorScheme.primary,
+                  width: 2)
+              : null,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Text(
-              departureTime,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isReserved
-                    ? Colors.red
-                    : isPast // 根据 isPast 改变文本颜色
-                        ? Colors.grey
-                        : Theme.of(context).primaryColor,
-              ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  departureTime,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isReserved
+                        ? isPast
+                            ? Colors.grey // 如果过期，文本颜色也显示灰色
+                            : Theme.of(context).colorScheme.primary
+                        : isPast // 根据 isPast 改变文本颜色
+                            ? Colors.grey
+                            : Theme.of(context).primaryColor,
+                  ),
+                ),
+              ],
             ),
+            if (isReserved && !isPast)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Icon(
+                  Icons.check_circle,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 16,
+                ),
+              ),
           ],
         ),
       ),

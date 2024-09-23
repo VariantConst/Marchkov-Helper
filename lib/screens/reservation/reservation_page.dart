@@ -232,7 +232,7 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
-  // 添加一个函数来判断班车是否为今天
+  // 添加一个��数来判断班车是否���今天
   bool _isToday(String dateStr) {
     DateTime busDate = DateTime.parse(dateStr);
     DateTime now = DateTime.now();
@@ -417,55 +417,50 @@ class _ReservationPageState extends State<ReservationPage> {
     // 按发车时间排序
     buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: cardColor,
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+    return Padding(
+      padding: EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-            SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 1.2, // 调整宽高比，使卡片更扁平
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: buses.length,
-              itemBuilder: (context, index) {
-                var busData = buses[index];
-                bool isReserved = _isBusReserved(busData);
-                bool isPast = false;
-
-                // 如果是今天的班车，检查是否过期
-                if (_isToday(busData['abscissa'])) {
-                  isPast = _isBusInPast(busData);
-                }
-
-                return BusRouteCard(
-                  busData: busData,
-                  isReserved: isReserved,
-                  isPast: isPast, // 传递是否过期的信息
-                  onTap: isPast ? null : () => _onBusCardTap(busData),
-                  onLongPress: () => _onBusCardLongPress(busData), // 长按显示详情
-                );
-              },
+          ),
+          SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              childAspectRatio: 1.2, // 调整宽高比，使卡片更扁平
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
             ),
-          ],
-        ),
+            itemCount: buses.length,
+            itemBuilder: (context, index) {
+              var busData = buses[index];
+              bool isReserved = _isBusReserved(busData);
+              bool isPast = false;
+
+              // 如果是今天的班车，检查是否过期
+              if (_isToday(busData['abscissa'])) {
+                isPast = _isBusInPast(busData);
+              }
+
+              return BusRouteCard(
+                busData: busData,
+                isReserved: isReserved,
+                isPast: isPast, // 传递是否过期的信息
+                onTap: isPast ? null : () => _onBusCardTap(busData),
+                onLongPress: () => _onBusCardLongPress(busData), // 长按显示详情
+              );
+            },
+          ),
+        ],
       ),
     );
   }
