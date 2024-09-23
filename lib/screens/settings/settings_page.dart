@@ -7,7 +7,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart'; // 新增
 import 'package:path/path.dart' as path; // 新增
 import '../../providers/auth_provider.dart';
-import '../../providers/theme_provider.dart'; // 新增
+// 新增
 import '../login/login_page.dart';
 import '../../services/user_service.dart';
 import 'theme_settings_page.dart'; // 新增

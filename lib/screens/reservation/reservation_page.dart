@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
 import 'bus_route_card.dart';
-import 'package:intl/intl.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -13,51 +13,20 @@ class ReservationPage extends StatefulWidget {
 }
 
 class _ReservationPageState extends State<ReservationPage> {
-  List<dynamic> _busList = []; // 原始班车列表
-  List<dynamic> _filteredBusList = []; // 过滤后的班车列表
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  List<dynamic> _busList = [];
+  List<dynamic> _filteredBusList = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  late DateTime _selectedDate;
-  late List<DateTime> _weekDates;
-  late PageController _calendarController;
-  late PageController _mainPageController;
-  int _currentPage = 0; // 添加这行来定义 _currentPage
-  Map<String, dynamic> _reservedBuses = {}; // 记录已预约的班车
+  Map<String, dynamic> _reservedBuses = {};
+  bool _showPastBuses = false; // 新增
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
-    _weekDates = _getWeekDates();
-    _calendarController = PageController(
-      initialPage: _currentPage,
-      viewportFraction: 0.2,
-    );
-    _mainPageController = PageController(initialPage: _currentPage);
-    _loadReservationData(); // 只需调用一次
-  }
-
-  @override
-  void dispose() {
-    _calendarController.dispose();
-    _mainPageController.dispose();
-    super.dispose();
-  }
-
-  List<DateTime> _getWeekDates() {
-    DateTime now = DateTime.now();
-    return List.generate(7, (index) => now.add(Duration(days: index)));
-  }
-
-  void _filterBusList() {
-    setState(() {
-      _filteredBusList = _busList.where((bus) {
-        final busDate = DateTime.parse(bus['abscissa'].split(' ')[0]);
-        return busDate.year == _selectedDate.year &&
-            busDate.month == _selectedDate.month &&
-            busDate.day == _selectedDate.day;
-      }).toList();
-    });
+    _selectedDay = _focusedDay;
+    _loadReservationData();
   }
 
   Future<void> _loadReservationData() async {
@@ -66,12 +35,10 @@ class _ReservationPageState extends State<ReservationPage> {
     final todayString = DateTime.now().toIso8601String().split('T')[0];
 
     if (cachedDate == todayString) {
-      // 今天已有缓存，使用缓存的数据
       final cachedBusDataString = prefs.getString('cachedBusData');
       if (cachedBusDataString != null) {
         final cachedBusData = jsonDecode(cachedBusDataString);
 
-        // 尝试从缓存中加载已预约班车列表
         final cachedReservedBusesString =
             prefs.getString('cachedReservedBuses');
         if (cachedReservedBusesString != null) {
@@ -79,7 +46,7 @@ class _ReservationPageState extends State<ReservationPage> {
               Map<String, dynamic>.from(jsonDecode(cachedReservedBusesString));
         }
 
-        if (!mounted) return; // 检查组件是否仍然挂载
+        if (!mounted) return;
         setState(() {
           _busList = cachedBusData;
           _filterBusList();
@@ -87,15 +54,12 @@ class _ReservationPageState extends State<ReservationPage> {
         });
       }
     } else {
-      // 没有今天的缓存，显示加载指示器
-      if (!mounted) return; // 检查组件是否仍然挂载
+      if (!mounted) return;
       setState(() {
         _isLoading = true;
       });
     }
 
-    // 提前获取 authProvider，避免在异步操作后使用 context
-    // ignore: use_build_context_synchronously
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
@@ -108,20 +72,18 @@ class _ReservationPageState extends State<ReservationPage> {
 
       final allBuses = await reservationService.getAllBuses(dateStrings);
 
-      if (!mounted) return; // 检查组件是否仍然挂载
+      if (!mounted) return;
       setState(() {
         _busList = allBuses;
         _filterBusList();
         _isLoading = false;
       });
 
-      // 更新缓存
       await _cacheBusData();
 
-      // 获取最新已预约班车列表并更新缓存
       await _fetchAndCacheMyReservations();
     } catch (e) {
-      if (!mounted) return; // 检查组件是否仍然挂载
+      if (!mounted) return;
       setState(() {
         _errorMessage = '加载失败: $e';
         _isLoading = false;
@@ -143,7 +105,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
     try {
       final reservations = await reservationService.fetchMyReservations();
-      if (!mounted) return; // 检查组件是否仍然挂载
+      if (!mounted) return;
       setState(() {
         _reservedBuses.clear();
         for (var reservation in reservations) {
@@ -156,18 +118,269 @@ class _ReservationPageState extends State<ReservationPage> {
           };
         }
       });
-      // 更新缓存
       await _cacheReservedBuses();
     } catch (e) {
-      print('加载已预约班车失败: $e');
+      print('载已预约班车失败: $e');
     }
   }
 
-  // 添加于缓存已预约班车列表的函数
   Future<void> _cacheReservedBuses() async {
     final prefs = await SharedPreferences.getInstance();
     final reservedBusesString = jsonEncode(_reservedBuses);
     await prefs.setString('cachedReservedBuses', reservedBusesString);
+  }
+
+  void _filterBusList() {
+    setState(() {
+      _filteredBusList = _busList.where((bus) {
+        final busDate = DateTime.parse(bus['abscissa'].split(' ')[0]);
+        return busDate.year == _selectedDay?.year &&
+            busDate.month == _selectedDay?.month &&
+            busDate.day == _selectedDay?.day;
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('班车时刻表'),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          _buildCalendar(),
+          Expanded(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
+                    ? Center(child: Text(_errorMessage))
+                    : _buildBusList(),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildCalendar() {
+    final now = DateTime.now();
+    final lastSelectableDay = now.add(Duration(days: 5));
+
+    return TableCalendar(
+      firstDay: now,
+      lastDay: now.add(Duration(days: 13)), // 显示两周
+      focusedDay: _focusedDay,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        if (selectedDay.isAfter(now.subtract(Duration(days: 1))) &&
+            selectedDay.isBefore(lastSelectableDay.add(Duration(days: 1)))) {
+          setState(() {
+            _selectedDay = selectedDay;
+            _focusedDay = focusedDay;
+            _filterBusList();
+          });
+        }
+      },
+      calendarFormat: CalendarFormat.twoWeeks, // 固定为两周视图
+      availableCalendarFormats: {CalendarFormat.twoWeeks: '两周'}, // 只允许两周视图
+      calendarStyle: CalendarStyle(
+        todayDecoration: BoxDecoration(
+          color: Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(color: Theme.of(context).primaryColor, width: 1),
+        ),
+        todayTextStyle: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).primaryColor,
+        ),
+        selectedDecoration: BoxDecoration(
+          color: Theme.of(context).primaryColor,
+          shape: BoxShape.circle,
+        ),
+        selectedTextStyle: TextStyle(color: Colors.white),
+        defaultTextStyle: TextStyle(fontWeight: FontWeight.bold),
+        outsideTextStyle: TextStyle(color: Colors.grey),
+        disabledTextStyle:
+            TextStyle(color: Colors.grey, fontWeight: FontWeight.normal),
+      ),
+      headerStyle: HeaderStyle(
+        formatButtonVisible: false,
+        titleCentered: true,
+      ),
+      enabledDayPredicate: (day) {
+        return day.isAfter(now.subtract(Duration(days: 1))) &&
+            day.isBefore(lastSelectableDay.add(Duration(days: 1)));
+      },
+      calendarBuilders: CalendarBuilders(
+        defaultBuilder: (context, day, focusedDay) {
+          final isSelectable = day.isAfter(now.subtract(Duration(days: 1))) &&
+              day.isBefore(lastSelectableDay.add(Duration(days: 1)));
+          final isWithinNext7Days =
+              day.isAfter(now.subtract(Duration(days: 1))) &&
+                  day.isBefore(now.add(Duration(days: 7)));
+
+          return Container(
+            margin: const EdgeInsets.all(4.0),
+            alignment: Alignment.center,
+            decoration: isSelectable && isWithinNext7Days
+                ? BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.blue, width: 1),
+                  )
+                : null,
+            child: Text(
+              '${day.day}',
+              style: TextStyle(
+                fontWeight: isSelectable && isWithinNext7Days
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color: isSelectable ? Colors.black : Colors.grey,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBusList() {
+    return ListView(
+      children: [
+        _buildBusSection('去昌平', _getBusesByDirection('去昌平'), Colors.grey[200]!),
+        _buildBusSection('去燕园', _getBusesByDirection('去燕园'), Colors.grey[200]!),
+      ],
+    );
+  }
+
+  Widget _buildBusSection(String title, List<dynamic> buses, Color cardColor) {
+    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis'])); // 按发车时间排序
+
+    final pastBuses = buses.where((bus) => _isBusInPast(bus)).toList();
+    final upcomingBuses = buses.where((bus) => !_isBusInPast(bus)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              Icon(Icons.directions_bus, size: 32),
+              SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        ...upcomingBuses.map((busData) {
+          bool isReserved = _isBusReserved(busData);
+          bool isPast = false;
+
+          // 如果是今天的班车，检查是否过期
+          if (_isToday(busData['abscissa'])) {
+            isPast = _isBusInPast(busData);
+          }
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4.0),
+            child: BusRouteCard(
+              busData: busData,
+              isReserved: isReserved,
+              isPast: isPast,
+              onTap: isPast ? null : () => _onBusCardTap(busData),
+              onLongPress: () => _onBusCardLongPress(busData),
+              cardColor: isReserved
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                  : Colors.grey[200]!,
+            ),
+          );
+        }).toList(),
+        if (pastBuses.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4.0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showPastBuses = !_showPastBuses;
+                });
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _showPastBuses ? '隐藏已过期班车' : '显示已过期班车',
+                    style: TextStyle(color: Colors.blue),
+                  ),
+                  Icon(
+                    _showPastBuses ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.blue,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (_showPastBuses)
+          ...pastBuses.map((busData) {
+            bool isReserved = _isBusReserved(busData);
+            bool isPast = true;
+
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4.0),
+              child: BusRouteCard(
+                busData: busData,
+                isReserved: isReserved,
+                isPast: isPast,
+                onTap: null,
+                onLongPress: () => _onBusCardLongPress(busData),
+                cardColor: Colors.grey[300]!,
+              ),
+            );
+          }).toList(),
+      ],
+    );
+  }
+
+  List<dynamic> _getBusesByDirection(String direction) {
+    return _filteredBusList.where((bus) {
+      final name = bus['route_name'] ?? '';
+      if (direction == '去昌平') {
+        return name.contains('燕') &&
+            name.contains('新') &&
+            name.indexOf('燕') < name.indexOf('新');
+      } else {
+        return name.contains('燕') &&
+            name.contains('新') &&
+            name.indexOf('新') < name.indexOf('燕');
+      }
+    }).toList();
+  }
+
+  bool _isToday(String dateStr) {
+    DateTime busDate = DateTime.parse(dateStr);
+    DateTime now = DateTime.now();
+    return busDate.year == now.year &&
+        busDate.month == now.month &&
+        busDate.day == now.day;
+  }
+
+  bool _isBusInPast(Map<String, dynamic> busData) {
+    String dateStr = busData['abscissa'];
+    String timeStr = busData['yaxis'];
+    DateTime busDateTime = DateTime.parse("$dateStr $timeStr");
+    return busDateTime.isBefore(DateTime.now());
+  }
+
+  bool _isBusReserved(Map<String, dynamic> busData) {
+    String resourceId = busData['bus_id'].toString();
+    String date = busData['abscissa'];
+    String time = busData['yaxis'];
+    String appointmentTime = '$date $time';
+    String key = '$resourceId$appointmentTime';
+    return _reservedBuses.containsKey(key);
   }
 
   void _onBusCardTap(Map<String, dynamic> busData) async {
@@ -175,14 +388,13 @@ class _ReservationPageState extends State<ReservationPage> {
     final reservationService = ReservationService(authProvider);
 
     String resourceId = busData['bus_id'].toString();
-    String date = busData['abscissa']; // 日期
+    String date = busData['abscissa'];
     String period = busData['time_id'].toString();
     String time = busData['yaxis'];
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
 
     if (_reservedBuses.containsKey(key)) {
-      // 已预约，执行取消预约
       try {
         String appointmentId = _reservedBuses[key]['id'].toString();
         String hallAppointmentDataId =
@@ -190,19 +402,16 @@ class _ReservationPageState extends State<ReservationPage> {
         await reservationService.cancelReservation(
             appointmentId, hallAppointmentDataId);
 
-        if (!mounted) return; // 检查组件是否仍然挂载
+        if (!mounted) return;
         setState(() {
-          // 移除高亮状态，删除相关属性
           _reservedBuses.remove(key);
         });
 
-        // 更新缓存
         await _cacheReservedBuses();
       } catch (e) {
         _showErrorDialog('取消预约失败', e.toString());
       }
     } else {
-      // 未预约，执行预约
       try {
         await reservationService.makeReservation(resourceId, date, period);
         await _fetchAndCacheMyReservations();
@@ -232,336 +441,6 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
-  // 添加一个数来断班车是否今天
-  bool _isToday(String dateStr) {
-    DateTime busDate = DateTime.parse(dateStr);
-    DateTime now = DateTime.now();
-    return busDate.year == now.year &&
-        busDate.month == now.month &&
-        busDate.day == now.day;
-  }
-
-  // 添加一个函数来判断班车是否已经过期
-  bool _isBusInPast(Map<String, dynamic> busData) {
-    String dateStr = busData['abscissa']; // 日期
-    String timeStr = busData['yaxis']; // 时间
-    DateTime busDateTime = DateTime.parse("$dateStr $timeStr");
-    return busDateTime.isBefore(DateTime.now());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildCalendar(), // 将日历移到外部
-            Expanded(
-              child: PageView.builder(
-                controller: _mainPageController,
-                onPageChanged: (int page) {
-                  if (!mounted) return; // 检查组件是否仍然挂载
-                  setState(() {
-                    _currentPage = page;
-                    _selectedDate = _weekDates[page];
-                    _filterBusList();
-                  });
-                  _calendarController.animateToPage(
-                    page,
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                },
-                itemCount: _weekDates.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 已移除 _buildCalendar()
-                        SizedBox(height: 20),
-                        Expanded(
-                          child: _isLoading
-                              ? Center(child: CircularProgressIndicator())
-                              : _errorMessage.isNotEmpty
-                                  ? Center(child: Text(_errorMessage))
-                                  : _filteredBusList.isEmpty
-                                      ? Center(child: Text('暂无班车信息'))
-                                      : _buildBusList(),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCalendar() {
-    return SizedBox(
-      height: 100,
-      child: PageView.builder(
-        controller: _calendarController,
-        onPageChanged: (int page) {
-          _mainPageController.animateToPage(
-            page,
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        },
-        itemCount: _weekDates.length,
-        itemBuilder: (context, index) {
-          final date = _weekDates[index];
-          final isSelected = index == _currentPage;
-          final pageOffset = (index - _currentPage).abs();
-          final scale = 1 - (pageOffset * 0.1).clamp(0.0, 0.3);
-          final opacity = 1 - (pageOffset * 0.3).clamp(0.0, 0.7);
-
-          return GestureDetector(
-            onTap: () {
-              _calendarController.animateToPage(
-                index,
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-            child: Transform.scale(
-              scale: scale,
-              child: Opacity(
-                opacity: opacity,
-                child: AnimatedContainer(
-                  duration: Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  margin: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).primaryColor
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        DateFormat('E').format(date),
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black54,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '${date.day}',
-                        style: TextStyle(
-                          fontSize: isSelected ? 28 : 24,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBusList() {
-    // 按方向分类
-    final toChangping = _filteredBusList.where((bus) {
-      final name = bus['route_name'] ?? '';
-      final indexYan = name.indexOf('燕');
-      final indexXin = name.indexOf('新');
-      return indexYan != -1 && indexXin != -1 && indexYan < indexXin;
-    }).toList();
-
-    final toYanyuan = _filteredBusList.where((bus) {
-      final name = bus['route_name'] ?? '';
-      final indexYan = name.indexOf('燕');
-      final indexXin = name.indexOf('新');
-      return indexYan != -1 && indexXin != -1 && indexXin < indexYan;
-    }).toList();
-
-    // 新增：按照发车时间段分类
-    // 去昌平方向
-    final morningBusesChangping = toChangping.where(_isMorningBus).toList();
-    final noonBusesChangping = toChangping.where(_isNoonBus).toList();
-    final eveningBusesChangping = toChangping.where(_isEveningBus).toList();
-
-    // 去燕园方向
-    final morningBusesYanyuan = toYanyuan.where(_isMorningBus).toList();
-    final noonBusesYanyuan = toYanyuan.where(_isNoonBus).toList();
-    final eveningBusesYanyuan = toYanyuan.where(_isEveningBus).toList();
-
-    return RefreshIndicator(
-      onRefresh: _onRefresh, // 添加刷新回调函数
-      child: ListView(
-        children: [
-          // 去昌平方向
-          Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              '去昌平',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-          // 早班车
-          _buildBusSection(
-            Icons.brightness_5, // 使用 brightness_5 图标
-            morningBusesChangping,
-            Colors.blue[100]!,
-          ),
-          // 午班车
-          _buildBusSection(
-            Icons.wb_sunny,
-            noonBusesChangping,
-            Colors.blue[100]!,
-          ),
-          // 晚班车
-          _buildBusSection(
-            Icons.nights_stay,
-            eveningBusesChangping,
-            Colors.blue[100]!,
-          ),
-          SizedBox(height: 20),
-          // 去燕园方向
-          Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              '去燕园',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-          // 早班车
-          _buildBusSection(
-            Icons.brightness_5, // 使用 brightness_5 图标
-            morningBusesYanyuan,
-            Colors.green[100]!,
-          ),
-          // 午班车
-          _buildBusSection(
-            Icons.wb_sunny,
-            noonBusesYanyuan,
-            Colors.green[100]!,
-          ),
-          // 晚班车
-          _buildBusSection(
-            Icons.nights_stay,
-            eveningBusesYanyuan,
-            Colors.green[100]!,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 新增：根据发车时间判断班车属于早、中、晚班车
-  bool _isMorningBus(bus) {
-    final timeStr = bus['yaxis'];
-    final hour = int.parse(timeStr.split(':')[0]);
-    return hour >= 5 && hour < 12;
-  }
-
-  bool _isNoonBus(bus) {
-    final timeStr = bus['yaxis'];
-    final hour = int.parse(timeStr.split(':')[0]);
-    return hour >= 12 && hour < 17;
-  }
-
-  bool _isEveningBus(bus) {
-    final timeStr = bus['yaxis'];
-    final hour = int.parse(timeStr.split(':')[0]);
-    return hour >= 17 && hour <= 23;
-  }
-
-  // 修改了方法名称，使其更符合语义
-  Widget _buildBusSection(
-      IconData iconData, List<dynamic> buses, Color cardColor) {
-    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis'])); // 按发车时间排序
-
-    final displayedBuses = buses.take(4).toList(); // 只取前4个班车
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center, // 修改为居中对齐
-        children: [
-          Icon(iconData, size: 32),
-          SizedBox(width: 8),
-          Expanded(
-            child: Row(
-              children: displayedBuses.map((busData) {
-                bool isReserved = _isBusReserved(busData);
-                bool isPast = false;
-
-                // 如果是今天的班车，检查是否过期
-                if (_isToday(busData['abscissa'])) {
-                  isPast = _isBusInPast(busData);
-                }
-
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4.0),
-                    child: BusRouteCard(
-                      busData: busData,
-                      isReserved: isReserved,
-                      isPast: isPast,
-                      onTap: isPast ? null : () => _onBusCardTap(busData),
-                      onLongPress: () => _onBusCardLongPress(busData),
-                      cardColor: isReserved
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.1)
-                          : Colors.grey[200]!,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 添加一个刷新函数
-  Future<void> _onRefresh() async {
-    await _loadReservationData(); // 调用数据加载函数刷新数据
-  }
-
-  bool _isBusReserved(Map<String, dynamic> busData) {
-    String resourceId = busData['bus_id'].toString();
-    String date = busData['abscissa'];
-    String time = busData['yaxis'];
-    String appointmentTime = '$date $time';
-    String key = '$resourceId$appointmentTime';
-    return _reservedBuses.containsKey(key);
-  }
-
   void _showBusDetails(Map<String, dynamic> busData) {
     showDialog(
       context: context,
@@ -574,6 +453,31 @@ class _ReservationPageState extends State<ReservationPage> {
           backgroundColor: Colors.transparent,
           child: BusRouteDetails(busData: busData),
         );
+      },
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return BottomNavigationBar(
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: '主页',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.receipt),
+          label: '我的预约',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          label: '设置',
+        ),
+      ],
+      currentIndex: 1,
+      selectedItemColor: Colors.black,
+      unselectedItemColor: Colors.grey,
+      onTap: (index) {
+        // 处理导航逻辑
       },
     );
   }

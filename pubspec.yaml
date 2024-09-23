@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  table_calendar: ^3.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -50,7 +51,6 @@ dependencies:
   image_picker: ^0.8.7+5
   image_cropper: ^5.0.0 # 将这行更新为最新版本
   path: ^1.8.2
-  table_calendar: ^3.0.0
   # 修改 fl_chart 依赖，从 GitHub 获取最新代码
   fl_chart: ^0.69.0
   url_launcher: ^6.1.5 # 新增
