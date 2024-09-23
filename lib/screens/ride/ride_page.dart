@@ -33,7 +33,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   void initState() {
     super.initState();
-    // 仅在初始时设定���不在刷新时改变方向
+    // 仅在初始时设定，不在刷新时改变方向
     _setDirectionBasedOnTime(DateTime.now());
     _initialize(); // 异步初始化
   }
@@ -118,18 +118,15 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _loadRideData({bool isInitialLoad = false}) async {
-    // 添加局部变量来存储加载的数据
-    String? qrCode;
-    String? departureTime;
-    String? routeName;
-    String? codeType;
-    String? errorMessage;
-
     if (isInitialLoad) {
       setState(() {
         _isInitialLoading = true; // 初次加载时设置为 true
-        _errorMessage = ''; // 清空错误��息
+        _errorMessage = ''; // 清空错误信息
       });
+    } else if (_isRefreshing) {
+      // 在下拉刷新时，不改变任何加载状态
+    } else if (_isToggleLoading) {
+      // 在切换方向，改变任何加载状态
     }
 
     final reservationProvider =
@@ -148,60 +145,43 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       if (validReservations.isNotEmpty) {
         if (validReservations.length == 1) {
           await _fetchQRCode(reservationProvider, validReservations[0]);
-          qrCode = reservationProvider.qrCode;
-          departureTime = await _getActualDepartureTime(validReservations[0]);
-          routeName = validReservations[0].resourceName;
-          codeType = '乘车码';
         } else {
           final selectedReservation = _selectReservation(validReservations);
           await _fetchQRCode(reservationProvider, selectedReservation);
-          qrCode = reservationProvider.qrCode;
-          departureTime = await _getActualDepartureTime(selectedReservation);
-          routeName = selectedReservation.resourceName;
-          codeType = '乘车码';
         }
       } else {
         // 获取临时码
         final tempCode = await _fetchTempCode(reservationService);
         if (tempCode != null) {
-          qrCode = tempCode['code'];
-          departureTime = tempCode['departureTime']!;
-          routeName = tempCode['routeName']!;
-          codeType = '临时码';
+          setState(() {
+            _qrCode = tempCode['code'];
+            _departureTime = tempCode['departureTime']!;
+            _routeName = tempCode['routeName']!;
+            _codeType = '临时码';
+          });
         } else {
-          errorMessage = '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
+          setState(() {
+            _errorMessage = '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
+          });
         }
       }
     } catch (e) {
-      errorMessage = '加载数据时出错: $e';
+      setState(() {
+        _errorMessage = '加载数据时出错: $e';
+      });
     } finally {
       // 确保在所有情况下都重置加载状态
       if (isInitialLoad) {
         setState(() {
           _isInitialLoading = false;
-          _qrCode = qrCode;
-          _departureTime = departureTime ?? '';
-          _routeName = routeName ?? '';
-          _codeType = codeType ?? '';
-          _errorMessage = errorMessage ?? '';
         });
       } else if (_isRefreshing) {
         setState(() {
           _isRefreshing = false;
-          _qrCode = qrCode;
-          _departureTime = departureTime ?? '';
-          _routeName = routeName ?? '';
-          _codeType = codeType ?? '';
-          _errorMessage = errorMessage ?? '';
         });
       } else if (_isToggleLoading) {
         setState(() {
           _isToggleLoading = false;
-          _qrCode = qrCode;
-          _departureTime = departureTime ?? '';
-          _routeName = routeName ?? '';
-          _codeType = codeType ?? '';
-          _errorMessage = errorMessage ?? '';
         });
       }
     }
@@ -214,6 +194,16 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         reservation.id.toString(),
         reservation.hallAppointmentDataId.toString(),
       );
+
+      // 获取实际发车时间
+      final actualDepartureTime = await _getActualDepartureTime(reservation);
+
+      setState(() {
+        _qrCode = provider.qrCode;
+        _departureTime = actualDepartureTime; // 使用实际发车时间
+        _routeName = reservation.resourceName;
+        _codeType = '乘车码';
+      });
     } catch (e) {
       setState(() {
         _errorMessage = '获取二维码时出错: $e';
@@ -340,7 +330,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       _isToggleLoading = true; // 开始切换方向，按钮显示加载状态
       _isGoingToYanyuan = !_isGoingToYanyuan; // 切换方向
       _errorMessage = ''; // 清空错误信息
-      _qrCode = null; // 清空二维码，防止显示"暂无二维码"
     });
     await _loadRideData(); // 不传入参数，使用默认值
   }
@@ -395,7 +384,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       borderColor = Colors.grey[400]!;
       buttonColor = Colors.grey[300]!;
     } else if (_codeType == '临时码') {
-      cardColor = Colors.white; // 改为���色，与乘车码保持一致
+      cardColor = Colors.white; // 改为白色，与乘车码保持一致
       textColor = Colors.orange[700]!;
       borderColor = Colors.orange[200]!.withOpacity(0.5);
       buttonColor = Colors.orange[100]!.withOpacity(0.5);
@@ -426,15 +415,31 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (_isToggleLoading)
-                    Center(
-                      child: CircularProgressIndicator(
-                        color: textColor,
-                      ),
+                  if (isNoBusAvailable)
+                    Column(
+                      children: [
+                        Text('😅', style: TextStyle(fontSize: 100)),
+                        SizedBox(height: 20),
+                        Text(
+                          '去${_isGoingToYanyuan ? '燕园' : '昌平'}方向',
+                          style: TextStyle(fontSize: 32, color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          '这会没有班车可坐，急了？',
+                          style: TextStyle(fontSize: 16, color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          '只有过去10分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
+                          style: TextStyle(fontSize: 10, color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 55),
+                      ],
                     )
-                  else if (isNoBusAvailable)
-                    Text(_errorMessage,
-                        style: TextStyle(fontSize: 16, color: textColor))
                   else if (_qrCode != null && _qrCode!.isNotEmpty)
                     ..._buildQRCodeContent(textColor, borderColor)
                   else
