@@ -13,90 +13,127 @@ class DepartureTimeBarChart extends StatelessWidget {
     // 处理数据
     final data = _prepareChartData();
 
-    return Padding(
-      padding: EdgeInsets.all(16.0),
-      child: Center(
-        child: Column(
-          children: [
-            Text(
-              '各时段出发班次统计',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.center,
-                  maxY: data['maxY'],
-                  minY: data['minY'],
-                  barTouchData: BarTouchData(enabled: false),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: (data['maxY'] - data['minY']) / 10,
-                        getTitlesWidget: (double value, TitleMeta meta) {
-                          return Text(
-                            value.toInt().abs().toString(),
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (double value, TitleMeta meta) {
-                          int index = value.toInt();
-                          if (index % 2 == 0) {
-                            return Transform.rotate(
-                              angle: pi / 3, // 60度旋转（pi/3 弧度）
-                              child: Text(
-                                '$index:00',
+    // **动态计算 y 轴间隔**
+    double range = data['maxY'] - data['minY'];
+    int desiredIntervals = 9; // 期望的标签数量
+    double interval = (range / desiredIntervals).ceilToDouble();
+
+    // **调整间隔为友好的数值**
+    if (interval > 10) {
+      interval = (interval / 10).ceil() * 10;
+    } else if (interval > 5) {
+      interval = (interval / 5).ceil() * 5;
+    } else {
+      interval = interval.ceilToDouble();
+    }
+
+    // **调整 maxY 和 minY 为 interval 的整数倍**
+    double adjustedMaxY = (data['maxY'] / interval).ceil() * interval;
+    double adjustedMinY = (data['minY'] / interval).floor() * interval;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final chartHeight = availableHeight * 1 / 2;
+
+        return Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '各时段出发班次统计',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+                SizedBox(
+                  height: chartHeight,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.center,
+                      maxY: adjustedMaxY,
+                      minY: adjustedMinY,
+                      barTouchData: BarTouchData(enabled: false),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            interval: interval,
+                            getTitlesWidget: (double value, TitleMeta meta) {
+                              // **只显示数据范围内的标签，且不显示最大值标签**
+                              if (value >= adjustedMaxY ||
+                                  value <= adjustedMinY) {
+                                return SizedBox.shrink();
+                              }
+                              return Text(
+                                value.toInt().abs().toString(),
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 10,
                                 ),
-                              ),
-                            );
-                          } else {
-                            return SizedBox.shrink();
-                          }
-                        },
+                              );
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1,
+                            getTitlesWidget: (double value, TitleMeta meta) {
+                              int index = value.toInt();
+                              if (index % 2 == 0) {
+                                return Transform.rotate(
+                                  angle: pi / 3, // 60度旋转（pi/3 弧度）
+                                  child: Text(
+                                    '$index:00',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                return SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        ),
+                        rightTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
                       ),
+                      gridData: FlGridData(
+                        show: true,
+                        horizontalInterval: interval,
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: data['barGroups'],
+                      extraLinesData: ExtraLinesData(horizontalLines: [
+                        HorizontalLine(
+                            y: 0, color: Colors.black, strokeWidth: 1),
+                      ]),
                     ),
-                    rightTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles:
-                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: false),
-                  barGroups: data['barGroups'],
-                  extraLinesData: ExtraLinesData(horizontalLines: [
-                    HorizontalLine(y: 0, color: Colors.black, strokeWidth: 1),
-                  ]),
                 ),
-              ),
-            ),
-            SizedBox(height: 8),
-            // 添加自定义图例
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                LegendItem(color: Colors.redAccent, text: '去昌平'),
-                SizedBox(width: 16),
-                LegendItem(color: Colors.blueAccent, text: '去燕园'),
+                SizedBox(height: 8),
+                // 添加自定义图例
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    LegendItem(color: Colors.redAccent, text: '去昌平'),
+                    SizedBox(width: 16),
+                    LegendItem(color: Colors.blueAccent, text: '去燕园'),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
