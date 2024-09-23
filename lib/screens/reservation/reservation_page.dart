@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marchkov_flutter/screens/reservation/bus_route_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -304,6 +305,7 @@ class _ReservationPageState extends State<ReservationPage> {
           padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
           child: ElevatedButton(
             onPressed: () => _onBusCardTap(busData),
+            onLongPress: () => _showBusDetails(busData), // 添加长按事件处理
             style: ElevatedButton.styleFrom(
               backgroundColor: isReserved ? Colors.blueAccent : Colors.white,
               foregroundColor: isReserved ? Colors.white : Colors.black,
@@ -430,6 +432,18 @@ class _ReservationPageState extends State<ReservationPage> {
             child: Text('确定'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showBusDetails(Map<String, dynamic> busData) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: BusRouteDetails(busData: busData),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
       ),
     );
   }

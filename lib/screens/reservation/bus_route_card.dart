@@ -25,7 +25,7 @@ class BusRouteCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: isPast ? null : onTap,
-      onLongPress: onLongPress,
+      onLongPress: onLongPress, // 添加长按事件
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         padding: EdgeInsets.symmetric(horizontal: 8),
