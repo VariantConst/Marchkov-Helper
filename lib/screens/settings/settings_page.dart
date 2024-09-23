@@ -137,189 +137,155 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    Provider.of<ThemeProvider>(context); // 修改这一行
 
     return Scaffold(
+      backgroundColor: Colors.white, // 设置背景颜色为白色
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: [
+            // 顶部导航栏
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                'Profile',
+                style: TextStyle(
+                  color: Color(0xFF111418),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            // 头像和用户信息
+            SizedBox(height: 16),
+            GestureDetector(
+              onTap: _pickImage,
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: Color(0xFFF0F2F5),
+                backgroundImage:
+                    _avatarPath != null ? FileImage(File(_avatarPath!)) : null,
+                child: _avatarPath == null
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style:
+                            TextStyle(fontSize: 48, color: Color(0xFF60708A)),
+                      )
+                    : null,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              name,
+              style: TextStyle(
+                color: Color(0xFF111418),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              college,
+              style: TextStyle(
+                color: Color(0xFF111418),
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              'ID: $studentId',
+              style: TextStyle(
+                color: Color(0xFF60708A),
+                fontSize: 14,
+              ),
+            ),
+            SizedBox(height: 16),
+            // 设置选项列表
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildSettingOption(
+                    title: '主题设置',
+                    icon: Icons.palette,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ThemeSettingsPage()),
+                      );
+                    },
                   ),
-                  child: Container(
-                    width: double.infinity, // 设置卡片宽度为无限
-                    padding: EdgeInsets.all(24.0),
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: _pickImage,
-                          child: Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              CircleAvatar(
-                                radius: 60,
-                                backgroundColor: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.8),
-                                backgroundImage: _avatarPath != null
-                                    ? FileImage(File(_avatarPath!))
-                                    : null,
-                                child: _avatarPath == null
-                                    ? Text(
-                                        name.isNotEmpty
-                                            ? name[0].toUpperCase()
-                                            : '?',
-                                        style: TextStyle(
-                                            fontSize: 48, color: Colors.white),
-                                      )
-                                    : null,
-                              ),
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Theme.of(context).primaryColor,
-                                child: Icon(Icons.camera_alt,
-                                    color: Colors.white, size: 20),
-                              ),
-                            ],
-                          ),
+                  _buildSettingOption(
+                    title: '乘车历史',
+                    icon: Icons.history,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => VisualizationSettingsPage()),
+                      );
+                    },
+                  ),
+                  _buildSettingOption(
+                    title: '关于',
+                    icon: Icons.info,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => AboutPage()),
+                      );
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  // 退出登录按钮
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.logout),
+                      label: Text('退出登录'),
+                      onPressed: () async {
+                        final navigator = Navigator.of(context);
+                        await _clearUserInfo();
+                        await authProvider.logout();
+                        if (!mounted) return;
+                        navigator.pushReplacement(
+                            MaterialPageRoute(builder: (_) => LoginPage()));
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        minimumSize: Size(double.infinity, 50),
+                        backgroundColor: Color(0xFFF0F2F5),
+                        foregroundColor: Color(0xFF111418),
+                        textStyle: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        SizedBox(height: 24),
-                        Text(
-                          name,
-                          style: TextStyle(
-                              fontSize: 26, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          college,
-                          style:
-                              TextStyle(fontSize: 20, color: Colors.grey[700]),
-                        ),
-                        SizedBox(height: 16),
-                        Container(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.school,
-                                  size: 24,
-                                  color: Theme.of(context).primaryColor),
-                              SizedBox(width: 8),
-                              Text(
-                                studentId,
-                                style: TextStyle(
-                                    fontSize: 18,
-                                    color: Theme.of(context).primaryColor,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(height: 16),
-                // 主题设置按钮
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => ThemeSettingsPage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    minimumSize: Size(double.infinity, 50),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('主题设置'),
-                      Icon(Icons.arrow_forward_ios),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                // 可视化设置按钮
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => VisualizationSettingsPage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    minimumSize: Size(double.infinity, 50),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('乘车历史'),
-                      Icon(Icons.arrow_forward_ios),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                // 关于按钮
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => AboutPage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    minimumSize: Size(double.infinity, 50),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('关于'),
-                      Icon(Icons.arrow_forward_ios),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 16),
-                // 退出登录按钮
-                ElevatedButton.icon(
-                  icon: Icon(Icons.exit_to_app),
-                  label: Text('退出登录'),
-                  onPressed: () async {
-                    final navigator =
-                        Navigator.of(context); // 在异步操作前获取 navigator
-                    await _clearUserInfo();
-                    await authProvider.logout();
-                    if (!mounted) return; // 检查组件是否仍然挂载
-                    navigator.pushReplacement(
-                        MaterialPageRoute(builder: (_) => LoginPage()));
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    minimumSize: Size(double.infinity, 50),
-                    backgroundColor: Colors.red,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSettingOption(
+      {required String title,
+      required IconData icon,
+      required VoidCallback onTap}) {
+    return ListTile(
+      leading: Icon(icon, color: Color(0xFF111418)),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: Color(0xFF111418),
+          fontSize: 16,
+        ),
+      ),
+      trailing: Icon(Icons.arrow_forward_ios, color: Color(0xFF111418)),
+      onTap: onTap,
     );
   }
 
