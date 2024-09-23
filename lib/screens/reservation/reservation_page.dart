@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
-import 'bus_route_card.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -20,7 +19,6 @@ class _ReservationPageState extends State<ReservationPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic> _reservedBuses = {};
-  bool _showPastBuses = false; // 新增
 
   @override
   void initState() {
@@ -60,6 +58,7 @@ class _ReservationPageState extends State<ReservationPage> {
       });
     }
 
+    // ignore: use_build_context_synchronously
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
@@ -120,7 +119,7 @@ class _ReservationPageState extends State<ReservationPage> {
       });
       await _cacheReservedBuses();
     } catch (e) {
-      print('载已预约班车失败: $e');
+      print('加载已预约班车失败: $e');
     }
   }
 
@@ -134,9 +133,12 @@ class _ReservationPageState extends State<ReservationPage> {
     setState(() {
       _filteredBusList = _busList.where((bus) {
         final busDate = DateTime.parse(bus['abscissa'].split(' ')[0]);
+        final busDateTime =
+            DateTime.parse("${bus['abscissa']} ${bus['yaxis']}");
         return busDate.year == _selectedDay?.year &&
             busDate.month == _selectedDay?.month &&
-            busDate.day == _selectedDay?.day;
+            busDate.day == _selectedDay?.day &&
+            busDateTime.isAfter(DateTime.now());
       }).toList();
     });
   }
@@ -144,13 +146,22 @@ class _ReservationPageState extends State<ReservationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('班车时刻表'),
-        centerTitle: true,
-      ),
       body: Column(
         children: [
-          _buildCalendar(),
+          SafeArea(
+            child: Card(
+              margin: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              elevation: 2.0,
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: _buildCalendar(),
+              ),
+            ),
+          ),
+          SizedBox(height: 8), // 缩小间隔
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
@@ -160,7 +171,6 @@ class _ReservationPageState extends State<ReservationPage> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -170,7 +180,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
     return TableCalendar(
       firstDay: now,
-      lastDay: now.add(Duration(days: 13)), // 显示两周
+      lastDay: now.add(Duration(days: 13)),
       focusedDay: _focusedDay,
       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
       onDaySelected: (selectedDay, focusedDay) {
@@ -183,8 +193,8 @@ class _ReservationPageState extends State<ReservationPage> {
           });
         }
       },
-      calendarFormat: CalendarFormat.twoWeeks, // 固定为两周视图
-      availableCalendarFormats: {CalendarFormat.twoWeeks: '两周'}, // 只允许两周视图
+      calendarFormat: CalendarFormat.twoWeeks,
+      availableCalendarFormats: {CalendarFormat.twoWeeks: '两周'},
       calendarStyle: CalendarStyle(
         todayDecoration: BoxDecoration(
           color: Colors.transparent,
@@ -257,18 +267,13 @@ class _ReservationPageState extends State<ReservationPage> {
   Widget _buildBusSection(String title, List<dynamic> buses, Color cardColor) {
     buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis'])); // 按发车时间排序
 
-    final pastBuses = buses.where((bus) => _isBusInPast(bus)).toList();
-    final upcomingBuses = buses.where((bus) => !_isBusInPast(bus)).toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
           child: Row(
             children: [
-              Icon(Icons.directions_bus, size: 32),
-              SizedBox(width: 8),
               Text(
                 title,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -276,70 +281,77 @@ class _ReservationPageState extends State<ReservationPage> {
             ],
           ),
         ),
-        ...upcomingBuses.map((busData) {
-          bool isReserved = _isBusReserved(busData);
-          bool isPast = false;
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0), // 添加左右padding
+          child: _buildBusButtons(buses),
+        ),
+      ],
+    );
+  }
 
-          // 如果是今天的班车，检查是否过期
-          if (_isToday(busData['abscissa'])) {
-            isPast = _isBusInPast(busData);
-          }
+  Widget _buildBusButtons(List<dynamic> buses) {
+    List<Widget> morningButtons = [];
+    List<Widget> afternoonButtons = [];
+    List<Widget> eveningButtons = [];
 
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4.0),
-            child: BusRouteCard(
-              busData: busData,
-              isReserved: isReserved,
-              isPast: isPast,
-              onTap: isPast ? null : () => _onBusCardTap(busData),
-              onLongPress: () => _onBusCardLongPress(busData),
-              cardColor: isReserved
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                  : Colors.grey[200]!,
-            ),
-          );
-        }).toList(),
-        if (pastBuses.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4.0),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showPastBuses = !_showPastBuses;
-                });
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _showPastBuses ? '隐藏已过期班车' : '显示已过期班车',
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                  Icon(
-                    _showPastBuses ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.blue,
-                  ),
-                ],
+    for (var busData in buses) {
+      bool isReserved = _isBusReserved(busData);
+      String time = busData['yaxis'] ?? '';
+      DateTime busTime = DateTime.parse(busData['abscissa'] + ' ' + time);
+
+      Widget button = Expanded(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
+          child: ElevatedButton(
+            onPressed: () => _onBusCardTap(busData),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isReserved ? Colors.blueAccent : Colors.white,
+              foregroundColor: isReserved ? Colors.white : Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: isReserved ? Colors.blueAccent : Colors.grey,
+                  width: 1,
+                ),
               ),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              elevation: 4,
+              shadowColor: Colors.black.withOpacity(0.2),
+            ),
+            child: Text(
+              time,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
-        if (_showPastBuses)
-          ...pastBuses.map((busData) {
-            bool isReserved = _isBusReserved(busData);
-            bool isPast = true;
+        ),
+      );
 
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4.0),
-              child: BusRouteCard(
-                busData: busData,
-                isReserved: isReserved,
-                isPast: isPast,
-                onTap: null,
-                onLongPress: () => _onBusCardLongPress(busData),
-                cardColor: Colors.grey[300]!,
-              ),
-            );
-          }).toList(),
+      if (busTime.hour < 12) {
+        morningButtons.add(button);
+      } else if (busTime.hour < 18) {
+        afternoonButtons.add(button);
+      } else {
+        eveningButtons.add(button);
+      }
+    }
+
+    return Column(
+      children: [
+        if (morningButtons.isNotEmpty)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: morningButtons,
+          ),
+        if (afternoonButtons.isNotEmpty)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: afternoonButtons,
+          ),
+        if (eveningButtons.isNotEmpty)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: eveningButtons,
+          ),
       ],
     );
   }
@@ -357,21 +369,6 @@ class _ReservationPageState extends State<ReservationPage> {
             name.indexOf('新') < name.indexOf('燕');
       }
     }).toList();
-  }
-
-  bool _isToday(String dateStr) {
-    DateTime busDate = DateTime.parse(dateStr);
-    DateTime now = DateTime.now();
-    return busDate.year == now.year &&
-        busDate.month == now.month &&
-        busDate.day == now.day;
-  }
-
-  bool _isBusInPast(Map<String, dynamic> busData) {
-    String dateStr = busData['abscissa'];
-    String timeStr = busData['yaxis'];
-    DateTime busDateTime = DateTime.parse("$dateStr $timeStr");
-    return busDateTime.isBefore(DateTime.now());
   }
 
   bool _isBusReserved(Map<String, dynamic> busData) {
@@ -421,10 +418,6 @@ class _ReservationPageState extends State<ReservationPage> {
     }
   }
 
-  void _onBusCardLongPress(Map<String, dynamic> busData) {
-    _showBusDetails(busData);
-  }
-
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -438,47 +431,6 @@ class _ReservationPageState extends State<ReservationPage> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showBusDetails(Map<String, dynamic> busData) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: BusRouteDetails(busData: busData),
-        );
-      },
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      items: [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: '主页',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.receipt),
-          label: '我的预约',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: '设置',
-        ),
-      ],
-      currentIndex: 1,
-      selectedItemColor: Colors.black,
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        // 处理导航逻辑
-      },
     );
   }
 }

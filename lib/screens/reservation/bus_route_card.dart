@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 class BusRouteCard extends StatelessWidget {
   final Map<String, dynamic> busData;
   final VoidCallback? onTap;
-  final VoidCallback? onLongPress; // 新增
-  final bool isReserved; // 新增
-  final bool isPast; // 新增
-  final Color cardColor; // 新增
+  final VoidCallback? onLongPress;
+  final bool isReserved;
+  final bool isPast;
+  final Color cardColor;
 
   const BusRouteCard({
     Key? key,
     required this.busData,
     this.onTap,
-    this.onLongPress, // 新增
-    this.isReserved = false, // 新增
-    this.isPast = false, // 新增
-    required this.cardColor, // 新增
+    this.onLongPress,
+    this.isReserved = false,
+    this.isPast = false,
+    required this.cardColor,
   }) : super(key: key);
 
   @override
@@ -24,51 +24,64 @@ class BusRouteCard extends StatelessWidget {
     int seatsLeft = busData['row']['margin'] ?? 0;
 
     return GestureDetector(
-      onTap: isPast ? null : onTap, // 如果过期，不可点击
-      onLongPress: onLongPress, // 新增
+      onTap: isPast ? null : onTap,
+      onLongPress: onLongPress,
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        height: 72,
+        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+        padding: EdgeInsets.symmetric(horizontal: 8),
+        height: 84,
         decoration: BoxDecoration(
-          color: isReserved
-              ? isPast
-                  ? Colors.grey[300] // 已过期的预约班车用淡灰色
-                  : Theme.of(context).colorScheme.primary.withOpacity(0.1)
-              : cardColor, // 使用传入的 cardColor
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.directions_bus, color: Colors.blueAccent, size: 32),
-            SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    departureTime,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '$seatsLeft 个座位剩余',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
+            // 新增时间列
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  departureTime,
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold), // 增大字体
+                ),
+                Text(
+                  '$seatsLeft 个座位剩余',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent, // 修改为 backgroundColor
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            // 中间信息列
+            Expanded(
+              flex: 2,
+              child: Container(),
+            ),
+            // 右侧按钮列
+            if (!isPast)
+              SizedBox(
+                width: 80,
+                height: 36,
+                child: ElevatedButton(
+                  onPressed: onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isReserved ? Colors.blueAccent : Colors.white30,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  child: Text(
+                    isReserved ? '已预约' : '预约',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isReserved ? Colors.white : Colors.black,
+                    ),
+                  ),
                 ),
               ),
-              child: Text('预约'),
-            ),
           ],
         ),
       ),

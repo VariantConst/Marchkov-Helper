@@ -186,7 +186,7 @@ class AboutPageState extends State<AboutPage> {
             Divider(),
             ListTile(
               title: Text('支持我们'),
-              subtitle: Text('点击通过捐赠支持我们'),
+              subtitle: Text('点击访问代码仓库'),
               trailing: Icon(Icons.arrow_forward),
               onTap: _launchSupportURL,
             ),

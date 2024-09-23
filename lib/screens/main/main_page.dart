@@ -30,57 +30,24 @@ class MainPageState extends State<MainPage> {
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
       ),
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: () {
-          setState(() {
-            _selectedIndex = 1; // RidePage
-          });
-        },
-        elevation: 4.0,
-        backgroundColor: Theme.of(context).primaryColor,
-        child: Icon(Icons.directions_bus, size: 36),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              _buildNavItem(0, Icons.calendar_today, '预约'),
-              SizedBox(width: 40), // 为中间的按钮留出空间
-              _buildNavItem(2, Icons.settings, '设置'),
-            ],
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: '预约',
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    return InkWell(
-      onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: _selectedIndex == index
-                ? Theme.of(context).primaryColor
-                : Colors.grey,
+          BottomNavigationBarItem(
+            icon: Icon(Icons.directions_bus),
+            label: '乘车',
           ),
-          Text(
-            label,
-            style: TextStyle(
-              color: _selectedIndex == index
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey,
-              fontSize: 12,
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: '设置',
           ),
         ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Theme.of(context).primaryColor,
+        onTap: _onItemTapped,
       ),
     );
   }
