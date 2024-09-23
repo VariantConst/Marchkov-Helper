@@ -27,34 +27,35 @@ class CheckInTimeHistogram extends StatelessWidget {
                 SizedBox(
                   height: chartHeight,
                   child: BarChart(
-                      BarChartData(
-                        alignment: BarChartAlignment.center,
-                        minY: 0, // Y轴从0开始
-                        maxY: data['maxY'],
-                        barTouchData: BarTouchData(enabled: false),
-                        titlesData: FlTitlesData(
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 40,
-                              interval: data['interval'],
-                              getTitlesWidget: (double value, TitleMeta meta) {
-                                return Text(
-                                  value.toInt().toString(),
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 10,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
+                    BarChartData(
+                      // 将 'data:' 移除，作为位置参数传递
+                      alignment: BarChartAlignment.center,
+                      minY: 0, // Y轴从0开始
+                      maxY: data['maxY'],
+                      barTouchData: BarTouchData(enabled: false),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
                             reservedSize: 40,
-                            // 设置 x 轴的刻度间隔
+                            interval: data['interval'],
+                            getTitlesWidget: (double value, TitleMeta meta) {
+                              return Text(
+                                value.toInt().toString(),
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          // 移动到 titlesData 内部
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            // 设置 x ��的刻度间隔
                             interval: 2,
                             getTitlesWidget: (double value, TitleMeta meta) {
                               // 仅显示 -10 到 10 的刻度标签
@@ -75,9 +76,13 @@ class CheckInTimeHistogram extends StatelessWidget {
                           ),
                         ),
                         rightTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+                          // 移动到 titlesData 内部
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                         topTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+                          // 移动到 titlesData 内部
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
                       ),
                       gridData: FlGridData(
                         show: true,
@@ -86,7 +91,9 @@ class CheckInTimeHistogram extends StatelessWidget {
                       ),
                       borderData: FlBorderData(show: false),
                       barGroups: data['barGroups'],
-                      baselineY: 0),
+                      baselineY: 0,
+                    ), // 添加逗号并关闭 BarChartData
+                  ), // 关闭 BarChart
                 ),
                 SizedBox(height: 8),
                 // 添加图例
