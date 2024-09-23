@@ -151,7 +151,7 @@ class _ReservationPageState extends State<ReservationPage> {
         children: [
           SafeArea(
             child: Card(
-              margin: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              margin: EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
@@ -162,7 +162,6 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ),
           ),
-          SizedBox(height: 8), // 缩小间隔
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
@@ -258,9 +257,10 @@ class _ReservationPageState extends State<ReservationPage> {
 
   Widget _buildBusList() {
     return ListView(
+      padding: EdgeInsets.only(top: 8),
       children: [
-        _buildBusSection('去昌平', _getBusesByDirection('去昌平'), Colors.grey[200]!),
         _buildBusSection('去燕园', _getBusesByDirection('去燕园'), Colors.grey[200]!),
+        _buildBusSection('去昌平', _getBusesByDirection('去昌平'), Colors.grey[200]!),
       ],
     );
   }

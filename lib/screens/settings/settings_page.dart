@@ -158,101 +158,105 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(height: 16),
-            GestureDetector(
-              onTap: _selectEmoji,
-              child: CircleAvatar(
-                radius: 36,
-                backgroundColor: Color(0xFFF0F2F5),
-                child: Text(
-                  _selectedEmoji,
-                  style: TextStyle(fontSize: 48),
+        child: Padding(
+          padding: EdgeInsets.only(top: 20), // 在 SafeArea 外部添加顶部 padding
+          child: Column(
+            children: [
+              SizedBox(height: 40), // 保留这个额外的间距
+              GestureDetector(
+                onTap: _selectEmoji,
+                child: CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Color(0xFFF0F2F5),
+                  child: Text(
+                    _selectedEmoji,
+                    style: TextStyle(fontSize: 48),
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              name,
-              style: TextStyle(
-                color: Color(0xFF111418),
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+              SizedBox(height: 16),
+              Text(
+                name,
+                style: TextStyle(
+                  color: Color(0xFF111418),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              college,
-              style: TextStyle(
-                color: Color(0xFF111418),
-                fontSize: 16,
+              SizedBox(height: 8),
+              Text(
+                college,
+                style: TextStyle(
+                  color: Color(0xFF111418),
+                  fontSize: 16,
+                ),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'ID: $studentId',
-              style: TextStyle(
-                color: Color(0xFF60708A),
-                fontSize: 14,
+              SizedBox(height: 8),
+              Text(
+                'ID: $studentId',
+                style: TextStyle(
+                  color: Color(0xFF60708A),
+                  fontSize: 14,
+                ),
               ),
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildSettingOption(
-                    title: '主题设置',
-                    icon: Icons.palette,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ThemeSettingsPage()),
-                      );
-                    },
-                  ),
-                  _buildSettingOption(
-                    title: '乘车历史',
-                    icon: Icons.history,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => VisualizationSettingsPage()),
-                      );
-                    },
-                  ),
-                  _buildSettingOption(
-                    title: '关于',
-                    icon: Icons.info,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => AboutPage()),
-                      );
-                    },
-                  ),
-                  SizedBox(height: 16),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: ElevatedButton.icon(
-                      icon: Icon(Icons.logout),
-                      label: Text('退出登录'),
-                      onPressed: () async {
-                        final navigator = Navigator.of(context);
-                        await _clearUserInfo();
-                        await authProvider.logout();
-                        if (!mounted) return;
-                        navigator.pushReplacement(
-                            MaterialPageRoute(builder: (_) => LoginPage()));
+              SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  children: [
+                    _buildSettingOption(
+                      title: '主题设置',
+                      icon: Icons.palette,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => ThemeSettingsPage()),
+                        );
                       },
                     ),
-                  ),
-                ],
+                    _buildSettingOption(
+                      title: '乘车历史',
+                      icon: Icons.history,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  VisualizationSettingsPage()),
+                        );
+                      },
+                    ),
+                    _buildSettingOption(
+                      title: '关于',
+                      icon: Icons.info,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => AboutPage()),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.logout),
+                        label: Text('退出登录'),
+                        onPressed: () async {
+                          final navigator = Navigator.of(context);
+                          await _clearUserInfo();
+                          await authProvider.logout();
+                          if (!mounted) return;
+                          navigator.pushReplacement(
+                              MaterialPageRoute(builder: (_) => LoginPage()));
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

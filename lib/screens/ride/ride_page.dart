@@ -420,8 +420,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                       children: [
                         Text('😅', style: TextStyle(fontSize: 100)),
                         SizedBox(height: 20),
-                        Text(
-                          '去${_isGoingToYanyuan ? '燕园' : '昌平'}方向',
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: '去'),
+                              TextSpan(
+                                text: _isGoingToYanyuan ? '燕园' : '昌平',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(text: '方向'),
+                            ],
+                          ),
                           style: TextStyle(fontSize: 32, color: textColor),
                           textAlign: TextAlign.center,
                         ),
