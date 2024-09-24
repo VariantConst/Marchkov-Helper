@@ -106,7 +106,7 @@ class ReservationService {
               if (slot['row']['margin'] > 0) {
                 // 解析并格式化日期和时间
                 String dateStr = slot['abscissa'].trim(); // 去除空格
-                String timeStr = slot['yaxis'].trim(); // 去除空格
+                String timeStr = slot['yaxis'].trim(); // 除空格
 
                 // 将日期和时间合并
                 DateTime dateTime = DateTime.parse('$dateStr $timeStr');
@@ -149,7 +149,7 @@ class ReservationService {
     return allBuses;
   }
 
-  Future<void> makeReservation(
+  Future<Map<String, dynamic>> makeReservation(
       String resourceId, String date, String period) async {
     if (!_authProvider.isLoggedIn) {
       throw Exception('未登录，请先登录');
@@ -157,7 +157,6 @@ class ReservationService {
 
     final uri = Uri.parse('https://wproc.pku.edu.cn/site/reservation/launch');
     final response = await http.post(
-      // 修改为 http.post
       uri,
       headers: {
         'Cookie': _authProvider.cookies,
@@ -171,8 +170,12 @@ class ReservationService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data['m'] == '操作成功') {
-        // 预约成功
-        return;
+        // 确保返回正确的数据结构
+        return {
+          'id': data['d']['id'].toString(),
+          'hall_appointment_data_id':
+              data['d']['hall_appointment_data_id'].toString(),
+        };
       } else {
         throw Exception(data['m']);
       }
@@ -285,6 +288,33 @@ class ReservationService {
       if (data['m'] == '操作成功') {
         // 取消预约成功
         return;
+      } else {
+        throw Exception(data['m']);
+      }
+    } else {
+      throw Exception('请求失败，状态码: ${response.statusCode}');
+    }
+  }
+
+  Future<List<dynamic>> fetchRecentReservations() async {
+    final now = DateTime.now();
+    final today = DateFormat('yyyy-MM-dd').format(now);
+    final endDate = DateFormat('yyyy-MM-dd').format(now.add(Duration(days: 6)));
+    final uri = Uri.parse(
+      'https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=0&sort_time=true&sort=desc&date_sta=$today&date_end=$endDate',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Cookie': _authProvider.cookies,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['e'] == 0) {
+        return data['d']['data'];
       } else {
         throw Exception(data['m']);
       }

@@ -4,10 +4,11 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
-import '../../services/dau_service.dart'; // 新增
-import '../../services/version_service.dart'; // 添加此行
+import '../../services/dau_service.dart';
+import '../../services/version_service.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -22,17 +23,17 @@ class _ReservationPageState extends State<ReservationPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic> _reservedBuses = {};
-  late DauService _dauService; // 新增
-  bool _showTip = true; // 新增状态变量
+  late DauService _dauService;
+  bool _showTip = true;
+  List<dynamic> _todayReservations = [];
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _loadReservationData();
-    _loadTipPreference(); // 新增方法调用
+    _loadTipPreference();
 
-    // 初始化 DauService 并发送日活统计
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final versionService = VersionService();
     _dauService = DauService(authProvider, versionService);
@@ -70,7 +71,6 @@ class _ReservationPageState extends State<ReservationPage> {
       });
     }
 
-    // ignore: use_build_context_synchronously
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
@@ -82,17 +82,19 @@ class _ReservationPageState extends State<ReservationPage> {
       ];
 
       final allBuses = await reservationService.getAllBuses(dateStrings);
+      final recentReservations =
+          await reservationService.fetchRecentReservations();
 
       if (!mounted) return;
       setState(() {
         _busList = allBuses;
+        _updateReservedBusesWithRecentReservations(recentReservations);
         _filterBusList();
         _isLoading = false;
       });
 
       await _cacheBusData();
-
-      await _fetchAndCacheMyReservations();
+      await _cacheReservedBuses();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -108,31 +110,6 @@ class _ReservationPageState extends State<ReservationPage> {
     final todayString = DateTime.now().toIso8601String().split('T')[0];
     await prefs.setString('cachedBusData', busDataString);
     await prefs.setString('cachedDate', todayString);
-  }
-
-  Future<void> _fetchAndCacheMyReservations() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final reservationService = ReservationService(authProvider);
-
-    try {
-      final reservations = await reservationService.fetchMyReservations();
-      if (!mounted) return;
-      setState(() {
-        _reservedBuses.clear();
-        for (var reservation in reservations) {
-          String resourceId = reservation['resource_id'].toString();
-          String appointmentTime = reservation['appointment_tim'].trim();
-          String key = '$resourceId$appointmentTime';
-          _reservedBuses[key] = {
-            'id': reservation['id'],
-            'hall_appointment_data_id': reservation['hall_appointment_data_id'],
-          };
-        }
-      });
-      await _cacheReservedBuses();
-    } catch (e) {
-      print('加载已预约班车失败: $e');
-    }
   }
 
   Future<void> _cacheReservedBuses() async {
@@ -155,7 +132,6 @@ class _ReservationPageState extends State<ReservationPage> {
     });
   }
 
-  // 新增方法: 加载提示显示偏好
   Future<void> _loadTipPreference() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -163,13 +139,11 @@ class _ReservationPageState extends State<ReservationPage> {
     });
   }
 
-  // 新增方法: 保存提示显示偏好
   Future<void> _saveTipPreference(bool show) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('showReservationTip', show);
   }
 
-  // 新增方法: 显示提示对话框
   void _showTipDialog() {
     if (!_showTip) return;
 
@@ -198,6 +172,142 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
+  void _updateReservedBusesWithRecentReservations(List<dynamic> reservations) {
+    final now = DateTime.now();
+    _reservedBuses.clear();
+    for (var reservation in reservations) {
+      if (reservation['status'] == 7) {
+        String resourceId = reservation['resource_id'].toString();
+        String appointmentTime = reservation['appointment_tim'].trim();
+        DateTime reservationDateTime = DateTime.parse(appointmentTime);
+
+        if (reservationDateTime.isAfter(now) ||
+            (reservationDateTime.day == now.day &&
+                reservationDateTime.isAfter(now))) {
+          String key = '$resourceId$appointmentTime';
+          _reservedBuses[key] = {
+            'id': reservation['id'],
+            'hall_appointment_data_id': reservation['periodList'][0]['id'],
+          };
+        }
+      }
+    }
+  }
+
+  bool _isBusReserved(Map<String, dynamic> busData) {
+    String resourceId = busData['bus_id'].toString();
+    String date = busData['abscissa'];
+    String time = busData['yaxis'];
+    String appointmentTime = '$date $time';
+    String key = '$resourceId$appointmentTime';
+
+    return _reservedBuses.containsKey(key);
+  }
+
+  void _onBusCardTap(Map<String, dynamic> busData) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final reservationService = ReservationService(authProvider);
+
+    String resourceId = busData['bus_id'].toString();
+    String date = busData['abscissa'];
+    String period = busData['time_id'].toString();
+    String time = busData['yaxis'];
+    String appointmentTime = '$date $time';
+    String key = '$resourceId$appointmentTime';
+
+    if (_reservedBuses.containsKey(key)) {
+      try {
+        String appointmentId = _reservedBuses[key]['id'].toString();
+        String hallAppointmentDataId =
+            _reservedBuses[key]['hall_appointment_data_id'].toString();
+        await reservationService.cancelReservation(
+            appointmentId, hallAppointmentDataId);
+
+        if (!mounted) return;
+        setState(() {
+          _reservedBuses.remove(key);
+          _filterBusList();
+        });
+
+        await _cacheReservedBuses();
+      } catch (e) {
+        _showErrorDialog('取消预约失败', e.toString());
+      }
+    } else {
+      try {
+        final reservationResult =
+            await reservationService.makeReservation(resourceId, date, period);
+        if (!mounted) return;
+        setState(() {
+          _reservedBuses[key] = {
+            'id': reservationResult['id'],
+            'hall_appointment_data_id':
+                reservationResult['hall_appointment_data_id'],
+          };
+          _filterBusList();
+        });
+        await _cacheReservedBuses();
+
+        // 立即刷新预约状态
+        await _refreshReservationStatus();
+
+        // 显示预约成功的提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('预约成功')),
+        );
+      } catch (e) {
+        _showErrorDialog('预约失败', e.toString());
+      }
+    }
+  }
+
+  // 新增方法：刷新预约状态
+  Future<void> _refreshReservationStatus() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final reservationService = ReservationService(authProvider);
+
+    try {
+      final recentReservations =
+          await reservationService.fetchRecentReservations();
+      if (!mounted) return;
+      setState(() {
+        _updateReservedBusesWithRecentReservations(recentReservations);
+        _filterBusList();
+      });
+      await _cacheReservedBuses();
+    } catch (e) {
+      print('刷新预约状态失败: $e');
+    }
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBusDetails(Map<String, dynamic> busData) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: BusRouteDetails(busData: busData),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -216,7 +326,6 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ),
           ),
-          // 在日历下方添加提示按钮
           if (_showTip)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
@@ -239,6 +348,15 @@ class _ReservationPageState extends State<ReservationPage> {
                 ),
                 child: ElevatedButton(
                   onPressed: _showTipDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -253,15 +371,6 @@ class _ReservationPageState extends State<ReservationPage> {
                         ),
                       ),
                     ],
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    shadowColor: Colors.transparent,
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
                   ),
                 ),
               ),
@@ -370,7 +479,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   Widget _buildBusSection(String title, List<dynamic> buses, Color cardColor) {
-    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis'])); // 按发车时间排序
+    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,7 +496,7 @@ class _ReservationPageState extends State<ReservationPage> {
           ),
         ),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0), // 添加左右padding
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: _buildBusButtons(buses),
         ),
       ],
@@ -409,7 +518,7 @@ class _ReservationPageState extends State<ReservationPage> {
           padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
           child: ElevatedButton(
             onPressed: () => _onBusCardTap(busData),
-            onLongPress: () => _showBusDetails(busData), // 添加长按事件处理
+            onLongPress: () => _showBusDetails(busData),
             style: ElevatedButton.styleFrom(
               backgroundColor: isReserved ? Colors.blueAccent : Colors.white,
               foregroundColor: isReserved ? Colors.white : Colors.black,
@@ -475,80 +584,5 @@ class _ReservationPageState extends State<ReservationPage> {
             name.indexOf('新') < name.indexOf('燕');
       }
     }).toList();
-  }
-
-  bool _isBusReserved(Map<String, dynamic> busData) {
-    String resourceId = busData['bus_id'].toString();
-    String date = busData['abscissa'];
-    String time = busData['yaxis'];
-    String appointmentTime = '$date $time';
-    String key = '$resourceId$appointmentTime';
-    return _reservedBuses.containsKey(key);
-  }
-
-  void _onBusCardTap(Map<String, dynamic> busData) async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final reservationService = ReservationService(authProvider);
-
-    String resourceId = busData['bus_id'].toString();
-    String date = busData['abscissa'];
-    String period = busData['time_id'].toString();
-    String time = busData['yaxis'];
-    String appointmentTime = '$date $time';
-    String key = '$resourceId$appointmentTime';
-
-    if (_reservedBuses.containsKey(key)) {
-      try {
-        String appointmentId = _reservedBuses[key]['id'].toString();
-        String hallAppointmentDataId =
-            _reservedBuses[key]['hall_appointment_data_id'].toString();
-        await reservationService.cancelReservation(
-            appointmentId, hallAppointmentDataId);
-
-        if (!mounted) return;
-        setState(() {
-          _reservedBuses.remove(key);
-        });
-
-        await _cacheReservedBuses();
-      } catch (e) {
-        _showErrorDialog('取消预约失败', e.toString());
-      }
-    } else {
-      try {
-        await reservationService.makeReservation(resourceId, date, period);
-        await _fetchAndCacheMyReservations();
-      } catch (e) {
-        _showErrorDialog('预约失败', e.toString());
-      }
-    }
-  }
-
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showBusDetails(Map<String, dynamic> busData) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: BusRouteDetails(busData: busData),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-    );
   }
 }
