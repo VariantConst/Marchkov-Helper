@@ -29,9 +29,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>需要访问您的相机以拍摄图片。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>需要访问您的位置信息以确定您的当前位置。</string>
+	<string>我们需要访问您的位置信息以提供准确的班车服务。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问您的相册以选择图片。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>我们需要访问您的位置信息以提供准确的班车服务。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
