@@ -289,6 +289,9 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   Widget _buildBusCard(String title, List<dynamic> buses, Color cardColor) {
+    // 按发车时间排序
+    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -306,15 +309,15 @@ class _ReservationPageState extends State<ReservationPage> {
                 color: Colors.black87,
               ),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 12),
             GridView.builder(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4, // 将 3 改为 4
-                childAspectRatio: 0.9, // 调整子项宽高比
-                crossAxisSpacing: 8, // 减小列间距
-                mainAxisSpacing: 8, // 减小行间距
+                crossAxisCount: 4,
+                childAspectRatio: 1.2, // 调整宽高比，使卡片更扁平
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
               ),
               itemCount: buses.length,
               itemBuilder: (context, index) {

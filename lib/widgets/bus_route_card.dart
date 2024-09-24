@@ -9,32 +9,41 @@ class BusRouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 使用现有的“出发时间”字段
     String departureTime = busData['yaxis'] ?? '';
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(8), // 减小 padding
+        padding:
+            EdgeInsets.symmetric(vertical: 4, horizontal: 8), // 缩小纵向 padding
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8), // 适当调整圆角
+          borderRadius: BorderRadius.circular(12),
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 2,
-              offset: Offset(0, 1),
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: Offset(0, 2),
             ),
           ],
-        ),
-        child: Center(
-          child: Text(
-            departureTime, // 显示现有的“出发时间”字段
-            style: TextStyle(
-              fontSize: 16, // 增大字体大小
-              fontWeight: FontWeight.bold,
-            ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.grey.shade100],
           ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              departureTime,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
