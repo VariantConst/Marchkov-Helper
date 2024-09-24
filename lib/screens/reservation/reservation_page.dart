@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../providers/auth_provider.dart';
 import '../../services/reservation_service.dart';
+import '../../services/dau_service.dart'; // 新增
+import '../../services/version_service.dart'; // 添加此行
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -20,12 +22,19 @@ class _ReservationPageState extends State<ReservationPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic> _reservedBuses = {};
+  late DauService _dauService; // 新增
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _loadReservationData();
+
+    // 初始化 DauService 并发送日活统计
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final versionService = VersionService();
+    _dauService = DauService(authProvider, versionService);
+    _dauService.sendDailyActive();
   }
 
   Future<void> _loadReservationData() async {
