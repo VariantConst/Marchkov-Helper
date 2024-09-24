@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:marchkov_flutter/screens/reservation/bus_route_card.dart';
+import 'package:marchkov_helper/screens/reservation/bus_route_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

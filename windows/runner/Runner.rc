@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "marchkov_flutter" "\0"
+            VALUE "CompanyName", "com.variantconst" "\0"
+            VALUE "FileDescription", "marchkov_helper" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "marchkov_flutter" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "marchkov_flutter.exe" "\0"
-            VALUE "ProductName", "marchkov_flutter" "\0"
+            VALUE "InternalName", "marchkov_helper" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 com.variantconst. All rights reserved." "\0"
+            VALUE "OriginalFilename", "marchkov_helper.exe" "\0"
+            VALUE "ProductName", "marchkov_helper" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

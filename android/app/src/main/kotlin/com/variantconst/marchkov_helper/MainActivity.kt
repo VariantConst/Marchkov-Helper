@@ -1,4 +1,4 @@
-package com.example.marchkov_flutter
+package com.variantconst.marchkov_helper
 
 import io.flutter.embedding.android.FlutterActivity
 
