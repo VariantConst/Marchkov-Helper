@@ -285,7 +285,8 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('name');
     await prefs.remove('studentId');
     await prefs.remove('college');
-    await prefs.remove('selectedEmoji'); // 清除选择的 emoji
+    await prefs.remove('selectedEmoji');
     await prefs.remove('cachedRideHistory');
+    await prefs.remove('showReservationTip'); // 添加此行以清除使用提示设置
   }
 }

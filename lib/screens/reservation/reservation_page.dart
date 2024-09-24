@@ -23,12 +23,14 @@ class _ReservationPageState extends State<ReservationPage> {
   String _errorMessage = '';
   Map<String, dynamic> _reservedBuses = {};
   late DauService _dauService; // 新增
+  bool _showTip = true; // 新增状态变量
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _loadReservationData();
+    _loadTipPreference(); // 新增方法调用
 
     // 初始化 DauService 并发送日活统计
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -153,6 +155,49 @@ class _ReservationPageState extends State<ReservationPage> {
     });
   }
 
+  // 新增方法: 加载提示显示偏好
+  Future<void> _loadTipPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _showTip = prefs.getBool('showReservationTip') ?? true;
+    });
+  }
+
+  // 新增方法: 保存提示显示偏好
+  Future<void> _saveTipPreference(bool show) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('showReservationTip', show);
+  }
+
+  // 新增方法: 显示提示对话框
+  void _showTipDialog() {
+    if (!_showTip) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('使用提示'),
+        content: Text('点击按钮变蓝即成功预约,再点一次即可取消。长按可以查看对应班车详情。'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _showTip = false;
+              });
+              _saveTipPreference(false);
+            },
+            child: Text('不再显示'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,6 +216,56 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ),
           ),
+          // 在日历下方添加提示按钮
+          if (_showTip)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade300, Colors.blue.shade500],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.3),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _showTipDialog,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        '查看使用提示',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    shadowColor: Colors.transparent,
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
