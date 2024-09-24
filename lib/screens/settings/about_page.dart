@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:http/http.dart' as http;
+import '../../services/version_service.dart'; // 添加此行
 
 class AboutPage extends StatefulWidget {
   const AboutPage({Key? key}) : super(key: key);
@@ -13,6 +11,7 @@ class AboutPage extends StatefulWidget {
 
 class AboutPageState extends State<AboutPage> {
   String _currentVersion = '';
+  final VersionService _versionService = VersionService(); // 添加此行
 
   @override
   void initState() {
@@ -21,51 +20,45 @@ class AboutPageState extends State<AboutPage> {
   }
 
   void _getCurrentVersion() async {
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    String version = await _versionService.getCurrentVersion(); // 修改此行
     setState(() {
-      _currentVersion = packageInfo.version;
+      _currentVersion = version;
     });
   }
 
   Future<void> _checkUpdate() async {
     try {
-      final response = await http
-          .get(Uri.parse('https://shuttle.variantconst.com/api/version'));
-      if (response.statusCode == 200) {
-        String latestVersion = response.body.trim();
-        if (latestVersion != _currentVersion) {
-          if (!mounted) return;
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('发现新版本'),
-              content:
-                  Text('最新版本为 $latestVersion，当前版本为 $_currentVersion。是否前往更新？'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _launchUpdateURL();
-                  },
-                  child: Text('更新'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('取消'),
-                ),
-              ],
-            ),
-          );
-        } else {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('当前已是最新版本')),
-          );
-        }
-      } else {
+      String? latestVersion = await _versionService.getLatestVersion(); // 修改此行
+      if (latestVersion != null && latestVersion != _currentVersion) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('发现新版本'),
+            content:
+                Text('最新版本为 $latestVersion，当前版本为 $_currentVersion。是否前往更新？'),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  String? url = await _versionService.getUpdateURL(); // 修改此行
+                  if (url != null) {
+                    await _launchUpdateURL(url); // 修改此行
+                  }
+                },
+                child: Text('更新'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('取消'),
+              ),
+            ],
+          ),
+        );
+      } else if (latestVersion != null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法获取最新版本号')),
+          SnackBar(content: Text('当前已是最新版本')),
         );
       }
     } catch (e) {
@@ -76,31 +69,9 @@ class AboutPageState extends State<AboutPage> {
     }
   }
 
-  Future<void> _launchUpdateURL() async {
-    String url = '';
+  Future<void> _launchUpdateURL(String url) async {
+    // 修改此行
     try {
-      if (Platform.isIOS) {
-        final response = await http
-            .get(Uri.parse('https://shuttle.variantconst.com/api/ios_url'));
-        if (response.statusCode == 200) {
-          url = response.body.trim();
-          print("iOS 更新链接: $url");
-        } else {
-          throw Exception('无法获取 iOS 更新链接');
-        }
-      } else if (Platform.isAndroid) {
-        final response = await http
-            .get(Uri.parse('https://shuttle.variantconst.com/api/android_url'));
-        if (response.statusCode == 200) {
-          url = response.body.trim();
-          print("Android 更新链接: $url");
-        } else {
-          throw Exception('无法获取 Android 更新链接');
-        }
-      } else {
-        url = 'https://shuttle.variantconst.com';
-      }
-
       if (!await launchUrl(Uri.parse(url),
           mode: LaunchMode.externalApplication)) {
         if (!mounted) return;
