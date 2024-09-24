@@ -1,16 +1,5 @@
-# marchkov_helper
+# Marchkov Helper
 
-A new Flutter project.
+你的私有班车预约服务，出示乘车码从未如此优雅。请从[官网](https://shuttle.variantconst.com)获取最新 iOS 和 Android 应用。
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+> Web, Android 和 iOS 的独立版本已停止维护，从 v2.0.0 开始采用 Flutter 统一跨平台体验。你依然可以通过 legacy 分支查看旧版代码。
