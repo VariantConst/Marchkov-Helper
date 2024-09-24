@@ -53,7 +53,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     // 检查位置服务是否启用
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // 位置服务未启用
+      // 位置服未启用
       return false;
     }
 
@@ -320,7 +320,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Future<void> _onRefresh() async {
     setState(() {
       _isRefreshing = true; // 开始刷新
-      _errorMessage = ''; // 清空错误信息
+      _errorMessage = ''; // 清空��误信息
     });
     await _loadRideData(); // 不传入参数，使用默认值 isInitialLoad = false
   }
@@ -547,8 +547,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
             size: 180.0,
             padding: EdgeInsets.zero,
             backgroundColor: Colors.white,
-            eyeStyle: QrEyeStyle(color: Colors.grey[700]),
-            dataModuleStyle: QrDataModuleStyle(color: Colors.grey[700]),
+            eyeStyle: QrEyeStyle(
+              color: Colors.grey[700],
+              eyeShape: QrEyeShape.square, // 修改此行
+            ),
+            dataModuleStyle: QrDataModuleStyle(
+              color: Colors.grey[700],
+              dataModuleShape: QrDataModuleShape.square, // 修改此行
+            ),
             errorCorrectionLevel: QrErrorCorrectLevel.M,
           ),
         ),
