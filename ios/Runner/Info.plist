@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSVibrationUsageDescription</key>
+	<string>需要访问您的振动功能。</string>
 	<key>NSCameraUsageDescription</key>
 	<string>需要访问您的相机以拍摄图片。</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -35,8 +37,6 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>我们需要访问您的位置信息以提供准确的班车服务。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<key>NSVibrationUsageDescription</key>
-	<string>需要访问您的振动功能。</string>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
