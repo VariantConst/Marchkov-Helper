@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:marchkov_helper/screens/reservation/bus_route_card.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -9,6 +8,9 @@ import '../../services/reservation_service.dart';
 import '../../services/dau_service.dart';
 import '../../services/version_service.dart';
 import 'dart:async';
+import 'reservation_calendar.dart';
+import 'bus_list.dart';
+import 'tip_dialog.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -152,25 +154,15 @@ class _ReservationPageState extends State<ReservationPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('使用提示'),
-        content: Text('点击按钮变蓝即成功预约,再点一次即可取消。长按可以查看对应班车详情。'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _showTip = false;
-              });
-              _saveTipPreference(false);
-            },
-            child: Text('不再显示'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('确定'),
-          ),
-        ],
+      builder: (context) => TipDialog(
+        onDismiss: () => Navigator.of(context).pop(),
+        onDoNotShowAgain: () {
+          Navigator.of(context).pop();
+          setState(() {
+            _showTip = false;
+          });
+          _saveTipPreference(false);
+        },
       ),
     );
   }
@@ -195,16 +187,6 @@ class _ReservationPageState extends State<ReservationPage> {
         }
       }
     }
-  }
-
-  bool _isBusReserved(Map<String, dynamic> busData) {
-    String resourceId = busData['bus_id'].toString();
-    String date = busData['abscissa'];
-    String time = busData['yaxis'];
-    String appointmentTime = '$date $time';
-    String key = '$resourceId$appointmentTime';
-
-    return _reservedBuses.containsKey(key);
   }
 
   void _showFloatingMessage(String message) {
@@ -390,7 +372,23 @@ class _ReservationPageState extends State<ReservationPage> {
               elevation: 2.0,
               child: Padding(
                 padding: EdgeInsets.all(16.0),
-                child: _buildCalendar(),
+                child: ReservationCalendar(
+                  focusedDay: _focusedDay,
+                  selectedDay: _selectedDay,
+                  onDaySelected: (selectedDay, focusedDay) {
+                    final now = DateTime.now();
+                    final lastSelectableDay = now.add(Duration(days: 5));
+                    if (selectedDay.isAfter(now.subtract(Duration(days: 1))) &&
+                        selectedDay.isBefore(
+                            lastSelectableDay.add(Duration(days: 1)))) {
+                      setState(() {
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                        _filterBusList();
+                      });
+                    }
+                  },
+                ),
               ),
             ),
           ),
@@ -448,228 +446,23 @@ class _ReservationPageState extends State<ReservationPage> {
                 ? Center(child: CircularProgressIndicator())
                 : _errorMessage.isNotEmpty
                     ? Center(child: Text(_errorMessage))
-                    : _buildBusList(),
+                    : BusList(
+                        filteredBusList: _filteredBusList,
+                        onBusCardTap: _onBusCardTap,
+                        showBusDetails: _showBusDetails,
+                        reservedBuses: _reservedBuses,
+                        buttonCooldowns: _buttonCooldowns,
+                      ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCalendar() {
-    final now = DateTime.now();
-    final lastSelectableDay = now.add(Duration(days: 5));
-
-    return TableCalendar(
-      firstDay: now,
-      lastDay: now.add(Duration(days: 13)),
-      focusedDay: _focusedDay,
-      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-      onDaySelected: (selectedDay, focusedDay) {
-        if (selectedDay.isAfter(now.subtract(Duration(days: 1))) &&
-            selectedDay.isBefore(lastSelectableDay.add(Duration(days: 1)))) {
-          setState(() {
-            _selectedDay = selectedDay;
-            _focusedDay = focusedDay;
-            _filterBusList();
-          });
-        }
-      },
-      calendarFormat: CalendarFormat.twoWeeks,
-      availableCalendarFormats: {CalendarFormat.twoWeeks: '两周'},
-      calendarStyle: CalendarStyle(
-        todayDecoration: BoxDecoration(
-          color: Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(color: Theme.of(context).primaryColor, width: 1),
-        ),
-        todayTextStyle: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).primaryColor,
-        ),
-        selectedDecoration: BoxDecoration(
-          color: Theme.of(context).primaryColor,
-          shape: BoxShape.circle,
-        ),
-        selectedTextStyle: TextStyle(color: Colors.white),
-        defaultTextStyle: TextStyle(fontWeight: FontWeight.bold),
-        outsideTextStyle: TextStyle(color: Colors.grey),
-        disabledTextStyle:
-            TextStyle(color: Colors.grey, fontWeight: FontWeight.normal),
-      ),
-      headerStyle: HeaderStyle(
-        formatButtonVisible: false,
-        titleCentered: true,
-      ),
-      enabledDayPredicate: (day) {
-        return day.isAfter(now.subtract(Duration(days: 1))) &&
-            day.isBefore(lastSelectableDay.add(Duration(days: 1)));
-      },
-      calendarBuilders: CalendarBuilders(
-        defaultBuilder: (context, day, focusedDay) {
-          final isSelectable = day.isAfter(now.subtract(Duration(days: 1))) &&
-              day.isBefore(lastSelectableDay.add(Duration(days: 1)));
-          final isWithinNext7Days =
-              day.isAfter(now.subtract(Duration(days: 1))) &&
-                  day.isBefore(now.add(Duration(days: 7)));
-
-          return Container(
-            margin: const EdgeInsets.all(4.0),
-            alignment: Alignment.center,
-            decoration: isSelectable && isWithinNext7Days
-                ? BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.blue, width: 1),
-                  )
-                : null,
-            child: Text(
-              '${day.day}',
-              style: TextStyle(
-                fontWeight: isSelectable && isWithinNext7Days
-                    ? FontWeight.bold
-                    : FontWeight.normal,
-                color: isSelectable ? Colors.black : Colors.grey,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBusList() {
-    return ListView(
-      padding: EdgeInsets.only(top: 8),
-      children: [
-        _buildBusSection('去燕园', _getBusesByDirection('去燕园'), Colors.grey[200]!),
-        _buildBusSection('去昌平', _getBusesByDirection('去昌平'), Colors.grey[200]!),
-      ],
-    );
-  }
-
-  Widget _buildBusSection(String title, List<dynamic> buses, Color cardColor) {
-    buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
-          child: Row(
-            children: [
-              Text(
-                title,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: _buildBusButtons(buses),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBusButtons(List<dynamic> buses) {
-    List<Widget> morningButtons = [];
-    List<Widget> afternoonButtons = [];
-    List<Widget> eveningButtons = [];
-
-    for (var busData in buses) {
-      bool isReserved = _isBusReserved(busData);
-      String time = busData['yaxis'] ?? '';
-      DateTime busTime = DateTime.parse(busData['abscissa'] + ' ' + time);
-      String resourceId = busData['bus_id'].toString();
-      String date = busData['abscissa'];
-      String appointmentTime = '$date $time';
-      String key = '$resourceId$appointmentTime';
-
-      Widget button = Expanded(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
-          child: ElevatedButton(
-            onPressed: () => _onBusCardTap(busData),
-            onLongPress: () => _showBusDetails(busData),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isReserved
-                  ? Colors.blueAccent
-                  : (_buttonCooldowns[key] == true
-                      ? Colors.grey[300]
-                      : Colors.white),
-              foregroundColor: isReserved
-                  ? Colors.white
-                  : (_buttonCooldowns[key] == true
-                      ? Colors.grey
-                      : Colors.black),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: isReserved ? Colors.blueAccent : Colors.grey,
-                  width: 1,
-                ),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              elevation: 4,
-              shadowColor: Colors.black.withOpacity(0.2),
-            ),
-            child: Text(
-              time,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-      );
-
-      if (busTime.hour < 12) {
-        morningButtons.add(button);
-      } else if (busTime.hour < 18) {
-        afternoonButtons.add(button);
-      } else {
-        eveningButtons.add(button);
-      }
-    }
-
-    return Column(
-      children: [
-        if (morningButtons.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: morningButtons,
-          ),
-        if (afternoonButtons.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: afternoonButtons,
-          ),
-        if (eveningButtons.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: eveningButtons,
-          ),
-      ],
-    );
-  }
-
-  List<dynamic> _getBusesByDirection(String direction) {
-    return _filteredBusList.where((bus) {
-      final name = bus['route_name'] ?? '';
-      if (direction == '去昌平') {
-        return name.contains('燕') &&
-            name.contains('新') &&
-            name.indexOf('燕') < name.indexOf('新');
-      } else {
-        return name.contains('燕') &&
-            name.contains('新') &&
-            name.indexOf('新') < name.indexOf('燕');
-      }
-    }).toList();
-  }
-
   @override
   void dispose() {
-    _overlayTimer?.cancel(); // 取消定时器
-    _overlayEntry?.remove(); // 移除 OverlayEntry
+    _overlayTimer?.cancel();
+    _overlayEntry?.remove();
     super.dispose();
   }
 }
