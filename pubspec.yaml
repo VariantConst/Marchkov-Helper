@@ -55,6 +55,8 @@ dependencies:
   package_info_plus: ^8.0.2 # 用于获取应用程序信息
   emoji_picker_flutter: ^3.0.0
   crypto: ^3.0.3
+  vibration: ^1.7.6
+  device_info_plus: ^8.0.0
 
 dev_dependencies:
   flutter_test:

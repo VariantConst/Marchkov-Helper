@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class BusButton extends StatelessWidget {
   final Map<String, dynamic> busData;
@@ -29,8 +30,16 @@ class BusButton extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
         child: ElevatedButton(
-          onPressed: () => onBusCardTap(busData),
-          onLongPress: () => showBusDetails(busData),
+          onPressed: () {
+            // 添加震动反馈
+            HapticFeedback.selectionClick();
+            onBusCardTap(busData);
+          },
+          onLongPress: () {
+            // 添加震动反馈
+            HapticFeedback.heavyImpact();
+            showBusDetails(busData);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: isReserved
                 ? Colors.blueAccent

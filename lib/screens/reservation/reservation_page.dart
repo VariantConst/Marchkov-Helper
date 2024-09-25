@@ -11,6 +11,7 @@ import 'dart:async';
 import 'reservation_calendar.dart';
 import 'bus_list.dart';
 import 'tip_dialog.dart';
+import 'package:flutter/services.dart';
 
 class ReservationPage extends StatefulWidget {
   @override
@@ -26,7 +27,7 @@ class _ReservationPageState extends State<ReservationPage> {
   String _errorMessage = '';
   Map<String, dynamic> _reservedBuses = {};
   late DauService _dauService;
-  bool _showTip = true;
+  bool? _showTip;
   Map<String, bool> _buttonCooldowns = {};
   OverlayEntry? _overlayEntry;
   Timer? _overlayTimer;
@@ -150,7 +151,7 @@ class _ReservationPageState extends State<ReservationPage> {
   }
 
   void _showTipDialog() {
-    if (!_showTip) return;
+    if (!_showTip!) return;
 
     showDialog(
       context: context,
@@ -285,6 +286,9 @@ class _ReservationPageState extends State<ReservationPage> {
         });
 
         await _cacheReservedBuses();
+
+        // 添加震动反馈，表示取消成功
+        HapticFeedback.lightImpact();
       } catch (e) {
         _showErrorDialog('取消预约失败', e.toString());
       }
@@ -305,6 +309,9 @@ class _ReservationPageState extends State<ReservationPage> {
 
         // 立即刷新预约状态
         await _refreshReservationStatus();
+
+        // 添加震动反馈，表示预约成功
+        HapticFeedback.mediumImpact();
       } catch (e) {
         _showErrorDialog('预约失败', e.toString());
       }
@@ -358,6 +365,36 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
+  Future<void> _refreshBusData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final reservationService = ReservationService(authProvider);
+
+    try {
+      final today = DateTime.now();
+      final dateStrings = [
+        today.toIso8601String().split('T')[0],
+        today.add(Duration(days: 6)).toIso8601String().split('T')[0],
+      ];
+
+      final allBuses = await reservationService.getAllBuses(dateStrings);
+      final recentReservations =
+          await reservationService.fetchRecentReservations();
+
+      if (!mounted) return;
+      setState(() {
+        _busList = allBuses;
+        _updateReservedBusesWithRecentReservations(recentReservations);
+        _filterBusList();
+      });
+
+      await _cacheBusData();
+      await _cacheReservedBuses();
+    } catch (e) {
+      print('刷新班车数据失败: $e');
+      // 可以选择在这里显示一个短暂的错误提示
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -392,7 +429,9 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ),
           ),
-          if (_showTip)
+          if (_showTip == null)
+            SizedBox.shrink()
+          else if (_showTip!)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
               child: Container(
@@ -442,17 +481,20 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ),
           Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                    ? Center(child: Text(_errorMessage))
-                    : BusList(
-                        filteredBusList: _filteredBusList,
-                        onBusCardTap: _onBusCardTap,
-                        showBusDetails: _showBusDetails,
-                        reservedBuses: _reservedBuses,
-                        buttonCooldowns: _buttonCooldowns,
-                      ),
+            child: RefreshIndicator(
+              onRefresh: _refreshBusData,
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : _errorMessage.isNotEmpty
+                      ? Center(child: Text(_errorMessage))
+                      : BusList(
+                          filteredBusList: _filteredBusList,
+                          onBusCardTap: _onBusCardTap,
+                          showBusDetails: _showBusDetails,
+                          reservedBuses: _reservedBuses,
+                          buttonCooldowns: _buttonCooldowns,
+                        ),
+            ),
           ),
         ],
       ),

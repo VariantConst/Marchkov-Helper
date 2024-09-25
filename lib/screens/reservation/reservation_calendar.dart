@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter/services.dart';
 
 class ReservationCalendar extends StatelessWidget {
   final DateTime focusedDay;
@@ -23,7 +24,11 @@ class ReservationCalendar extends StatelessWidget {
       lastDay: now.add(Duration(days: 13)),
       focusedDay: focusedDay,
       selectedDayPredicate: (day) => isSameDay(selectedDay, day),
-      onDaySelected: onDaySelected,
+      onDaySelected: (selectedDay, focusedDay) {
+        // 添加震动反馈
+        HapticFeedback.selectionClick();
+        onDaySelected(selectedDay, focusedDay);
+      },
       calendarFormat: CalendarFormat.twoWeeks,
       availableCalendarFormats: {CalendarFormat.twoWeeks: '两周'},
       calendarStyle: CalendarStyle(
