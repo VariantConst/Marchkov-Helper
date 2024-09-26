@@ -93,7 +93,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
             final busTime =
                 DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
             final diff = busTime.difference(now).inMinutes;
-            return diff >= -10 && diff <= 30;
+            return diff >= -30 && diff <= 30;
           })
           .toList()
           .cast<Map<String, dynamic>>();
@@ -410,7 +410,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                           ),
                           SizedBox(height: 10),
                           Text(
-                            '只有过去10分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
+                            '只有过去30分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
                             style: TextStyle(fontSize: 10, color: textColor),
                             textAlign: TextAlign.center,
                           ),
@@ -483,7 +483,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   List<Widget> _buildQRCodeContent(Color textColor, Color borderColor) {
     return [
       SizedBox(
-        height: 40,
+        height: 50,
         child: Center(
           child: Text(
             _routeName,
@@ -498,7 +498,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           ),
         ),
       ),
-      SizedBox(height: 16),
+      SizedBox(height: 12),
       Text(
         _departureTime,
         style: TextStyle(
@@ -507,7 +507,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           color: textColor,
         ),
       ),
-      SizedBox(height: 30),
+      SizedBox(height: 20),
       Container(
         width: 240,
         height: 240,

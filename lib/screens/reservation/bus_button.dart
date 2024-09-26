@@ -26,6 +26,7 @@ class BusButton extends StatelessWidget {
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
     bool isCooling = buttonCooldowns[key] == true;
+    String routeName = busData['route_name'] ?? '';
 
     return Expanded(
       child: Padding(
@@ -66,9 +67,25 @@ class BusButton extends StatelessWidget {
                     ),
                   ),
                 )
-              : Text(
-                  time,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      time,
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      routeName,
+                      style: TextStyle(
+                        fontSize: routeName.length > 10 ? 10 : 12,
+                        fontWeight: FontWeight.normal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
         ),
       ),
