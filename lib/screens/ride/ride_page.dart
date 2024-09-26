@@ -31,6 +31,10 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   List<Map<String, dynamic>> _nearbyBuses = [];
   int _selectedBusIndex = -1;
 
+  // 添加预约相关变量
+  String? _appointmentId;
+  String? _hallAppointmentDataId;
+
   @override
   void initState() {
     super.initState();
@@ -132,6 +136,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         _departureTime = actualDepartureTime;
         _routeName = reservation.resourceName;
         _codeType = '乘车码';
+        _appointmentId = reservation.id.toString(); // 存储预约ID
+        _hallAppointmentDataId =
+            reservation.hallAppointmentDataId.toString(); // 存储大厅预约数据ID
       });
     } catch (e) {
       setState(() {
@@ -415,7 +422,11 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       width: 220,
       height: 48,
       child: ElevatedButton(
-        onPressed: _isToggleLoading ? null : _toggleDirection,
+        onPressed: _isToggleLoading
+            ? null
+            : (_codeType == '临时码'
+                ? _makeReservation
+                : _cancelReservation), // 根据codeType决定功能
         style: ElevatedButton.styleFrom(
           backgroundColor:
               _isToggleLoading ? Colors.grey.shade200 : buttonColor,
@@ -436,18 +447,111 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                   ),
                 ),
               )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.swap_horiz, size: 20),
-                  SizedBox(width: 8),
-                  Text('乘坐反向班车',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                ],
+            : Text(
+                _codeType == '临时码' ? '预约' : '取消预约', // 动态按钮文本
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
       ),
     );
+  }
+
+  Future<void> _makeReservation() async {
+    if (_selectedBusIndex == -1) {
+      setState(() {
+        _errorMessage = '请选择一个班车进行预约';
+      });
+      return;
+    }
+
+    setState(() {
+      _isToggleLoading = true;
+      _errorMessage = '';
+    });
+
+    final bus = _nearbyBuses[_selectedBusIndex];
+    final reservationService =
+        ReservationService(Provider.of<AuthProvider>(context, listen: false));
+
+    try {
+      final reservationResult = await reservationService.makeReservation(
+        bus['bus_id'].toString(),
+        bus['abscissa'],
+        bus['time_id'].toString(),
+      );
+
+      setState(() {
+        _appointmentId = reservationResult['id'];
+        _hallAppointmentDataId = reservationResult['hall_appointment_data_id'];
+      });
+
+      await _fetchQRCode(
+        Provider.of<ReservationProvider>(context, listen: false),
+        Reservation(
+          id: int.parse(_appointmentId!),
+          hallAppointmentDataId: int.parse(_hallAppointmentDataId!),
+          resourceName: bus['route_name'],
+          appointmentTime: '${bus['abscissa']} ${bus['yaxis']}',
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = '预约失败: $e';
+      });
+    } finally {
+      setState(() {
+        _isToggleLoading = false;
+      });
+    }
+  }
+
+  Future<void> _cancelReservation() async {
+    if (_appointmentId == null || _hallAppointmentDataId == null) {
+      setState(() {
+        _errorMessage = '无有效的预约信息';
+      });
+      return;
+    }
+
+    setState(() {
+      _isToggleLoading = true;
+      _errorMessage = '';
+    });
+
+    final reservationService =
+        ReservationService(Provider.of<AuthProvider>(context, listen: false));
+
+    try {
+      await reservationService.cancelReservation(
+        _appointmentId!,
+        _hallAppointmentDataId!,
+      );
+
+      // 获取临时码
+      final bus = _nearbyBuses[_selectedBusIndex];
+      final tempCode = await _fetchTempCode(reservationService, bus);
+      if (tempCode != null) {
+        setState(() {
+          _qrCode = tempCode['code'];
+          _departureTime = tempCode['departureTime']!;
+          _routeName = tempCode['routeName']!;
+          _codeType = '临时码';
+          _appointmentId = null;
+          _hallAppointmentDataId = null;
+        });
+      } else {
+        setState(() {
+          _errorMessage = '无法获取临时码';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '取消预约失败: $e';
+      });
+    } finally {
+      setState(() {
+        _isToggleLoading = false;
+      });
+    }
   }
 
   void _toggleDirection() async {
