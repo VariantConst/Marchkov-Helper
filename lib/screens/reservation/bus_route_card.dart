@@ -9,14 +9,14 @@ class BusRouteCard extends StatelessWidget {
   final Color cardColor;
 
   const BusRouteCard({
-    Key? key,
+    super.key,
     required this.busData,
     this.onTap,
     this.onLongPress,
     this.isReserved = false,
     this.isPast = false,
     required this.cardColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +92,7 @@ class BusRouteCard extends StatelessWidget {
 class BusRouteDetails extends StatelessWidget {
   final Map<String, dynamic> busData;
 
-  const BusRouteDetails({Key? key, required this.busData}) : super(key: key);
+  const BusRouteDetails({super.key, required this.busData});
 
   @override
   Widget build(BuildContext context) {

@@ -5,10 +5,10 @@ class TipDialog extends StatelessWidget {
   final Function() onDoNotShowAgain;
 
   const TipDialog({
-    Key? key,
+    super.key,
     required this.onDismiss,
     required this.onDoNotShowAgain,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

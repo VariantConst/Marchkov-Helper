@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/version_service.dart'; // 添加此行
 
 class AboutPage extends StatefulWidget {
-  const AboutPage({Key? key}) : super(key: key);
+  const AboutPage({super.key});
 
   @override
   AboutPageState createState() => AboutPageState();

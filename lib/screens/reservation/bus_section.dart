@@ -10,14 +10,14 @@ class BusSection extends StatelessWidget {
   final Map<String, bool> buttonCooldowns;
 
   const BusSection({
-    Key? key,
+    super.key,
     required this.title,
     required this.buses,
     required this.onBusCardTap,
     required this.showBusDetails,
     required this.reservedBuses,
     required this.buttonCooldowns,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

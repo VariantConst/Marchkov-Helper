@@ -8,11 +8,11 @@ class ReservationCalendar extends StatelessWidget {
   final Function(DateTime, DateTime) onDaySelected;
 
   const ReservationCalendar({
-    Key? key,
+    super.key,
     required this.focusedDay,
     required this.selectedDay,
     required this.onDaySelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

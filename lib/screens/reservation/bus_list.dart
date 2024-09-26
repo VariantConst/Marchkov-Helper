@@ -9,13 +9,13 @@ class BusList extends StatelessWidget {
   final Map<String, bool> buttonCooldowns;
 
   const BusList({
-    Key? key,
+    super.key,
     required this.filteredBusList,
     required this.onBusCardTap,
     required this.showBusDetails,
     required this.reservedBuses,
     required this.buttonCooldowns,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
