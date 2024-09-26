@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/reservation_provider.dart';
 import '../../models/reservation.dart';
 import '../../services/reservation_service.dart';
-import 'package:geolocator/geolocator.dart'; // 添加此行
-import 'package:shared_preferences/shared_preferences.dart'; // 添加此行
-import 'dart:convert'; // 添加此行
-import 'package:qr_flutter/qr_flutter.dart'; // 添加此行
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../../providers/auth_provider.dart';
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -20,138 +20,83 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   bool get wantKeepAlive => true;
 
   String? _qrCode;
-  bool _isInitialLoading = true; // 初次加载的加载状态
-  bool _isRefreshing = false; // 下拉刷新状态
-  bool _isToggleLoading = false; // 切换方向的加载状态
+  bool _isToggleLoading = false;
   String _errorMessage = '';
   String _departureTime = '';
   String _routeName = '';
   String _codeType = '';
 
-  bool _isGoingToYanyuan = true; // 给定初始值
+  bool _isGoingToYanyuan = true;
+
+  List<Map<String, dynamic>> _nearbyBuses = [];
+  int _selectedBusIndex = -1;
 
   @override
   void initState() {
     super.initState();
-    // 仅在初始时设定，不在刷新时改变方向
-    _setDirectionBasedOnTime(DateTime.now());
-    _initialize(); // 异步初始化
+    _initialize();
   }
 
   Future<void> _initialize() async {
-    bool locationAvailable = await _determinePosition();
-    if (locationAvailable) {
-      await _setDirectionBasedOnLocation();
-    }
-    await _loadRideData(isInitialLoad: true); // 传入参数，表示初次加载
+    await _loadNearbyBuses();
   }
 
-  Future<bool> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  Future<void> _loadNearbyBuses() async {
+    final reservationService =
+        ReservationService(Provider.of<AuthProvider>(context, listen: false));
+    final now = DateTime.now();
+    final todayString = now.toIso8601String().split('T')[0];
 
-    // 检查位置服务是否启用
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // 位置服未启用
-      return false;
+    try {
+      final allBuses = await reservationService.getAllBuses([todayString]);
+      _nearbyBuses = allBuses
+          .where((bus) {
+            final busTime =
+                DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
+            final diff = busTime.difference(now).inMinutes;
+            return diff >= -10 && diff <= 30;
+          })
+          .toList()
+          .cast<Map<String, dynamic>>();
+
+      setState(() {});
+    } catch (e) {
+      print('加载附近班车失败: $e');
     }
-
-    // 检查应用是否有权限访问位置
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // 用户拒绝了位置权限
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      // 无法获取位置权限
-      return false;
-    }
-
-    return true;
   }
 
-  Future<void> _setDirectionBasedOnLocation() async {
-    Position position = await Geolocator.getCurrentPosition();
-
-    // 定义燕园和新校区的坐标
-    const yanyuanLatitude = 39.989905;
-    const yanyuanLongitude = 116.311271;
-    const xinxiaoqLatitude = 40.177702;
-    const xinxiaoqLongitude = 116.164600;
-
-    bool isGoingToYanyuan;
-    double distanceToYanyuan = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      yanyuanLatitude,
-      yanyuanLongitude,
-    );
-
-    double distanceToXinxiaoq = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      xinxiaoqLatitude,
-      xinxiaoqLongitude,
-    );
-
-    if (distanceToYanyuan < distanceToXinxiaoq) {
-      // 用户在燕园，去新校区
-      isGoingToYanyuan = false;
-    } else {
-      // 用户在新校区，去燕园
-      isGoingToYanyuan = true;
-    }
-
-    // 在 setState 中更新变量
+  Future<void> _selectBus(int index) async {
     setState(() {
-      _isGoingToYanyuan = isGoingToYanyuan;
+      _selectedBusIndex = index;
+      _errorMessage = '';
     });
-  }
 
-  void _setDirectionBasedOnTime(DateTime now) {
-    _isGoingToYanyuan = now.hour < 12;
-  }
-
-  Future<void> _loadRideData({bool isInitialLoad = false}) async {
-    if (isInitialLoad) {
-      setState(() {
-        _isInitialLoading = true; // 初次加载时设置为 true
-        _errorMessage = ''; // 清空错误信息
-      });
-    } else if (_isRefreshing) {
-      // 在下拉刷新时，不改变任何加载状态
-    } else if (_isToggleLoading) {
-      // 在切换方向，改变任何加载状态
-    }
-
+    final bus = _nearbyBuses[index];
     final reservationProvider =
         Provider.of<ReservationProvider>(context, listen: false);
     final reservationService =
-        ReservationService(Provider.of(context, listen: false));
+        ReservationService(Provider.of<AuthProvider>(context, listen: false));
 
     try {
       await reservationProvider.loadCurrentReservations();
-      final validReservations = reservationProvider.currentReservations
-          .where(_isWithinTimeRange)
-          .where(
-              (reservation) => _isInSelectedDirection(reservation.resourceName))
-          .toList();
+      Reservation? matchingReservation;
 
-      if (validReservations.isNotEmpty) {
-        if (validReservations.length == 1) {
-          await _fetchQRCode(reservationProvider, validReservations[0]);
-        } else {
-          final selectedReservation = _selectReservation(validReservations);
-          await _fetchQRCode(reservationProvider, selectedReservation);
-        }
+      try {
+        matchingReservation =
+            reservationProvider.currentReservations.firstWhere(
+          (reservation) =>
+              reservation.resourceName == bus['route_name'] &&
+              reservation.appointmentTime ==
+                  '${bus['abscissa']} ${bus['yaxis']}',
+        );
+      } catch (e) {
+        matchingReservation = null; // 如果没有找到匹配的预约，设置为 null
+      }
+
+      if (matchingReservation != null) {
+        await _fetchQRCode(reservationProvider, matchingReservation);
       } else {
-        // 获取临时码
-        final tempCode = await _fetchTempCode(reservationService);
+        final tempCode = await _fetchTempCode(reservationService, bus);
         if (tempCode != null) {
           setState(() {
             _qrCode = tempCode['code'];
@@ -161,7 +106,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           });
         } else {
           setState(() {
-            _errorMessage = '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
+            _errorMessage = '无法获取乘车码';
           });
         }
       }
@@ -169,21 +114,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       setState(() {
         _errorMessage = '加载数据时出错: $e';
       });
-    } finally {
-      // 确保在所有情况下都重置加载状态
-      if (isInitialLoad) {
-        setState(() {
-          _isInitialLoading = false;
-        });
-      } else if (_isRefreshing) {
-        setState(() {
-          _isRefreshing = false;
-        });
-      } else if (_isToggleLoading) {
-        setState(() {
-          _isToggleLoading = false;
-        });
-      }
     }
   }
 
@@ -195,12 +125,11 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         reservation.hallAppointmentDataId.toString(),
       );
 
-      // 获取实际发车时间
       final actualDepartureTime = await _getActualDepartureTime(reservation);
 
       setState(() {
         _qrCode = provider.qrCode;
-        _departureTime = actualDepartureTime; // 使用实际发车时间
+        _departureTime = actualDepartureTime;
         _routeName = reservation.resourceName;
         _codeType = '乘车码';
       });
@@ -211,7 +140,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
-  // 新增方法：获取实际发车时间
   Future<String> _getActualDepartureTime(Reservation reservation) async {
     final prefs = await SharedPreferences.getInstance();
     final cachedBusDataString = prefs.getString('cachedBusData');
@@ -227,145 +155,63 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         return matchingBus['yaxis'];
       }
     }
-    // 如果没有找到匹配的 bus 数据，返回原始的 appointmentTime
     return reservation.appointmentTime.split(' ')[1];
   }
 
   Future<Map<String, String>?> _fetchTempCode(
-      ReservationService service) async {
-    // 新增代码：获取当前日期字符串
-    final now = DateTime.now();
-    final todayString = now.toIso8601String().split('T')[0];
-
-    List<dynamic> buses;
-
-    // 尝试从缓存中加载 busData
-    final prefs = await SharedPreferences.getInstance();
-    final cachedDate = prefs.getString('cachedDate');
-
-    if (cachedDate == todayString) {
-      // 如果缓存的日期是今天，使用缓存的 busData
-      final cachedBusDataString = prefs.getString('cachedBusData');
-      if (cachedBusDataString != null) {
-        buses = jsonDecode(cachedBusDataString);
-      } else {
-        // 如果缓存为空，调用接口获取 busData
-        buses = await service.getAllBuses([todayString]);
-      }
-    } else {
-      // 如果缓存的日期不是今天，调用接口获取 busData
-      buses = await service.getAllBuses([todayString]);
-      // 更新缓存
-      await prefs.setString('cachedBusData', jsonEncode(buses));
-      await prefs.setString('cachedDate', todayString);
-    }
-
-    final validBuses = buses
-        .where((bus) => _isWithinTimeRange(Reservation(
-              id: 0,
-              hallAppointmentDataId: 0,
-              appointmentTime: '${bus['abscissa']} ${bus['yaxis']}',
-              resourceName: bus['route_name'],
-            )))
-        .where((bus) => _isInSelectedDirection(bus['route_name']))
-        .toList();
-
-    print("validBuses: $validBuses");
-    if (validBuses.isNotEmpty) {
-      final bus = validBuses.first;
-      final resourceId = bus['bus_id'].toString();
-      final startTime = '${bus['abscissa']} ${bus['yaxis']}';
-      print("resourceId: $resourceId");
-      print("startTime: $startTime");
-      final code = await service.getTempQRCode(resourceId, startTime);
-      print("code: $code");
-      return {
-        'code': code,
-        'departureTime': bus['yaxis'], // 这里已经是正确的发车时间
-        'routeName': bus['route_name'],
-      };
-    }
-    return null;
-  }
-
-  Reservation _selectReservation(List<Reservation> reservations) {
-    final now = DateTime.now();
-    final isGoingToYanyuan = now.hour < 12; // 假设中午12点前去燕园，之后回昌平
-    return reservations.firstWhere(
-      (r) => r.resourceName.contains(isGoingToYanyuan ? '燕园' : '昌平'),
-      orElse: () => reservations.first,
-    );
-  }
-
-  bool _isWithinTimeRange(Reservation reservation) {
-    final now = DateTime.now();
-    final appointmentTime = DateTime.parse(reservation.appointmentTime);
-    final diffInMinutes = appointmentTime.difference(now).inMinutes;
-    return appointmentTime.day == now.day &&
-        diffInMinutes >= -10 &&
-        diffInMinutes <= 30;
-  }
-
-  bool _isInSelectedDirection(String routeName) {
-    final indexYan = routeName.indexOf('燕');
-    final indexXin = routeName.indexOf('新');
-    if (indexYan == -1 || indexXin == -1) return false;
-    if (_isGoingToYanyuan) {
-      return indexXin < indexYan;
-    } else {
-      return indexYan < indexXin;
-    }
-  }
-
-  Future<void> _onRefresh() async {
-    setState(() {
-      _isRefreshing = true; // 开始刷新
-      _errorMessage = ''; // 清空��误信息
-    });
-    await _loadRideData(); // 不传入参数，使用默认值 isInitialLoad = false
-  }
-
-  void _toggleDirection() async {
-    setState(() {
-      _isToggleLoading = true; // 开始切换方向，按钮显示加载状态
-      _isGoingToYanyuan = !_isGoingToYanyuan; // 切换方向
-      _errorMessage = ''; // 清空错误信息
-    });
-    await _loadRideData(); // 不传入参数，使用默认值
+      ReservationService service, Map<String, dynamic> bus) async {
+    final resourceId = bus['bus_id'].toString();
+    final startTime = '${bus['abscissa']} ${bus['yaxis']}';
+    final code = await service.getTempQRCode(resourceId, startTime);
+    return {
+      'code': code,
+      'departureTime': bus['yaxis'],
+      'routeName': bus['route_name'],
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    // 获取底部安全区域的高度
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    // 估计底部导航栏的高度
-    const bottomNavBarHeight = 6.0;
-
     return Scaffold(
-      body: _isInitialLoading
-          ? Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: SafeArea(
-                bottom: false, // 不考虑底部安全区域
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      top: 40,
-                      bottom: 40 +
-                          bottomNavBarHeight +
-                          bottomPadding, // 考虑底部导航栏和安全区域
-                    ),
-                    child: _buildCard(),
-                  ),
-                ),
-              ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildBusLabels(),
+            Expanded(
+              child: _selectedBusIndex == -1
+                  ? Center(child: Text('请选择一个班车'))
+                  : _buildCard(),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBusLabels() {
+    return SizedBox(
+      height: 50,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _nearbyBuses.length,
+        itemBuilder: (context, index) {
+          final bus = _nearbyBuses[index];
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: ChoiceChip(
+              label: Text('${bus['yaxis']} ${bus['route_name']}'),
+              selected: _selectedBusIndex == index,
+              onSelected: (selected) {
+                if (selected) {
+                  _selectBus(index);
+                }
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -384,7 +230,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       borderColor = Colors.grey[400]!;
       buttonColor = Colors.grey[300]!;
     } else if (_codeType == '临时码') {
-      cardColor = Colors.white; // 改为白色，与乘车码保持一致
+      cardColor = Colors.white;
       textColor = Colors.orange[700]!;
       borderColor = Colors.orange[200]!.withOpacity(0.5);
       buttonColor = Colors.orange[100]!.withOpacity(0.5);
@@ -404,8 +250,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       clipBehavior: Clip.antiAlias,
       color: cardColor,
       child: SizedBox(
-        width: MediaQuery.of(context).size.width - 40, // 设置固定宽度（页面宽度减去左右边距）
-        height: 540, // 设置固定高度
+        width: MediaQuery.of(context).size.width - 40,
+        height: 540,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -477,9 +323,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       textColor = Colors.grey[700]!;
       headerText = '无车可坐';
     } else if (_codeType == '临时码') {
-      startColor = Colors.orange[100]!.withOpacity(0.5); // 更淡的渐变起始色
-      endColor = Colors.orange[50]!.withOpacity(0.3); // 更淡的渐变结束色
-      textColor = Colors.orange[700]!; // 稍微淡化的文字颜色
+      startColor = Colors.orange[100]!.withOpacity(0.5);
+      endColor = Colors.orange[50]!.withOpacity(0.3);
+      textColor = Colors.orange[700]!;
       headerText = _codeType;
     } else {
       startColor = Colors.blue.withOpacity(0.2);
@@ -541,22 +387,24 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           border: Border.all(color: borderColor, width: 2),
         ),
         child: Center(
-          child: QrImageView(
-            data: _qrCode!,
-            version: 13,
-            size: 180.0,
-            padding: EdgeInsets.zero,
-            backgroundColor: Colors.white,
-            eyeStyle: QrEyeStyle(
-              color: Colors.grey[700],
-              eyeShape: QrEyeShape.square, // 修改此行
-            ),
-            dataModuleStyle: QrDataModuleStyle(
-              color: Colors.grey[700],
-              dataModuleShape: QrDataModuleShape.square, // 修改此行
-            ),
-            errorCorrectionLevel: QrErrorCorrectLevel.M,
-          ),
+          child: _qrCode != null
+              ? QrImageView(
+                  data: _qrCode!,
+                  version: 13,
+                  size: 180.0,
+                  padding: EdgeInsets.zero,
+                  backgroundColor: Colors.white,
+                  eyeStyle: QrEyeStyle(
+                    color: Colors.grey[700],
+                    eyeShape: QrEyeShape.square,
+                  ),
+                  dataModuleStyle: QrDataModuleStyle(
+                    color: Colors.grey[700],
+                    dataModuleShape: QrDataModuleShape.square,
+                  ),
+                  errorCorrectionLevel: QrErrorCorrectLevel.M,
+                )
+              : Text('无效的二维码'),
         ),
       ),
     ];
@@ -600,5 +448,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
               ),
       ),
     );
+  }
+
+  void _toggleDirection() async {
+    setState(() {
+      _isToggleLoading = true;
+      _isGoingToYanyuan = !_isGoingToYanyuan;
+      _errorMessage = '';
+    });
+    await _loadNearbyBuses();
+    setState(() {
+      _isToggleLoading = false;
+    });
   }
 }
