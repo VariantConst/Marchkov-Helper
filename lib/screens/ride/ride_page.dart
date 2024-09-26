@@ -35,10 +35,26 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   String? _appointmentId;
   String? _hallAppointmentDataId;
 
+  // 添加 PageController 属性
+  late PageController _pageController;
+
   @override
   void initState() {
     super.initState();
     _initialize();
+
+    // 初始化 PageController，设置初始页面和视口Fraction
+    _pageController = PageController(
+      initialPage: _selectedBusIndex == -1 ? 0 : _selectedBusIndex,
+      viewportFraction: 0.6, // 调整视口Fraction以显示部分前后卡片
+    );
+  }
+
+  @override
+  void dispose() {
+    // 释放 PageController 资源
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _initialize() async {
@@ -185,11 +201,15 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       body: SafeArea(
         child: Column(
           children: [
-            _buildBusLabels(),
             Expanded(
               child: _selectedBusIndex == -1
                   ? Center(child: Text('请选择一个班车'))
                   : _buildCard(),
+            ),
+            // 将路线选择器移动到页面底部
+            SizedBox(
+              height: 120, // 调整高度以适应滚动选择器
+              child: _buildBusPicker(),
             ),
           ],
         ),
@@ -197,28 +217,64 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildBusLabels() {
-    return SizedBox(
-      height: 50,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _nearbyBuses.length,
-        itemBuilder: (context, index) {
-          final bus = _nearbyBuses[index];
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4),
-            child: ChoiceChip(
-              label: Text('${bus['yaxis']} ${bus['route_name']}'),
-              selected: _selectedBusIndex == index,
-              onSelected: (selected) {
-                if (selected) {
-                  _selectBus(index);
-                }
-              },
+  // 新的滚动选择器方法
+  Widget _buildBusPicker() {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: _nearbyBuses.length,
+      onPageChanged: (index) {
+        setState(() {
+          _selectBus(index);
+        });
+      },
+      itemBuilder: (context, index) {
+        final bus = _nearbyBuses[index];
+        bool isSelected = index == _selectedBusIndex;
+
+        return AnimatedBuilder(
+          animation: _pageController,
+          builder: (context, child) {
+            double scale = 1.0;
+            if (_pageController.position.haveDimensions) {
+              scale = _pageController.page! - index;
+              scale = (1 - (scale.abs() * 0.3)).clamp(0.0, 1.0);
+            }
+            return Center(
+              child: SizedBox(
+                height: Curves.easeOut.transform(scale) * 100,
+                width: Curves.easeOut.transform(scale) * 200,
+                child: child,
+              ),
+            );
+          },
+          child: GestureDetector(
+            onTap: () {
+              _pageController.animateToPage(
+                index,
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            child: Card(
+              elevation: isSelected ? 8 : 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              color: isSelected ? Colors.blueAccent : Colors.white,
+              child: Center(
+                child: Text(
+                  '${bus['yaxis']}\n${bus['route_name']}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: isSelected ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -565,17 +621,5 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         _isToggleLoading = false;
       });
     }
-  }
-
-  void _toggleDirection() async {
-    setState(() {
-      _isToggleLoading = true;
-      _isGoingToYanyuan = !_isGoingToYanyuan;
-      _errorMessage = '';
-    });
-    await _loadNearbyBuses();
-    setState(() {
-      _isToggleLoading = false;
-    });
   }
 }
