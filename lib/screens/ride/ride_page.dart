@@ -471,28 +471,41 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     final bus = _nearbyBuses[_selectedBusIndex];
     final reservationService =
         ReservationService(Provider.of<AuthProvider>(context, listen: false));
+    final reservationProvider =
+        Provider.of<ReservationProvider>(context, listen: false);
 
     try {
-      final reservationResult = await reservationService.makeReservation(
+      await reservationService.makeReservation(
         bus['bus_id'].toString(),
         bus['abscissa'],
         bus['time_id'].toString(),
       );
 
-      setState(() {
-        _appointmentId = reservationResult['id'];
-        _hallAppointmentDataId = reservationResult['hall_appointment_data_id'];
-      });
+      // 获取最新的预约列表
+      await reservationProvider.loadCurrentReservations();
 
-      await _fetchQRCode(
-        Provider.of<ReservationProvider>(context, listen: false),
-        Reservation(
-          id: int.parse(_appointmentId!),
-          hallAppointmentDataId: int.parse(_hallAppointmentDataId!),
-          resourceName: bus['route_name'],
-          appointmentTime: '${bus['abscissa']} ${bus['yaxis']}',
-        ),
-      );
+      // 尝试匹配刚刚预约的班车
+      Reservation? matchingReservation;
+      try {
+        matchingReservation =
+            reservationProvider.currentReservations.firstWhere(
+          (reservation) =>
+              reservation.resourceName == bus['route_name'] &&
+              reservation.appointmentTime ==
+                  '${bus['abscissa']} ${bus['yaxis']}',
+        );
+      } catch (e) {
+        matchingReservation = null;
+      }
+
+      if (matchingReservation != null) {
+        // 获取乘车码
+        await _fetchQRCode(reservationProvider, matchingReservation);
+      } else {
+        setState(() {
+          _errorMessage = '无法找到匹配的预约信息';
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = '预约失败: $e';
