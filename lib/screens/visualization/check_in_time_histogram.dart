@@ -10,7 +10,8 @@ class CheckInTimeHistogram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _prepareHistogramData();
+    final data = _prepareHistogramData(context);
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -43,7 +44,7 @@ class CheckInTimeHistogram extends StatelessWidget {
                               return Text(
                                 value.toInt().toString(),
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: textColor,
                                   fontSize: 10,
                                 ),
                               );
@@ -55,7 +56,7 @@ class CheckInTimeHistogram extends StatelessWidget {
                           sideTitles: SideTitles(
                             showTitles: true,
                             reservedSize: 40,
-                            // 设置 x ��的刻度间隔
+                            // 设置 x 的刻度间隔
                             interval: 2,
                             getTitlesWidget: (double value, TitleMeta meta) {
                               // 仅显示 -10 到 10 的刻度标签
@@ -65,7 +66,7 @@ class CheckInTimeHistogram extends StatelessWidget {
                                 return Text(
                                   value.toInt().toString(),
                                   style: TextStyle(
-                                    color: Colors.black,
+                                    color: textColor,
                                     fontSize: 10,
                                   ),
                                 );
@@ -100,9 +101,13 @@ class CheckInTimeHistogram extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    LegendItem(color: Colors.amber, text: '提前签到'), // 改为琥珀色
+                    LegendItem(
+                        color: Theme.of(context).colorScheme.secondary,
+                        text: '提前签到'), // 改为琥珀色
                     SizedBox(width: 16),
-                    LegendItem(color: Colors.teal, text: '迟到签到'), // 改为青色
+                    LegendItem(
+                        color: Theme.of(context).colorScheme.primary,
+                        text: '迟到签到'), // 改为青色
                   ],
                 ),
               ],
@@ -113,7 +118,7 @@ class CheckInTimeHistogram extends StatelessWidget {
     );
   }
 
-  Map<String, dynamic> _prepareHistogramData() {
+  Map<String, dynamic> _prepareHistogramData(BuildContext context) {
     List<int> timeDifferences = [];
 
     for (var ride in rides) {
@@ -146,7 +151,9 @@ class CheckInTimeHistogram extends StatelessWidget {
           barRods: [
             BarChartRodData(
               toY: (frequencyMap[i] ?? 0).toDouble(),
-              color: i < 0 ? Colors.amber : Colors.teal, // 提前签到为琥珀色，迟到签到青色
+              color: i < 0
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).colorScheme.primary, // 使用主题颜色
               width: 8, // 调整柱子宽度，与出发时间统计图表一致
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),

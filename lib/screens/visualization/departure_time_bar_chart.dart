@@ -11,7 +11,7 @@ class DepartureTimeBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 处理数据
-    final data = _prepareChartData();
+    final data = _prepareChartData(context);
 
     // **动态计算 y 轴间隔**
     double range = data['maxY'] - data['minY'];
@@ -30,6 +30,8 @@ class DepartureTimeBarChart extends StatelessWidget {
     // **调整 maxY 和 minY 为 interval 的整数倍**
     double adjustedMaxY = (data['maxY'] / interval).ceil() * interval;
     double adjustedMinY = (data['minY'] / interval).floor() * interval;
+
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -66,7 +68,7 @@ class DepartureTimeBarChart extends StatelessWidget {
                               return Text(
                                 value.toInt().abs().toString(),
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: textColor,
                                   fontSize: 10,
                                 ),
                               );
@@ -85,7 +87,7 @@ class DepartureTimeBarChart extends StatelessWidget {
                                   child: Text(
                                     '$index:00',
                                     style: TextStyle(
-                                      color: Colors.black,
+                                      color: textColor,
                                       fontSize: 10,
                                     ),
                                   ),
@@ -119,9 +121,13 @@ class DepartureTimeBarChart extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    LegendItem(color: Colors.teal, text: '去昌平'),
+                    LegendItem(
+                        color: Theme.of(context).colorScheme.primary,
+                        text: '去昌平'),
                     SizedBox(width: 16),
-                    LegendItem(color: Colors.amber, text: '去燕园'),
+                    LegendItem(
+                        color: Theme.of(context).colorScheme.secondary,
+                        text: '去燕园'),
                   ],
                 ),
               ],
@@ -132,7 +138,7 @@ class DepartureTimeBarChart extends StatelessWidget {
     );
   }
 
-  Map<String, dynamic> _prepareChartData() {
+  Map<String, dynamic> _prepareChartData(BuildContext context) {
     Map<int, int> toYanyuan = {};
     Map<int, int> toChangping = {};
 
@@ -180,7 +186,7 @@ class DepartureTimeBarChart extends StatelessWidget {
             BarChartRodData(
               fromY: 0,
               toY: toChangpingCount.toDouble(),
-              color: Colors.teal, // 修改颜色为柔和的青色
+              color: Theme.of(context).colorScheme.primary, // 使用主题颜色
               width: 8,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
@@ -193,7 +199,7 @@ class DepartureTimeBarChart extends StatelessWidget {
             BarChartRodData(
               fromY: 0,
               toY: -toYanyuanCount.toDouble(),
-              color: Colors.amber, // 修改颜色为柔和的琥珀色
+              color: Theme.of(context).colorScheme.secondary, // 使用主题颜色
               width: 8,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(0),
@@ -219,7 +225,7 @@ class DepartureTimeBarChart extends StatelessWidget {
   }
 }
 
-// 添加���例项组件
+// 添加例项组件
 class LegendItem extends StatelessWidget {
   final Color color;
   final String text;

@@ -9,7 +9,7 @@ class CheckedInReservedPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = _preparePieData();
+    final data = _preparePieData(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -37,9 +37,13 @@ class CheckedInReservedPieChart extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    LegendItem(color: Colors.teal, text: '已签到'),
+                    LegendItem(
+                        color: Theme.of(context).colorScheme.primary,
+                        text: '已签到'),
                     SizedBox(width: 16),
-                    LegendItem(color: Colors.amber, text: '已预约'),
+                    LegendItem(
+                        color: Theme.of(context).colorScheme.secondary,
+                        text: '已预约'),
                   ],
                 ),
               ],
@@ -50,7 +54,7 @@ class CheckedInReservedPieChart extends StatelessWidget {
     );
   }
 
-  List<PieChartSectionData> _preparePieData() {
+  List<PieChartSectionData> _preparePieData(BuildContext context) {
     // 修改以下两行，使用 statusName 字段
     int checkedInCount = rides.where((ride) => ride.statusName == '已签到').length;
     int reservedCount = rides.where((ride) => ride.statusName == '已预约').length;
@@ -73,25 +77,27 @@ class CheckedInReservedPieChart extends StatelessWidget {
     double reservedPercentage = (reservedCount / total) * 100;
 
     // 修改 _preparePieData 方法中的 PieChartSectionData，添加具体数量并将文字移到饼外部
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return [
       PieChartSectionData(
-        color: Colors.teal, // 修改颜色为柔和的青色
+        color: Theme.of(context).colorScheme.primary, // 使用主题颜色
         value: checkedInPercentage,
         title:
             '${checkedInPercentage.toStringAsFixed(1)}% ($checkedInCount)', // 保留数量
         radius: 50,
         titleStyle: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+            fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
         titlePositionPercentageOffset: 1.6, // 将标题位置进一步偏移到饼图外部
       ),
       PieChartSectionData(
-        color: Colors.amber, // 修改颜色为柔和的琥珀色
+        color: Theme.of(context).colorScheme.secondary, // 使用主题颜色
         value: reservedPercentage,
         title:
             '${reservedPercentage.toStringAsFixed(1)}% ($reservedCount)', // 保留数量
         radius: 50,
         titleStyle: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+            fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
         titlePositionPercentageOffset: 1.6, // 将标题位置进一步偏移到饼图外部
       ),
     ];

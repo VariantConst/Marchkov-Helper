@@ -18,20 +18,28 @@ class VisualizationSettingsPage extends StatefulWidget {
 }
 
 class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
+  TimeRange _selectedTimeRange = TimeRange.all;
+  late PageController _pageController;
+  int _currentPage = 0;
+
   @override
   void initState() {
     super.initState();
-    // 每次进入页面时刷新数据
+    _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<RideHistoryProvider>(context, listen: false)
           .loadRideHistory();
     });
   }
 
-  // 添加选择的时间范围变量，默认值为全部
-  TimeRange _selectedTimeRange = TimeRange.all;
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
-  // 根据选定的时间范围过滤乘���
+  // 添加选择的时间范围变量，默认值为全部
+  // 根据选定的时间范围过滤乘
   List<RideInfo> _filterRides(List<RideInfo> rides) {
     final now = DateTime.now();
     late DateTime startDate;
@@ -60,6 +68,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final rideHistoryProvider = Provider.of<RideHistoryProvider>(context);
+    final rides = _filterRides(rideHistoryProvider.rides);
 
     return Scaffold(
       appBar: AppBar(
@@ -93,74 +102,80 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
           ),
         ],
       ),
-      body: rideHistoryProvider.isLoading
-          ? Center(child: CircularProgressIndicator())
-          : rideHistoryProvider.error != null
-              ? Center(child: Text('加载乘车历史失败: ${rideHistoryProvider.error}'))
-              : Column(
-                  children: [
-                    // 显示过滤后的数据
-                    Expanded(
-                      child: _buildVisualizationCards(
-                          _filterRides(rideHistoryProvider.rides)),
-                    ),
-                  ],
-                ),
+      body: Column(
+        children: [
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              children: [
+                _buildPage('乘车日历', RideCalendarCard(rides: rides)),
+                _buildPage('各时段出发班次统计', DepartureTimeBarChart(rides: rides)),
+                _buildPage('签到时间差（分钟）分布', CheckInTimeHistogram(rides: rides)),
+                _buildPage(
+                    '已签到与已预约比例', CheckedInReservedPieChart(rides: rides)),
+              ],
+            ),
+          ),
+          _buildPageIndicator(),
+          SizedBox(height: 20), // 添加这行来增加底部间距
+        ],
+      ),
     );
   }
 
-  Widget _buildVisualizationCards(List<RideInfo> rides) {
-    return PageView(
+  Widget _buildPage(String title, Widget content) {
+    return Column(
       children: [
-        Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                '乘车日历',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(child: RideCalendarCard(rides: rides)),
-          ],
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            title,
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface), // 使用 onSurface 代替 onBackground
+          ),
         ),
-        Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                '各时段出发班次统计',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(child: DepartureTimeBarChart(rides: rides)),
-          ],
-        ),
-        Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                '签到时间差（分钟）分布',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(child: CheckInTimeHistogram(rides: rides)),
-          ],
-        ),
-        Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                '已签到与已预约比例',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(child: CheckedInReservedPieChart(rides: rides)),
-          ],
-        ),
+        Expanded(child: content),
       ],
+    );
+  }
+
+  Widget _buildPageIndicator() {
+    return Container(
+      padding: EdgeInsets.only(bottom: 16), // 修改这里，增加底部内边距
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List<Widget>.generate(4, (index) {
+          return GestureDetector(
+            onTap: () {
+              _pageController.animateToPage(
+                index,
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            child: Container(
+              width: 12,
+              height: 12,
+              margin: EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _currentPage == index
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 }

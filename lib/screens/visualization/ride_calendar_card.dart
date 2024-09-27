@@ -63,6 +63,8 @@ class RideCalendarCardState extends State<RideCalendarCard> {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Column(
       children: [
         TableCalendar<RideInfo>(
@@ -98,11 +100,13 @@ class RideCalendarCardState extends State<RideCalendarCard> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.blueAccent, width: 2),
+                    border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2), // 使用主题颜色
                   ),
                   child: Text(
                     '${date.day}',
-                    style: TextStyle(color: Colors.black),
+                    style: TextStyle(color: textColor),
                   ),
                 );
               }
@@ -120,10 +124,11 @@ class RideCalendarCardState extends State<RideCalendarCard> {
   }
 
   Widget _buildRideList() {
+    final textColor = Theme.of(context).colorScheme.onSurface;
     final selectedEvents = _getEventsForDay(_selectedDay ?? _focusedDay);
     if (selectedEvents.isEmpty) {
       return Center(
-        child: Text('这一天没有乘车记录'),
+        child: Text('这一天没有乘车记录', style: TextStyle(color: textColor)),
       );
     } else {
       return ListView.builder(
@@ -133,8 +138,10 @@ class RideCalendarCardState extends State<RideCalendarCard> {
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: ListTile(
-              title: Text('乘车时间: ${ride.appointmentTime}'),
-              subtitle: Text('状态: ${ride.statusName}'),
+              title: Text('乘车时间: ${ride.appointmentTime}',
+                  style: TextStyle(color: textColor)),
+              subtitle: Text('状态: ${ride.statusName}',
+                  style: TextStyle(color: textColor.withOpacity(0.7))),
             ),
           );
         },
