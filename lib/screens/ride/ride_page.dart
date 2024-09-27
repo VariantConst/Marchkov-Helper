@@ -38,6 +38,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加 PageController 属性
   late PageController _pageController;
 
+  // 添加一个加载状态变量
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -45,8 +48,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     // 初始化 PageController，设置初始页面和视口Fraction
     _pageController = PageController(
-      initialPage: _selectedBusIndex == -1 ? 0 : _selectedBusIndex,
-      viewportFraction: 0.6, // 调整视口Fraction以显示部分前后卡片
+      initialPage: 0,
+      viewportFraction: 0.6,
     );
   }
 
@@ -59,6 +62,22 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   Future<void> _initialize() async {
     await _loadNearbyBuses();
+
+    if (_nearbyBuses.isNotEmpty) {
+      setState(() {
+        _selectedBusIndex = 0;
+      });
+      await _selectBus(0); // 选择第一个可用的班车
+    } else {
+      setState(() {
+        _errorMessage = '无车可坐';
+      });
+    }
+
+    // 数据加载完成，更新加载状态
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> _loadNearbyBuses() async {
@@ -197,19 +216,30 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
 
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
-              child: _selectedBusIndex == -1
-                  ? Center(child: Text('请选择一个班车'))
-                  : _buildCard(),
+              child: _nearbyBuses.isEmpty
+                  ? Center(child: Text('无车可坐')) // 当没有班车时显示提示信息
+                  : _selectedBusIndex == -1
+                      ? Center(child: Text('请选择一个班车'))
+                      : _buildCard(),
             ),
-            // 将路线选择器移动到页面底部
             SizedBox(
-              height: 120, // 调整高度以适应滚动选择器
-              child: _buildBusPicker(),
+              height: 120,
+              child: _nearbyBuses.isEmpty
+                  ? SizedBox.shrink() // 当没有班车时不显示底部选择器
+                  : _buildBusPicker(),
             ),
           ],
         ),
@@ -219,62 +249,90 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   // 新的滚动选择器方法
   Widget _buildBusPicker() {
-    return PageView.builder(
-      controller: _pageController,
-      itemCount: _nearbyBuses.length,
-      onPageChanged: (index) {
-        setState(() {
-          _selectBus(index);
-        });
-      },
-      itemBuilder: (context, index) {
-        final bus = _nearbyBuses[index];
-        bool isSelected = index == _selectedBusIndex;
+    return Container(
+      height: 100,
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            offset: Offset(0, -3),
+          ),
+        ],
+      ),
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: _nearbyBuses.length,
+        onPageChanged: (index) {
+          setState(() {
+            _selectBus(index);
+          });
+        },
+        itemBuilder: (context, index) {
+          final bus = _nearbyBuses[index];
+          bool isSelected = index == _selectedBusIndex;
 
-        return AnimatedBuilder(
-          animation: _pageController,
-          builder: (context, child) {
-            double scale = 1.0;
-            if (_pageController.position.haveDimensions) {
-              scale = _pageController.page! - index;
-              scale = (1 - (scale.abs() * 0.3)).clamp(0.0, 1.0);
-            }
-            return Center(
-              child: SizedBox(
-                height: Curves.easeOut.transform(scale) * 100,
-                width: Curves.easeOut.transform(scale) * 200,
-                child: child,
-              ),
-            );
-          },
-          child: GestureDetector(
-            onTap: () {
-              _pageController.animateToPage(
-                index,
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+          return AnimatedBuilder(
+            animation: _pageController,
+            builder: (context, child) {
+              double value = 1.0;
+              if (_pageController.position.haveDimensions) {
+                value = _pageController.page! - index;
+                value = (1 - (value.abs() * 0.3)).clamp(0.0, 1.0);
+              }
+              return Center(
+                child: SizedBox(
+                  height: Curves.easeOut.transform(value) * 100,
+                  width: Curves.easeOut.transform(value) * 180,
+                  child: child,
+                ),
               );
             },
             child: Card(
-              elevation: isSelected ? 8 : 4,
+              elevation: isSelected ? 4 : 2,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              color: isSelected ? Colors.blueAccent : Colors.white,
-              child: Center(
-                child: Text(
-                  '${bus['yaxis']}\n${bus['route_name']}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: isSelected ? Colors.white : Colors.black87,
-                  ),
+              color: isSelected ? Colors.blue.shade50 : Colors.white,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      bus['yaxis'],
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color:
+                            isSelected ? Colors.blue.shade700 : Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      bus['route_name'],
+                      style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            isSelected ? Colors.blue.shade600 : Colors.black54,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -316,56 +374,58 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         width: MediaQuery.of(context).size.width - 40,
         height: 540,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _buildCardHeader(isNoBusAvailable),
-            Padding(
-              padding: EdgeInsets.all(25),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isNoBusAvailable)
-                    Column(
-                      children: [
-                        Text('😅', style: TextStyle(fontSize: 100)),
-                        SizedBox(height: 20),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(text: '去'),
-                              TextSpan(
-                                text: _isGoingToYanyuan ? '燕园' : '昌平',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              TextSpan(text: '方向'),
-                            ],
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(25),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isNoBusAvailable)
+                      Column(
+                        children: [
+                          Text('😅', style: TextStyle(fontSize: 100)),
+                          SizedBox(height: 20),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(text: '去'),
+                                TextSpan(
+                                  text: _isGoingToYanyuan ? '燕园' : '昌平',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(text: '方向'),
+                              ],
+                            ),
+                            style: TextStyle(fontSize: 32, color: textColor),
+                            textAlign: TextAlign.center,
                           ),
-                          style: TextStyle(fontSize: 32, color: textColor),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          '这会没有班车可坐，急了？',
-                          style: TextStyle(fontSize: 16, color: textColor),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          '只有过去10分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
-                          style: TextStyle(fontSize: 10, color: textColor),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 55),
-                      ],
-                    )
-                  else if (_qrCode != null && _qrCode!.isNotEmpty)
-                    ..._buildQRCodeContent(textColor, borderColor)
-                  else
-                    Text('暂无二维码',
-                        style: TextStyle(fontSize: 16, color: textColor)),
-                  SizedBox(height: 20),
-                  _buildReverseButton(buttonColor, textColor),
-                ],
+                          SizedBox(height: 10),
+                          Text(
+                            '这会没有班车可坐，急了？',
+                            style: TextStyle(fontSize: 16, color: textColor),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            '只有过去10分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
+                            style: TextStyle(fontSize: 10, color: textColor),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 55),
+                        ],
+                      )
+                    else if (_qrCode != null && _qrCode!.isNotEmpty)
+                      ..._buildQRCodeContent(textColor, borderColor)
+                    else
+                      Text('暂无二维码',
+                          style: TextStyle(fontSize: 16, color: textColor)),
+                    SizedBox(height: 20),
+                    _buildReverseButton(buttonColor, textColor),
+                  ],
+                ),
               ),
             ),
           ],
@@ -422,28 +482,35 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   List<Widget> _buildQRCodeContent(Color textColor, Color borderColor) {
     return [
-      Text(
-        _routeName,
-        style: TextStyle(
-          fontSize: _routeName.length > 10 ? 16 : 20,
-          fontWeight: FontWeight.w500,
-          color: textColor,
+      SizedBox(
+        height: 40,
+        child: Center(
+          child: Text(
+            _routeName,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        textAlign: TextAlign.center,
       ),
-      SizedBox(height: 12),
+      SizedBox(height: 16),
       Text(
         _departureTime,
         style: TextStyle(
-          fontSize: 34,
+          fontSize: 38,
           fontWeight: FontWeight.bold,
           color: textColor,
         ),
       ),
-      SizedBox(height: 25),
+      SizedBox(height: 30),
       Container(
-        width: 220,
-        height: 220,
+        width: 240,
+        height: 240,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -454,7 +521,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
               ? QrImageView(
                   data: _qrCode!,
                   version: 13,
-                  size: 180.0,
+                  size: 200.0,
                   padding: EdgeInsets.zero,
                   backgroundColor: Colors.white,
                   eyeStyle: QrEyeStyle(
@@ -475,14 +542,12 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   Widget _buildReverseButton(Color buttonColor, Color textColor) {
     return SizedBox(
-      width: 220,
-      height: 48,
+      width: 240,
+      height: 56,
       child: ElevatedButton(
         onPressed: _isToggleLoading
             ? null
-            : (_codeType == '临时码'
-                ? _makeReservation
-                : _cancelReservation), // 根据codeType决定功能
+            : (_codeType == '临时码' ? _makeReservation : _cancelReservation),
         style: ElevatedButton.styleFrom(
           backgroundColor:
               _isToggleLoading ? Colors.grey.shade200 : buttonColor,
@@ -490,13 +555,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           elevation: 0,
           padding: EdgeInsets.zero,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         child: _isToggleLoading
             ? Center(
                 child: SizedBox(
-                  width: 20,
-                  height: 20,
+                  width: 24,
+                  height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(textColor),
@@ -504,8 +569,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                 ),
               )
             : Text(
-                _codeType == '临时码' ? '预约' : '取消预约', // 动态按钮文本
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                _codeType == '临时码' ? '预约' : '取消预约',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
       ),
     );
