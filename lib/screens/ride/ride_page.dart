@@ -49,7 +49,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     // 初始化 PageController，设置初始页面和视口Fraction
     _pageController = PageController(
       initialPage: 0,
-      viewportFraction: 0.6,
+      viewportFraction: 0.9, // 调整视口Fraction，使卡片占据更大的宽度
     );
   }
 
@@ -67,7 +67,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       setState(() {
         _selectedBusIndex = 0;
       });
-      await _selectBus(0); // 选择第一个可用的班车
+      await _selectBus(0); // 选择��一个可用的班车
     } else {
       setState(() {
         _errorMessage = '无车可坐';
@@ -93,7 +93,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
             final busTime =
                 DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
             final diff = busTime.difference(now).inMinutes;
-            return diff >= -30 && diff <= 30;
+
+            // 添加路线名称过滤条件
+            final routeName = bus['route_name'].toString().toLowerCase();
+            final containsXin = routeName.contains('新');
+            final containsYan = routeName.contains('燕');
+
+            return diff >= -30 && diff <= 30 && containsXin && containsYan;
           })
           .toList()
           .cast<Map<String, dynamic>>();
@@ -227,111 +233,47 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     return Scaffold(
       body: SafeArea(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center, // 设置主轴对齐为居中
           children: [
-            Expanded(
-              child: _nearbyBuses.isEmpty
-                  ? Center(child: Text('无车可坐')) // 当没有班车时显示提示信息
-                  : _selectedBusIndex == -1
-                      ? Center(child: Text('请选择一个班车'))
-                      : _buildCard(),
-            ),
             SizedBox(
-              height: 120,
+              height: 600, // 设置为较小的固定高度，根据需要调整
               child: _nearbyBuses.isEmpty
-                  ? SizedBox.shrink() // 当没有班车时不显示底部选择器
-                  : _buildBusPicker(),
+                  ? Center(child: Text('无车可坐'))
+                  : PageView.builder(
+                      controller: _pageController,
+                      itemCount: _nearbyBuses.length,
+                      onPageChanged: (index) {
+                        _selectBus(index);
+                      },
+                      itemBuilder: (context, index) {
+                        return _buildCard();
+                      },
+                    ),
+            ),
+            SizedBox(height: 16), // 卡片与指示槽之间的间距
+            // 添加底部指示槽
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _nearbyBuses.length,
+                  (index) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                    width: 8.0,
+                    height: 8.0,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _selectedBusIndex == index
+                          ? Colors.blue
+                          : Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // 新的滚动选择器方法
-  Widget _buildBusPicker() {
-    return Container(
-      height: 100,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: Offset(0, -3),
-          ),
-        ],
-      ),
-      child: PageView.builder(
-        controller: _pageController,
-        itemCount: _nearbyBuses.length,
-        onPageChanged: (index) {
-          setState(() {
-            _selectBus(index);
-          });
-        },
-        itemBuilder: (context, index) {
-          final bus = _nearbyBuses[index];
-          bool isSelected = index == _selectedBusIndex;
-
-          return AnimatedBuilder(
-            animation: _pageController,
-            builder: (context, child) {
-              double value = 1.0;
-              if (_pageController.position.haveDimensions) {
-                value = _pageController.page! - index;
-                value = (1 - (value.abs() * 0.3)).clamp(0.0, 1.0);
-              }
-              return Center(
-                child: SizedBox(
-                  height: Curves.easeOut.transform(value) * 100,
-                  width: Curves.easeOut.transform(value) * 180,
-                  child: child,
-                ),
-              );
-            },
-            child: Card(
-              elevation: isSelected ? 4 : 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              color: isSelected ? Colors.blue.shade50 : Colors.white,
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      bus['yaxis'],
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color:
-                            isSelected ? Colors.blue.shade700 : Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      bus['route_name'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isSelected ? Colors.blue.shade600 : Colors.black54,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -370,62 +312,62 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       ),
       clipBehavior: Clip.antiAlias,
       color: cardColor,
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width - 40,
-        height: 540,
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 8.0),
+        height: 600, // 设置为适当的高度
         child: Column(
+          mainAxisSize: MainAxisSize.min, // 设置主轴大小为最小
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _buildCardHeader(isNoBusAvailable),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(25),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isNoBusAvailable)
-                      Column(
-                        children: [
-                          Text('😅', style: TextStyle(fontSize: 100)),
-                          SizedBox(height: 20),
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(text: '去'),
-                                TextSpan(
-                                  text: _isGoingToYanyuan ? '燕园' : '昌平',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                TextSpan(text: '方向'),
-                              ],
-                            ),
-                            style: TextStyle(fontSize: 32, color: textColor),
-                            textAlign: TextAlign.center,
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isNoBusAvailable)
+                    Column(
+                      children: [
+                        Text('😅', style: TextStyle(fontSize: 80)),
+                        SizedBox(height: 10),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: '去'),
+                              TextSpan(
+                                text: _isGoingToYanyuan ? '燕园' : '昌平',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(text: '方向'),
+                            ],
                           ),
-                          SizedBox(height: 10),
-                          Text(
-                            '这会没有班车可坐，急了？',
-                            style: TextStyle(fontSize: 16, color: textColor),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            '只有过去30分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
-                            style: TextStyle(fontSize: 10, color: textColor),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 55),
-                        ],
-                      )
-                    else if (_qrCode != null && _qrCode!.isNotEmpty)
-                      ..._buildQRCodeContent(textColor, borderColor)
-                    else
-                      Text('暂无二维码',
-                          style: TextStyle(fontSize: 16, color: textColor)),
-                    SizedBox(height: 20),
-                    _buildReverseButton(buttonColor, textColor),
-                  ],
-                ),
+                          style: TextStyle(fontSize: 24, color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          '这会没有班车可坐，急了？',
+                          style: TextStyle(fontSize: 14, color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          '只有过去30分钟到未来30分钟内\n发车的班车乘车码才会在这里显示。',
+                          style: TextStyle(fontSize: 12, color: textColor),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    )
+                  else if (_qrCode != null && _qrCode!.isNotEmpty)
+                    ..._buildQRCodeContent(textColor, borderColor)
+                  else
+                    Text(
+                      '暂无二维码',
+                      style: TextStyle(fontSize: 16, color: textColor),
+                    ),
+                  SizedBox(height: 20),
+                  _buildReverseButton(buttonColor, textColor),
+                ],
               ),
             ),
           ],
