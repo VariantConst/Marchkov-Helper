@@ -13,8 +13,8 @@ class MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
 
   static List<Widget> _widgetOptions = <Widget>[
-    ReservationPage(),
     RidePage(),
+    ReservationPage(),
     SettingsPage(),
   ];
 
@@ -36,12 +36,12 @@ class MainPageState extends State<MainPage> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: '预约',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.directions_bus),
             label: '乘车',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: '预约',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
