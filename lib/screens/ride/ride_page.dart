@@ -66,7 +66,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Future<void> _initialize() async {
     await _loadNearbyBuses();
 
-    if (!mounted) return; // 检查组件是否仍然在树中
+    if (!mounted) return; // 检查组件���否仍然在树中
 
     if (_nearbyBuses.isNotEmpty) {
       setState(() {
@@ -368,7 +368,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         borderRadius: BorderRadius.circular(20),
       ),
       clipBehavior: Clip.antiAlias,
-      color: cardColor,
+      color: Colors.transparent, // 去掉白色背景
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 8.0),
         height: 600, // 设置为适当的高度
