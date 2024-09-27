@@ -12,17 +12,36 @@ class TipDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AlertDialog(
-      title: Text('使用提示'),
-      content: Text('点击按钮变蓝即成功预约,再点一次即可取消。长按可以查看对应班车详情。'),
+      backgroundColor: theme.dialogBackgroundColor, // 使用主题对话框背景色
+      title: Text(
+        '使用提示',
+        style: TextStyle(
+            color: theme.textTheme.titleMedium
+                ?.color), // {{ edit_1 }} 将 headline6 更改为 titleMedium
+      ),
+      content: Text(
+        '这里是一些使用提示信息。',
+        style: TextStyle(
+            color: theme.textTheme.bodySmall
+                ?.color), // {{ edit_2 }} 将 bodyText2 更改为 bodySmall
+      ),
       actions: [
         TextButton(
-          onPressed: onDoNotShowAgain,
-          child: Text('不再显示'),
+          onPressed: onDismiss,
+          child: Text(
+            '取消',
+            style: TextStyle(color: theme.primaryColor),
+          ),
         ),
         TextButton(
-          onPressed: onDismiss,
-          child: Text('确定'),
+          onPressed: onDoNotShowAgain,
+          child: Text(
+            '不再显示',
+            style: TextStyle(color: theme.primaryColor),
+          ),
         ),
       ],
     );

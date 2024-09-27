@@ -20,54 +20,60 @@ class BusRouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     String departureTime = busData['yaxis'] ?? '';
     int seatsLeft = busData['row']['margin'] ?? 0;
 
-    return GestureDetector(
-      onTap: isPast ? null : onTap,
-      onLongPress: onLongPress, // 添加长按事件
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-        padding: EdgeInsets.symmetric(horizontal: 8),
-        height: 84,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+    return Card(
+      color: theme.cardColor, // 使用主题卡片颜色
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+          width: 1,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // 新增时间列
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  departureTime,
-                  style: TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold), // 增大字体
-                ),
-                Text(
-                  '$seatsLeft 个座位剩余',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-            // 中间信息列
-            Expanded(
-              flex: 2,
-              child: Container(),
-            ),
-            // 右侧按钮列
-            if (!isPast)
-              SizedBox(
-                width: 80,
-                height: 36,
-                child: ElevatedButton(
+      ),
+      child: InkWell(
+        onTap: isPast ? null : onTap,
+        onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 时间列
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    departureTime,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  Text(
+                    '$seatsLeft 个座位剩余',
+                    style: TextStyle(color: theme.textTheme.bodySmall?.color),
+                  ),
+                ],
+              ),
+              // 右侧按钮
+              if (!isPast)
+                ElevatedButton(
                   onPressed: onTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isReserved ? Colors.blueAccent : Colors.white30,
+                    backgroundColor: isReserved
+                        ? theme.colorScheme.primary
+                        : (isDarkMode ? Colors.grey[800] : Colors.white),
+                    foregroundColor: isReserved
+                        ? theme.colorScheme.onPrimary
+                        : theme.textTheme.bodyLarge?.color,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -75,14 +81,11 @@ class BusRouteCard extends StatelessWidget {
                   ),
                   child: Text(
                     isReserved ? '已预约' : '预约',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isReserved ? Colors.white : Colors.black,
-                    ),
+                    style: TextStyle(fontSize: 14),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -96,6 +99,9 @@ class BusRouteDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     final routeName = busData['route_name'] ?? '未知路线';
     final date = busData['abscissa'] ?? '';
     final time = busData['yaxis'] ?? '';
@@ -106,7 +112,7 @@ class BusRouteDetails extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -115,9 +121,10 @@ class BusRouteDetails extends StatelessWidget {
         children: [
           Text(
             routeName,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.textTheme.titleLarge?.color,
+            ),
           ),
           SizedBox(height: 16),
           _buildDetailRow(context, '日期', date),
@@ -133,6 +140,8 @@ class BusRouteDetails extends StatelessWidget {
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -147,6 +156,7 @@ class BusRouteDetails extends StatelessWidget {
   }
 
   Widget _buildDetailRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -154,15 +164,16 @@ class BusRouteDetails extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodySmall?.color,
+            ),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.textTheme.bodyMedium?.color,
+            ),
           ),
         ],
       ),

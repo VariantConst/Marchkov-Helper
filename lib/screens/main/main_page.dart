@@ -26,6 +26,9 @@ class MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 获取当前主题的亮度
+    final brightness = Theme.of(context).brightness;
+
     return Scaffold(
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
@@ -46,7 +49,11 @@ class MainPageState extends State<MainPage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).primaryColor,
+        selectedItemColor: brightness == Brightness.dark
+            ? Colors.white
+            : Theme.of(context).primaryColor,
+        unselectedItemColor:
+            brightness == Brightness.dark ? Colors.white70 : Colors.grey,
         onTap: _onItemTapped,
       ),
     );

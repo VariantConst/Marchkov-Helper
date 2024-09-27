@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // 添加导入
 
 class BusButton extends StatelessWidget {
   final Map<String, dynamic> busData;
@@ -19,6 +19,8 @@ class BusButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     bool isReserved = _isBusReserved();
     String time = busData['yaxis'] ?? '';
     String resourceId = busData['bus_id'].toString();
@@ -50,26 +52,33 @@ class BusButton extends StatelessWidget {
           onPressed: isCooling
               ? null
               : () {
-                  HapticFeedback.selectionClick();
+                  HapticFeedback.selectionClick(); // 确保 HapticFeedback 可用
                   onBusCardTap(busData);
                 },
           onLongPress: () {
-            HapticFeedback.heavyImpact();
+            HapticFeedback.heavyImpact(); // 确保 HapticFeedback 可用
             showBusDetails(busData);
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: isReserved ? Colors.blueAccent : Colors.white,
-            foregroundColor: isReserved ? Colors.white : Colors.black,
+            // 移除重复的 backgroundColor 和 foregroundColor
+            backgroundColor: isReserved
+                ? theme.colorScheme.primary
+                : theme.colorScheme.surface,
+            foregroundColor: isReserved
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: isReserved ? Colors.blueAccent : Colors.grey,
+                color: isReserved
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outline,
                 width: 1,
               ),
             ),
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             elevation: 4,
-            shadowColor: Colors.black.withOpacity(0.2),
+            shadowColor: theme.shadowColor.withOpacity(0.2),
           ),
           child: SizedBox(
             height: 48, // 固定按钮高度
@@ -84,21 +93,31 @@ class BusButton extends StatelessWidget {
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            isReserved ? Colors.white : Colors.blueAccent,
+                            isReserved
+                                ? theme.colorScheme.onPrimary
+                                : theme.colorScheme.primary,
                           ),
                         ),
                       ),
                       SizedBox(height: 4),
                       Text(
                         actionText,
-                        style: TextStyle(fontSize: 12),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: isReserved
+                                ? theme.colorScheme.onPrimary
+                                : theme.colorScheme.onSurface),
                       ),
                     ]
                   : [
                       Text(
                         time,
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isReserved
+                                ? theme.colorScheme.onPrimary
+                                : theme.colorScheme.onSurface),
                       ),
                       SizedBox(height: 4),
                       Text(
@@ -106,6 +125,9 @@ class BusButton extends StatelessWidget {
                         style: TextStyle(
                           fontSize: routeName.length > 10 ? 10 : 12,
                           fontWeight: FontWeight.normal,
+                          color: isReserved
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

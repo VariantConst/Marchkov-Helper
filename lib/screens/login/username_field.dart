@@ -8,21 +8,23 @@ class UsernameField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    final theme = Theme.of(context);
+
+    return TextField(
       decoration: InputDecoration(
-        hintText: '学号/职工号/手机号',
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+        labelText: '用户名',
+        labelStyle: TextStyle(
+            color: theme.textTheme.bodyMedium
+                ?.color), // {{ edit_1 }} 将 bodyText1 更改为 bodyMedium
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: theme.dividerColor),
         ),
-        hintStyle: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: theme.primaryColor),
         ),
+        // ... existing code ...
       ),
-      onSaved: onSaved,
-      validator: validator,
+      // ... existing code ...
     );
   }
 }

@@ -196,7 +196,7 @@ class _ReservationPageState extends State<ReservationPage> {
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
 
-    // 设置按钮冷却，并指定操作类型
+    // 设置按钮��却，并指定操作类型
     setState(() {
       _buttonCooldowns[key] =
           _reservedBuses.containsKey(key) ? 'cancelling' : 'reserving';
@@ -330,7 +330,10 @@ class _ReservationPageState extends State<ReservationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor, // 使用主题背景色
       body: Column(
         children: [
           SafeArea(
@@ -340,6 +343,7 @@ class _ReservationPageState extends State<ReservationPage> {
                 borderRadius: BorderRadius.circular(16.0),
               ),
               elevation: 2.0,
+              color: theme.cardColor, // 使用主题卡片颜色
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: ReservationCalendar(
@@ -370,14 +374,18 @@ class _ReservationPageState extends State<ReservationPage> {
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.blue.shade300, Colors.blue.shade500],
+                    colors: theme.brightness == Brightness.dark
+                        ? [Colors.blueGrey.shade700, Colors.blueGrey.shade900]
+                        : [Colors.blue.shade300, Colors.blue.shade500],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.3),
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.black.withOpacity(0.3)
+                          : Colors.blue.withOpacity(0.3),
                       spreadRadius: 1,
                       blurRadius: 5,
                       offset: Offset(0, 3),
@@ -419,7 +427,10 @@ class _ReservationPageState extends State<ReservationPage> {
               child: _isLoading
                   ? Center(child: CircularProgressIndicator())
                   : _errorMessage.isNotEmpty
-                      ? Center(child: Text(_errorMessage))
+                      ? Center(
+                          child: Text(_errorMessage,
+                              style: TextStyle(
+                                  color: theme.textTheme.bodyMedium?.color)))
                       : BusList(
                           filteredBusList: _filteredBusList,
                           onBusCardTap: _onBusCardTap,

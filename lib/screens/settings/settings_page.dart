@@ -18,14 +18,14 @@ class _SettingsPageState extends State<SettingsPage> {
   String studentId = '';
   String college = '';
   late UserService _userService;
-  String _selectedEmoji = '🐴'; // 修改：存储选择的 emoji
+  String _selectedEmoji = '🐴';
 
   @override
   void initState() {
     super.initState();
     _userService = UserService(context.read<AuthProvider>());
     _loadUserInfo();
-    _loadSelectedEmoji(); // 确保加载选择的 emoji
+    _loadSelectedEmoji();
   }
 
   Future<void> _loadUserInfo() async {
@@ -154,20 +154,21 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.only(top: 20), // 在 SafeArea 外部添加顶部 padding
+          padding: EdgeInsets.only(top: 20),
           child: Column(
             children: [
-              SizedBox(height: 40), // 保留这个额外的间距
+              SizedBox(height: 40),
               GestureDetector(
                 onTap: _selectEmoji,
                 child: CircleAvatar(
                   radius: 36,
-                  backgroundColor: Color(0xFFF0F2F5),
+                  backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
                   child: Text(
                     _selectedEmoji,
                     style: TextStyle(fontSize: 48),
@@ -177,27 +178,18 @@ class _SettingsPageState extends State<SettingsPage> {
               SizedBox(height: 16),
               Text(
                 name,
-                style: TextStyle(
-                  color: Color(0xFF111418),
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: theme.textTheme.titleLarge, // 修改：headline6 改为 titleLarge
               ),
               SizedBox(height: 8),
               Text(
                 college,
-                style: TextStyle(
-                  color: Color(0xFF111418),
-                  fontSize: 16,
-                ),
+                style:
+                    theme.textTheme.titleMedium, // 修改：subtitle1 改为 titleMedium
               ),
               SizedBox(height: 8),
               Text(
                 'ID: $studentId',
-                style: TextStyle(
-                  color: Color(0xFF60708A),
-                  fontSize: 14,
-                ),
+                style: theme.textTheme.bodySmall, // 修改：caption 改为 bodySmall
               ),
               SizedBox(height: 16),
               Expanded(
@@ -242,6 +234,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: ElevatedButton.icon(
                         icon: Icon(Icons.logout),
                         label: Text('退出登录'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme
+                              .secondary, // 修改：primary 改为 backgroundColor
+                          foregroundColor: theme.colorScheme
+                              .onSecondary, // 修改：onPrimary 改为 foregroundColor
+                        ),
                         onPressed: () async {
                           final navigator = Navigator.of(context);
                           await _clearUserInfo();
@@ -262,20 +260,19 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  ListTile _buildSettingOption(
-      {required String title,
-      required IconData icon,
-      required VoidCallback onTap}) {
+  ListTile _buildSettingOption({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: Color(0xFF111418)),
+      leading: Icon(icon, color: theme.iconTheme.color),
       title: Text(
         title,
-        style: TextStyle(
-          color: Color(0xFF111418),
-          fontSize: 16,
-        ),
+        style: theme.textTheme.titleMedium, // 修改：subtitle1 改为 titleMedium
       ),
-      trailing: Icon(Icons.arrow_forward_ios, color: Color(0xFF111418)),
+      trailing: Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color),
       onTap: onTap,
     );
   }

@@ -66,6 +66,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Future<void> _initialize() async {
     await _loadNearbyBuses();
 
+    if (!mounted) return; // 检查组件是否仍然在树中
+
     if (_nearbyBuses.isNotEmpty) {
       setState(() {
         _selectedBusIndex = 0;
@@ -78,9 +80,11 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
 
     // 数据加载完成，更新加载状态
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadNearbyBuses() async {
@@ -143,13 +147,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         print('班车: $busKey, 乘坐次数: ${busUsageCount[busKey]}');
       }
 
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
       print('加载附近班车失败: $e');
     }
   }
 
   Future<void> _selectBus(int index) async {
+    if (!mounted) return; // 检查组件是否仍然在树中
+
     setState(() {
       _selectedBusIndex = index;
       _errorMessage = '';
@@ -182,22 +190,28 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       } else {
         final tempCode = await _fetchTempCode(reservationService, bus);
         if (tempCode != null) {
-          setState(() {
-            _qrCode = tempCode['code'];
-            _departureTime = tempCode['departureTime']!;
-            _routeName = tempCode['routeName']!;
-            _codeType = '临时码';
-          });
+          if (mounted) {
+            setState(() {
+              _qrCode = tempCode['code'];
+              _departureTime = tempCode['departureTime']!;
+              _routeName = tempCode['routeName']!;
+              _codeType = '临时码';
+            });
+          }
         } else {
-          setState(() {
-            _errorMessage = '无法获取乘车码';
-          });
+          if (mounted) {
+            setState(() {
+              _errorMessage = '无法获取乘车码';
+            });
+          }
         }
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = '加载数据时出错: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = '加载数据时出错: $e';
+        });
+      }
     }
   }
 
@@ -211,19 +225,23 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
       final actualDepartureTime = await _getActualDepartureTime(reservation);
 
-      setState(() {
-        _qrCode = provider.qrCode;
-        _departureTime = actualDepartureTime;
-        _routeName = reservation.resourceName;
-        _codeType = '乘车码';
-        _appointmentId = reservation.id.toString(); // 存储预约ID
-        _hallAppointmentDataId =
-            reservation.hallAppointmentDataId.toString(); // 存储大厅预约数据ID
-      });
+      if (mounted) {
+        setState(() {
+          _qrCode = provider.qrCode;
+          _departureTime = actualDepartureTime;
+          _routeName = reservation.resourceName;
+          _codeType = '乘车码';
+          _appointmentId = reservation.id.toString(); // 存储预约ID
+          _hallAppointmentDataId =
+              reservation.hallAppointmentDataId.toString(); // 存储大厅预约数据ID
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = '获取二维码时出错: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = '获取二维码时出错: $e';
+        });
+      }
     }
   }
 
