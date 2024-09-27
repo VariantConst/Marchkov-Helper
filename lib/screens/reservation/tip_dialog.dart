@@ -30,16 +30,16 @@ class TipDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: onDismiss,
+          onPressed: onDoNotShowAgain,
           child: Text(
-            '取消',
+            '不再显示',
             style: TextStyle(color: theme.colorScheme.primary),
           ),
         ),
         TextButton(
-          onPressed: onDoNotShowAgain,
+          onPressed: onDismiss,
           child: Text(
-            '不再显示',
+            '确定',
             style: TextStyle(color: theme.colorScheme.primary),
           ),
         ),

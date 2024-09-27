@@ -44,10 +44,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加一个加载状态变量
   bool _isLoading = true;
 
+  // 添加新的属性
+  bool? _showTip;
+
   @override
   void initState() {
     super.initState();
     _initialize();
+    _loadTipPreference();
 
     // 初始化 PageController，设置初始页面和视口Fraction
     _pageController = PageController(
@@ -66,7 +70,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Future<void> _initialize() async {
     await _loadNearbyBuses();
 
-    if (!mounted) return; // 检查组件���然在树中
+    if (!mounted) return; // 检查组件是否仍然在树中
 
     if (_nearbyBuses.isNotEmpty) {
       setState(() {
@@ -88,70 +92,103 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _loadNearbyBuses() async {
-    final reservationService =
-        ReservationService(Provider.of<AuthProvider>(context, listen: false));
+    final prefs = await SharedPreferences.getInstance();
     final now = DateTime.now();
     final todayString = now.toIso8601String().split('T')[0];
 
-    try {
-      final allBuses = await reservationService.getAllBuses([todayString]);
-      _nearbyBuses = allBuses
-          .where((bus) {
-            final busTime =
-                DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
-            final diff = busTime.difference(now).inMinutes;
+    // 尝试从缓存中读取数据
+    final cachedBusDataString = prefs.getString('cachedBusData');
+    final cachedDate = prefs.getString('cachedDate');
 
-            // 添加路线名称过滤条件
-            final routeName = bus['route_name'].toString().toLowerCase();
-            final containsXin = routeName.contains('新');
-            final containsYan = routeName.contains('燕');
+    if (cachedBusDataString != null && cachedDate == todayString) {
+      // 如果有当天的缓存数据，直接使用
+      final cachedBusData = json.decode(cachedBusDataString);
+      _processBusData(cachedBusData);
+    } else {
+      // 如果没有缓存或缓存不是当天的，重新获取数据
+      if (!mounted) return; // 添加这行来检查组件是否仍然挂载
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final reservationService = ReservationService(authProvider);
 
-            return diff >= -30 && diff <= 30 && containsXin && containsYan;
-          })
-          .toList()
-          .cast<Map<String, dynamic>>();
+      try {
+        final allBuses = await reservationService.getAllBuses([todayString]);
 
-      // 新增: 获取乘车历史并统计乘坐次数
-      final rideHistoryService =
-          // ignore: use_build_context_synchronously
-          RideHistoryService(Provider.of<AuthProvider>(context, listen: false));
-      final rideHistory = await rideHistoryService.getRideHistory();
+        // 缓存新获取的数据
+        await prefs.setString('cachedBusData', json.encode(allBuses));
+        await prefs.setString('cachedDate', todayString);
 
-      // 统计每个班车（路线名 + 时间，不含日期）的乘坐次数
-      Map<String, int> busUsageCount = {};
-      for (var bus in _nearbyBuses) {
-        String busKey = '${bus['route_name']}_${bus['yaxis']}'; // 只使用时间，不包含日期
-        busUsageCount[busKey] = 0;
+        if (!mounted) return; // 再次检查组件是否仍然挂载
+        _processBusData(allBuses);
+      } catch (e) {
+        print('加载附近班车失败: $e');
       }
+    }
 
-      for (var ride in rideHistory) {
-        // 提取 rideTime 中的时间部分
-        DateTime rideDateTime = DateTime.parse(ride.appointmentTime);
-        String rideTime = DateFormat('HH:mm').format(rideDateTime);
-        String rideKey = '${ride.resourceName}_$rideTime';
-        if (busUsageCount.containsKey(rideKey)) {
-          busUsageCount[rideKey] = busUsageCount[rideKey]! + 1;
-        }
+    // 新增: 获取乘车历史并统计乘坐次数
+    if (mounted) {
+      // 添加这行来检查组件是否仍然挂载
+      await _loadRideHistory();
+    }
+  }
+
+  void _processBusData(List<dynamic> busData) {
+    final now = DateTime.now();
+    _nearbyBuses = busData
+        .where((bus) {
+          final busTime = DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
+          final diff = busTime.difference(now).inMinutes;
+
+          // 添加路线名称过滤条件
+          final routeName = bus['route_name'].toString().toLowerCase();
+          final containsXin = routeName.contains('新');
+          final containsYan = routeName.contains('燕');
+
+          return diff >= -30 && diff <= 30 && containsXin && containsYan;
+        })
+        .toList()
+        .cast<Map<String, dynamic>>();
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadRideHistory() async {
+    final rideHistoryService =
+        RideHistoryService(Provider.of<AuthProvider>(context, listen: false));
+    final rideHistory = await rideHistoryService.getRideHistory();
+
+    // 统计每个班车（路线名 + 时间，不含日期）的乘坐次数
+    Map<String, int> busUsageCount = {};
+    for (var bus in _nearbyBuses) {
+      String busKey = '${bus['route_name']}_${bus['yaxis']}'; // 只使用时间，不包含日期
+      busUsageCount[busKey] = 0;
+    }
+
+    for (var ride in rideHistory) {
+      DateTime rideDateTime = DateTime.parse(ride.appointmentTime);
+      String rideTime = DateFormat('HH:mm').format(rideDateTime);
+      String rideKey = '${ride.resourceName}_$rideTime';
+      if (busUsageCount.containsKey(rideKey)) {
+        busUsageCount[rideKey] = busUsageCount[rideKey]! + 1;
       }
+    }
 
-      // 根据乘坐次数对班车进行排序
-      _nearbyBuses.sort((a, b) {
-        String keyA = '${a['route_name']}_${a['yaxis']}';
-        String keyB = '${b['route_name']}_${b['yaxis']}';
-        return busUsageCount[keyB]!.compareTo(busUsageCount[keyA]!);
-      });
+    // 根据乘坐次数对班车进行排序
+    _nearbyBuses.sort((a, b) {
+      String keyA = '${a['route_name']}_${a['yaxis']}';
+      String keyB = '${b['route_name']}_${b['yaxis']}';
+      return busUsageCount[keyB]!.compareTo(busUsageCount[keyA]!);
+    });
 
-      // 打印每个班车的乘坐次数
-      for (var bus in _nearbyBuses) {
-        String busKey = '${bus['route_name']}_${bus['yaxis']}';
-        print('班车: $busKey, 乘坐次数: ${busUsageCount[busKey]}');
-      }
+    // 打印每个班车的乘坐次数
+    for (var bus in _nearbyBuses) {
+      String busKey = '${bus['route_name']}_${bus['yaxis']}';
+      print('班车: $busKey, 乘坐次数: ${busUsageCount[busKey]}');
+    }
 
-      if (mounted) {
-        setState(() {});
-      }
-    } catch (e) {
-      print('加载附近班车失败: $e');
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -275,6 +312,53 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     };
   }
 
+  // 添加新的方法
+  Future<void> _loadTipPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _showTip = prefs.getBool('showRideTip') ?? true;
+    });
+  }
+
+  Future<void> _saveTipPreference(bool show) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('showRideTip', show);
+  }
+
+  void _showTipDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('乘车提示'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('1. 本页面只会显示过去30分钟到未来30分钟内发车的班车。'),
+            Text('2. 如果已错过发车时刻，预约按钮将变为灰色，无法点击。'),
+            Text('3. 应用会学习您的乘车偏好，根据历史乘车记录智能推荐班车。'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _showTip = false;
+              });
+              _saveTipPreference(false);
+            },
+            child: Text('不再显示'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -292,57 +376,83 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     final secondaryColor = theme.colorScheme.secondary;
 
     return Scaffold(
-      body: Column(
-        children: [
-          SizedBox(height: 60), // 顶部间距
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 600,
-                    child: _nearbyBuses.isEmpty
-                        ? Center(child: Text('无车可坐'))
-                        : PageView.builder(
-                            controller: _pageController,
-                            itemCount: _nearbyBuses.length,
-                            onPageChanged: (index) {
-                              _selectBus(index);
-                            },
-                            itemBuilder: (context, index) {
-                              return _buildCard();
-                            },
-                          ),
-                  ),
-                  SizedBox(height: 16),
-                  // 底部指示槽
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              SizedBox(height: 16), // 顶部间距
+              if (_showTip == true)
+                Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                  child: ElevatedButton(
+                    onPressed: _showTipDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.secondaryContainer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _nearbyBuses.length,
-                        (index) => Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                          width: 8.0,
-                          height: 8.0,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _selectedBusIndex == index
-                                ? primaryColor // 使用主题的主要颜色
-                                : secondaryColor
-                                    .withOpacity(0.3), // 使用次要颜色并降低透明度
+                      children: [
+                        Icon(Icons.info_outline,
+                            color: Theme.of(context).colorScheme.primary),
+                        SizedBox(width: 8),
+                        Text(
+                          '查看乘车提示',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).textTheme.titleMedium?.color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+              SizedBox(
+                height: 600,
+                child: _nearbyBuses.isEmpty
+                    ? Center(child: Text('无车可坐'))
+                    : PageView.builder(
+                        controller: _pageController,
+                        itemCount: _nearbyBuses.length,
+                        onPageChanged: (index) {
+                          _selectBus(index);
+                        },
+                        itemBuilder: (context, index) {
+                          return _buildCard();
+                        },
+                      ),
+              ),
+              SizedBox(height: 16),
+              // 底部指示槽
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _nearbyBuses.length,
+                    (index) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                      width: 8.0,
+                      height: 8.0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _selectedBusIndex == index
+                            ? primaryColor
+                            : secondaryColor.withOpacity(0.3),
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
