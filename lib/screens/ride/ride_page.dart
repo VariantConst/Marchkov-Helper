@@ -66,7 +66,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Future<void> _initialize() async {
     await _loadNearbyBuses();
 
-    if (!mounted) return; // 检查组件���否仍然在树中
+    if (!mounted) return; // 检查组件否仍然在树中
 
     if (_nearbyBuses.isNotEmpty) {
       setState(() {
@@ -288,49 +288,44 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // 设置主轴对齐为居中
-          children: [
-            SizedBox(
-              height: 600, // 设置为较小的固定高度，根据需要调整
-              child: _nearbyBuses.isEmpty
-                  ? Center(child: Text('无车可坐'))
-                  : PageView.builder(
-                      controller: _pageController,
-                      itemCount: _nearbyBuses.length,
-                      onPageChanged: (index) {
-                        _selectBus(index);
-                      },
-                      itemBuilder: (context, index) {
-                        return _buildCard();
-                      },
-                    ),
-            ),
-            SizedBox(height: 16), // 卡片与指示槽之间的间距
-            // 添加底部指示槽
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  _nearbyBuses.length,
-                  (index) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                    width: 8.0,
-                    height: 8.0,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _selectedBusIndex == index
-                          ? Colors.blue
-                          : Colors.grey,
-                    ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _nearbyBuses.isEmpty
+                ? Center(child: Text('无车可坐'))
+                : PageView.builder(
+                    controller: _pageController,
+                    itemCount: _nearbyBuses.length,
+                    onPageChanged: (index) {
+                      _selectBus(index);
+                    },
+                    itemBuilder: (context, index) {
+                      return _buildCard();
+                    },
+                  ),
+          ),
+          SizedBox(height: 16), // 卡片与指示槽之间的间距
+          // 添加底部指示槽
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _nearbyBuses.length,
+                (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  width: 8.0,
+                  height: 8.0,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color:
+                        _selectedBusIndex == index ? Colors.blue : Colors.grey,
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -342,38 +337,43 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     Color textColor;
     Color borderColor;
     Color buttonColor;
+    Color backgroundColor;
+
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     if (isNoBusAvailable) {
-      textColor = Colors.grey[700]!;
-      borderColor = Colors.grey[400]!;
-      buttonColor = Colors.grey[300]!;
+      textColor = isDarkMode ? Colors.grey[300]! : Colors.grey[700]!;
+      borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
+      buttonColor = isDarkMode ? Colors.grey[800]! : Colors.grey[200]!;
+      backgroundColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
     } else if (_codeType == '临时码') {
-      textColor = Colors.orange[700]!;
-      borderColor = Colors.orange[200]!.withOpacity(0.5);
-      buttonColor = Colors.orange[100]!.withOpacity(0.5);
+      textColor = theme.colorScheme.secondary;
+      borderColor = theme.colorScheme.secondary.withOpacity(0.3);
+      buttonColor = theme.colorScheme.secondary.withOpacity(0.1);
+      backgroundColor = theme.colorScheme.secondary.withOpacity(0.05);
     } else {
-      textColor = Colors.blue;
-      borderColor = Colors.blue.withOpacity(0.2);
-      buttonColor = Theme.of(context).colorScheme.primary.withOpacity(0.1);
+      textColor = theme.colorScheme.primary;
+      borderColor = theme.colorScheme.primary.withOpacity(0.3);
+      buttonColor = theme.colorScheme.primary.withOpacity(0.1);
+      backgroundColor = theme.colorScheme.primary.withOpacity(0.05);
     }
 
     return Card(
       elevation: 6,
+      margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       shadowColor: Colors.black.withOpacity(0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       clipBehavior: Clip.antiAlias,
-      color: Colors.transparent, // 去掉白色背景
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 8.0),
-        height: 600, // 设置为适当的高度
-        child: Column(
-          mainAxisSize: MainAxisSize.min, // 设置主轴大小为最小
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildCardHeader(isNoBusAvailable),
-            Padding(
+      color: backgroundColor,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildCardHeader(isNoBusAvailable),
+          Expanded(
+            child: Padding(
               padding: EdgeInsets.all(16),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -423,8 +423,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -435,20 +435,23 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     Color textColor;
     String headerText;
 
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     if (isNoBusAvailable) {
-      startColor = Colors.grey[300]!;
-      endColor = Colors.grey[100]!;
-      textColor = Colors.grey[700]!;
+      startColor = isDarkMode ? Colors.grey[800]! : Colors.grey[200]!;
+      endColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
+      textColor = isDarkMode ? Colors.grey[300]! : Colors.grey[700]!;
       headerText = '无车可坐';
     } else if (_codeType == '临时码') {
-      startColor = Colors.orange[100]!.withOpacity(0.5);
-      endColor = Colors.orange[50]!.withOpacity(0.3);
-      textColor = Colors.orange[700]!;
+      startColor = theme.colorScheme.secondary.withOpacity(0.2);
+      endColor = theme.colorScheme.secondary.withOpacity(0.05);
+      textColor = theme.colorScheme.secondary;
       headerText = _codeType;
     } else {
-      startColor = Colors.blue.withOpacity(0.2);
-      endColor = Colors.blue.withOpacity(0.05);
-      textColor = Colors.blue;
+      startColor = theme.colorScheme.primary.withOpacity(0.2);
+      endColor = theme.colorScheme.primary.withOpacity(0.05);
+      textColor = theme.colorScheme.primary;
       headerText = _codeType;
     }
 

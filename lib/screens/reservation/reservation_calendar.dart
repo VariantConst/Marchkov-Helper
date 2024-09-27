@@ -81,9 +81,6 @@ class ReservationCalendar extends StatelessWidget {
       ),
       calendarBuilders: CalendarBuilders(
         defaultBuilder: (context, day, focusedDay) {
-          bool isSelectable = day.isAfter(now.subtract(Duration(days: 1))) &&
-              day.isBefore(lastSelectableDay.add(Duration(days: 1)));
-
           return _buildDayContainer(
             context,
             day,

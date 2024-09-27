@@ -10,21 +10,40 @@ class UsernameField extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return TextField(
+    return TextFormField(
       decoration: InputDecoration(
-        labelText: '用户名',
-        labelStyle: TextStyle(
-            color: theme.textTheme.bodyMedium
-                ?.color), // {{ edit_1 }} 将 bodyText1 更改为 bodyMedium
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: theme.dividerColor),
+        labelText: '学号/职工号/手机号',
+        hintText: '请输入您的账号',
+        labelStyle: TextStyle(color: theme.colorScheme.primary),
+        hintStyle: TextStyle(color: theme.hintColor),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.colorScheme.outline),
         ),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: theme.primaryColor),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
         ),
-        // ... existing code ...
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.colorScheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.colorScheme.error, width: 2),
+        ),
+        prefixIcon: Icon(
+          Icons.person,
+          color: theme.colorScheme.primary,
+        ),
+        filled: true,
+        fillColor: theme.colorScheme.surfaceContainerHighest, // 修改这里
       ),
-      // ... existing code ...
+      style: theme.textTheme.bodyLarge,
+      keyboardType: TextInputType.text,
+      textInputAction: TextInputAction.next,
+      onSaved: onSaved,
+      validator: validator,
     );
   }
 }

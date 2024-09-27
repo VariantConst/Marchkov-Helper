@@ -370,6 +370,7 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ),
           ),
+          SizedBox(height: 8),
           if (_showTip == null)
             SizedBox.shrink()
           else if (_showTip!)
@@ -385,23 +386,11 @@ class _ReservationPageState extends State<ReservationPage> {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.brightness == Brightness.dark
-                          ? Colors.black.withOpacity(0.3)
-                          : Colors.blue.withOpacity(0.3),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
                 ),
                 child: ElevatedButton(
                   onPressed: _showTipDialog,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    shadowColor: Colors.transparent,
+                    backgroundColor: theme.colorScheme.secondaryContainer,
                     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
@@ -410,12 +399,13 @@ class _ReservationPageState extends State<ReservationPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.info_outline, color: Colors.white),
+                      Icon(Icons.info_outline,
+                          color: theme.colorScheme.primary),
                       SizedBox(width: 8),
                       Text(
                         '查看使用提示',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: theme.textTheme.titleMedium?.color,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),

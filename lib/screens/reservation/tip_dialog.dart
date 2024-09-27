@@ -23,24 +23,24 @@ class TipDialog extends StatelessWidget {
                 ?.color), // {{ edit_1 }} 将 headline6 更改为 titleMedium
       ),
       content: Text(
-        '这里是一些使用提示信息。',
+        '点击班车按钮预约，再次点击取消预约，长按按钮查看对应班车详情。',
         style: TextStyle(
-            color: theme.textTheme.bodySmall
-                ?.color), // {{ edit_2 }} 将 bodyText2 更改为 bodySmall
+            color: theme.textTheme.bodyMedium
+                ?.color), // {{ edit_2 }} 将 bodyText2 更改为 bodyMedium
       ),
       actions: [
         TextButton(
           onPressed: onDismiss,
           child: Text(
             '取消',
-            style: TextStyle(color: theme.primaryColor),
+            style: TextStyle(color: theme.colorScheme.primary),
           ),
         ),
         TextButton(
           onPressed: onDoNotShowAgain,
           child: Text(
             '不再显示',
-            style: TextStyle(color: theme.primaryColor),
+            style: TextStyle(color: theme.colorScheme.primary),
           ),
         ),
       ],

@@ -34,10 +34,10 @@ class LoginPageState extends State<LoginPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('用户协议'),
+          title: Text('用户须知'),
           content: SingleChildScrollView(
             child: Text(
-              '我们将采集以SHA256加密后的用户名以及应用版本号，用于统计每日活跃用户数您的用户名和密码将始终安全保存在您��设备上，不会上传至服务器。',
+              '我们将采集以SHA256加密后的用户名以及应用版本号，用于统计每日活跃用户数您的用户名和密码将始终安全保存在您的设备上，不会上传至服务器。',
             ),
           ),
           actions: <Widget>[
@@ -59,109 +59,87 @@ class LoginPageState extends State<LoginPage> {
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  // 移除 CloseButtonWidget(),
-                  // 移除 SizedBox(height: 20),
-                  Text(
-                    'Marchkov Helper',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    '新燕园人的出行助手',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 30),
-                  UsernameField(
-                    onSaved: (value) => _username = value!,
-                    validator: (value) =>
-                        value!.isEmpty ? '请输入学号/职工号/手机号' : null,
-                  ),
-                  SizedBox(height: 20),
-                  PasswordField(
-                    onSaved: (value) => _password = value!,
-                    validator: (value) => value!.isEmpty ? '请输入密码' : null,
-                  ),
-                  SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _agreeToTerms,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            _agreeToTerms = value ?? false;
-                          });
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 400), // 添加最大宽度约束
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center, // 垂直居中
+                  crossAxisAlignment: CrossAxisAlignment.stretch, // 水平拉伸
+                  children: [
+                    Text(
+                      'Marchkov Helper',
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontWeight: FontWeight.bold,
+                              ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      '新燕园人的出行助手',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 30),
+                    UsernameField(
+                      onSaved: (value) => _username = value!,
+                      validator: (value) =>
+                          value!.isEmpty ? '请输入学号/职工号/手机号' : null,
+                    ),
+                    SizedBox(height: 20),
+                    PasswordField(
+                      onSaved: (value) => _password = value!,
+                      validator: (value) => value!.isEmpty ? '请输入密码' : null,
+                    ),
+                    SizedBox(height: 20),
+                    AnimatedTermsCheckbox(
+                      value: _agreeToTerms,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _agreeToTerms = value ?? false;
+                        });
+                      },
+                      onTermsTap: _showTermsDialog,
+                    ),
+                    SizedBox(height: 30),
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            if (!_agreeToTerms) {
+                              showErrorDialog(context, '请同意用户须知');
+                            } else {
+                              _formKey.currentState!.save();
+                              _login();
+                            }
+                          }
                         },
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _showTermsDialog,
-                          child: Text.rich(
-                            TextSpan(
-                              text: '我已阅读并同意',
-                              children: [
-                                TextSpan(
-                                  text: '用户协议',
-                                  style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            style: Theme.of(context).textTheme.bodyMedium,
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                        ),
+                        child: Text(
+                          '登录',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          if (!_agreeToTerms) {
-                            showErrorDialog(context, '请同意用户协议');
-                          } else {
-                            _formKey.currentState!.save();
-                            _login();
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                      ),
-                      child: Text(
-                        '登录',
-                        style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimary, // 使用 onPrimary 代替 primary
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -182,5 +160,87 @@ class LoginPageState extends State<LoginPage> {
         showErrorDialog(context, error.toString());
       }
     }
+  }
+}
+
+class AnimatedTermsCheckbox extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  final VoidCallback onTermsTap;
+
+  const AnimatedTermsCheckbox({
+    super.key, // 修改这里
+    required this.value,
+    required this.onChanged,
+    required this.onTermsTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(5),
+            color: value
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
+            border: Border.all(
+              color: value
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              width: 2,
+            ),
+          ),
+          child: InkWell(
+            onTap: () => onChanged(!value),
+            child: Center(
+              child: value
+                  ? TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: Duration(milliseconds: 300),
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Icon(
+                            Icons.check,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        );
+                      },
+                    )
+                  : null,
+            ),
+          ),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: onTermsTap,
+            child: RichText(
+              text: TextSpan(
+                text: '我已阅读并同意',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                children: [
+                  TextSpan(
+                    text: '用户须知',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
