@@ -66,7 +66,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Future<void> _initialize() async {
     await _loadNearbyBuses();
 
-    if (!mounted) return; // 检查组件否仍然在树中
+    if (!mounted) return; // 检查组件���然在树中
 
     if (_nearbyBuses.isNotEmpty) {
       setState(() {
@@ -287,41 +287,58 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       );
     }
 
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final secondaryColor = theme.colorScheme.secondary;
+
     return Scaffold(
       body: Column(
         children: [
+          SizedBox(height: 60), // 顶部间距
           Expanded(
-            child: _nearbyBuses.isEmpty
-                ? Center(child: Text('无车可坐'))
-                : PageView.builder(
-                    controller: _pageController,
-                    itemCount: _nearbyBuses.length,
-                    onPageChanged: (index) {
-                      _selectBus(index);
-                    },
-                    itemBuilder: (context, index) {
-                      return _buildCard();
-                    },
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: 600,
+                    child: _nearbyBuses.isEmpty
+                        ? Center(child: Text('无车可坐'))
+                        : PageView.builder(
+                            controller: _pageController,
+                            itemCount: _nearbyBuses.length,
+                            onPageChanged: (index) {
+                              _selectBus(index);
+                            },
+                            itemBuilder: (context, index) {
+                              return _buildCard();
+                            },
+                          ),
                   ),
-          ),
-          SizedBox(height: 16), // 卡片与指示槽之间的间距
-          // 添加底部指示槽
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _nearbyBuses.length,
-                (index) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                  width: 8.0,
-                  height: 8.0,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color:
-                        _selectedBusIndex == index ? Colors.blue : Colors.grey,
+                  SizedBox(height: 16),
+                  // 底部指示槽
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _nearbyBuses.length,
+                        (index) => Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                          width: 8.0,
+                          height: 8.0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _selectedBusIndex == index
+                                ? primaryColor // 使用主题的主要颜色
+                                : secondaryColor
+                                    .withOpacity(0.3), // 使用次要颜色并降低透明度
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -479,6 +496,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   List<Widget> _buildQRCodeContent(Color textColor, Color borderColor) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    // 定义二维码背景色和内容色
+    final qrBackgroundColor = isDarkMode ? Colors.grey[400]! : Colors.white;
+    final qrContentColor = isDarkMode ? Colors.black : Colors.grey[700]!;
+
     return [
       SizedBox(
         height: 50,
@@ -510,7 +534,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         width: 240,
         height: 240,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: qrBackgroundColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: borderColor, width: 2),
         ),
@@ -521,13 +545,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                   version: 13,
                   size: 200.0,
                   padding: EdgeInsets.zero,
-                  backgroundColor: Colors.white,
+                  backgroundColor: qrBackgroundColor,
                   eyeStyle: QrEyeStyle(
-                    color: Colors.grey[700],
+                    color: qrContentColor,
                     eyeShape: QrEyeShape.square,
                   ),
                   dataModuleStyle: QrDataModuleStyle(
-                    color: Colors.grey[700],
+                    color: qrContentColor,
                     dataModuleShape: QrDataModuleShape.square,
                   ),
                   errorCorrectionLevel: QrErrorCorrectLevel.M,
