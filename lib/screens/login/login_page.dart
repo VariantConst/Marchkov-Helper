@@ -86,7 +86,8 @@ class LoginPageState extends State<LoginPage> {
                   SizedBox(height: 30),
                   UsernameField(
                     onSaved: (value) => _username = value!,
-                    validator: (value) => value!.isEmpty ? '请输入用户名' : null,
+                    validator: (value) =>
+                        value!.isEmpty ? '请输入学号/职工号/手机号' : null,
                   ),
                   SizedBox(height: 20),
                   PasswordField(
