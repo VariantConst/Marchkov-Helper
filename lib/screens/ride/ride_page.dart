@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/auth_provider.dart';
+// 新增导入 RideHistoryService
+import '../../services/ride_history_service.dart';
+import 'package:intl/intl.dart';
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -103,6 +106,42 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           })
           .toList()
           .cast<Map<String, dynamic>>();
+
+      // 新增: 获取乘车历史并统计乘坐次数
+      final rideHistoryService =
+          // ignore: use_build_context_synchronously
+          RideHistoryService(Provider.of<AuthProvider>(context, listen: false));
+      final rideHistory = await rideHistoryService.getRideHistory();
+
+      // 统计每个班车（路线名 + 时间，不含日期）的乘坐次数
+      Map<String, int> busUsageCount = {};
+      for (var bus in _nearbyBuses) {
+        String busKey = '${bus['route_name']}_${bus['yaxis']}'; // 只使用时间，不包含日期
+        busUsageCount[busKey] = 0;
+      }
+
+      for (var ride in rideHistory) {
+        // 提取 rideTime 中的时间部分
+        DateTime rideDateTime = DateTime.parse(ride.appointmentTime);
+        String rideTime = DateFormat('HH:mm').format(rideDateTime);
+        String rideKey = '${ride.resourceName}_$rideTime';
+        if (busUsageCount.containsKey(rideKey)) {
+          busUsageCount[rideKey] = busUsageCount[rideKey]! + 1;
+        }
+      }
+
+      // 根据乘坐次数对班车进行排序
+      _nearbyBuses.sort((a, b) {
+        String keyA = '${a['route_name']}_${a['yaxis']}';
+        String keyB = '${b['route_name']}_${b['yaxis']}';
+        return busUsageCount[keyB]!.compareTo(busUsageCount[keyA]!);
+      });
+
+      // 打印每个班车的乘坐次数
+      for (var bus in _nearbyBuses) {
+        String busKey = '${bus['route_name']}_${bus['yaxis']}';
+        print('班车: $busKey, 乘坐次数: ${busUsageCount[busKey]}');
+      }
 
       setState(() {});
     } catch (e) {
