@@ -28,7 +28,7 @@ class _ReservationPageState extends State<ReservationPage> {
   Map<String, dynamic> _reservedBuses = {};
   late DauService _dauService;
   bool? _showTip;
-  Map<String, bool> _buttonCooldowns = {};
+  Map<String, String> _buttonCooldowns = {};
 
   @override
   void initState() {
@@ -188,7 +188,7 @@ class _ReservationPageState extends State<ReservationPage> {
     }
   }
 
-  void _onBusCardTap(Map<String, dynamic> busData) async {
+  Future<void> _onBusCardTap(Map<String, dynamic> busData) async {
     String resourceId = busData['bus_id'].toString();
     String date = busData['abscissa'];
     String period = busData['time_id'].toString();
@@ -196,9 +196,10 @@ class _ReservationPageState extends State<ReservationPage> {
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
 
-    // 设置按钮冷却
+    // 设置按钮冷却，并指定操作类型
     setState(() {
-      _buttonCooldowns[key] = true;
+      _buttonCooldowns[key] =
+          _reservedBuses.containsKey(key) ? 'cancelling' : 'reserving';
     });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -240,10 +241,10 @@ class _ReservationPageState extends State<ReservationPage> {
       _showErrorDialog('操作失败', e.toString());
     } finally {
       // 3秒后解除冷却
-      Future.delayed(Duration(seconds: 3), () {
+      Future.delayed(Duration(seconds: 2), () {
         if (mounted) {
           setState(() {
-            _buttonCooldowns[key] = false;
+            _buttonCooldowns.remove(key);
           });
         }
       });

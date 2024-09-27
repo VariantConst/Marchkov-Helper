@@ -6,7 +6,7 @@ class BusList extends StatelessWidget {
   final Function(Map<String, dynamic>) onBusCardTap;
   final Function(Map<String, dynamic>) showBusDetails;
   final Map<String, dynamic> reservedBuses;
-  final Map<String, bool> buttonCooldowns;
+  final Map<String, String> buttonCooldowns;
 
   const BusList({
     super.key,
@@ -28,7 +28,7 @@ class BusList extends StatelessWidget {
           onBusCardTap: onBusCardTap,
           showBusDetails: showBusDetails,
           reservedBuses: reservedBuses,
-          buttonCooldowns: buttonCooldowns,
+          buttonCooldowns: buttonCooldowns, // 传递 Map<String, String>
         ),
         BusSection(
           title: '去昌平',
@@ -36,7 +36,7 @@ class BusList extends StatelessWidget {
           onBusCardTap: onBusCardTap,
           showBusDetails: showBusDetails,
           reservedBuses: reservedBuses,
-          buttonCooldowns: buttonCooldowns,
+          buttonCooldowns: buttonCooldowns, // 传递 Map<String, String>
         ),
       ],
     );

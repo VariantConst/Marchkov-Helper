@@ -7,7 +7,7 @@ class BusSection extends StatelessWidget {
   final Function(Map<String, dynamic>) onBusCardTap;
   final Function(Map<String, dynamic>) showBusDetails;
   final Map<String, dynamic> reservedBuses;
-  final Map<String, bool> buttonCooldowns;
+  final Map<String, String> buttonCooldowns;
 
   const BusSection({
     super.key,

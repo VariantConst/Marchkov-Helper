@@ -6,7 +6,7 @@ class BusButton extends StatelessWidget {
   final Function(Map<String, dynamic>) onBusCardTap;
   final Function(Map<String, dynamic>) showBusDetails;
   final Map<String, dynamic> reservedBuses;
-  final Map<String, bool> buttonCooldowns;
+  final Map<String, String> buttonCooldowns;
 
   const BusButton({
     super.key,
@@ -25,8 +25,23 @@ class BusButton extends StatelessWidget {
     String date = busData['abscissa'];
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
-    bool isCooling = buttonCooldowns[key] == true;
+    bool isCooling = buttonCooldowns[key] != null;
     String routeName = busData['route_name'] ?? '';
+
+    // 3. 根据 buttonCooldowns[key] 确定 actionText
+    String actionText;
+    if (isCooling) {
+      String? action = buttonCooldowns[key];
+      if (action == 'reserving') {
+        actionText = '预约中';
+      } else if (action == 'cancelling') {
+        actionText = '取消中';
+      } else {
+        actionText = isReserved ? '取消预约' : '预约';
+      }
+    } else {
+      actionText = isReserved ? '取消预约' : '预约';
+    }
 
     return Expanded(
       child: Padding(
@@ -56,37 +71,48 @@ class BusButton extends StatelessWidget {
             elevation: 4,
             shadowColor: Colors.black.withOpacity(0.2),
           ),
-          child: isCooling
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isReserved ? Colors.white : Colors.blueAccent,
-                    ),
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      time,
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      routeName,
-                      style: TextStyle(
-                        fontSize: routeName.length > 10 ? 10 : 12,
-                        fontWeight: FontWeight.normal,
+          child: SizedBox(
+            height: 48, // 固定按钮高度
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: isCooling
+                  ? [
+                      // 保持按钮大小不变，加载中显示
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            isReserved ? Colors.white : Colors.blueAccent,
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                      SizedBox(height: 4),
+                      Text(
+                        actionText,
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ]
+                  : [
+                      Text(
+                        time,
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        routeName,
+                        style: TextStyle(
+                          fontSize: routeName.length > 10 ? 10 : 12,
+                          fontWeight: FontWeight.normal,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+            ),
+          ),
         ),
       ),
     );

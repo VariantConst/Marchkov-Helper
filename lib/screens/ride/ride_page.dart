@@ -67,7 +67,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       setState(() {
         _selectedBusIndex = 0;
       });
-      await _selectBus(0); // 选择��一个可用的班车
+      await _selectBus(0); // 选择一个可用的班车
     } else {
       setState(() {
         _errorMessage = '无车可坐';
