@@ -100,7 +100,6 @@ class BusRouteDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     final routeName = busData['route_name'] ?? '未知路线';
     final date = busData['abscissa'] ?? '';
@@ -112,7 +111,7 @@ class BusRouteDetails extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDarkMode ? theme.cardColor : Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

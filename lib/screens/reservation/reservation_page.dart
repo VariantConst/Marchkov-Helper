@@ -196,7 +196,7 @@ class _ReservationPageState extends State<ReservationPage> {
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
 
-    // 设置按钮��却，并指定操作类型
+    // 设置按钮却，并指定操作类型
     setState(() {
       _buttonCooldowns[key] =
           _reservedBuses.containsKey(key) ? 'cancelling' : 'reserving';
@@ -331,9 +331,10 @@ class _ReservationPageState extends State<ReservationPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // 使用主题背景色
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           SafeArea(
@@ -343,7 +344,10 @@ class _ReservationPageState extends State<ReservationPage> {
                 borderRadius: BorderRadius.circular(16.0),
               ),
               elevation: 2.0,
-              color: theme.cardColor, // 使用主题卡片颜色
+              color: theme.cardColor,
+              shadowColor: isDarkMode
+                  ? Colors.white.withOpacity(0.5)
+                  : Colors.black.withOpacity(0.8),
               child: Padding(
                 padding: EdgeInsets.all(16.0),
                 child: ReservationCalendar(

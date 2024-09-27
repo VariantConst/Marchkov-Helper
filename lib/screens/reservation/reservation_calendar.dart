@@ -19,19 +19,30 @@ class ReservationCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context); // 获取当前主题
     final now = DateTime.now();
-    final lastSelectableDay = now.add(Duration(days: 13)); // 固定显示两周
+    final lastSelectableDay = now.add(Duration(days: 6)); // 只显示7天（今天+6天）
+
+    bool isDateSelectable(DateTime day) {
+      return !day.isBefore(now.subtract(Duration(days: 1))) &&
+          !day.isAfter(lastSelectableDay);
+    }
 
     return TableCalendar(
       firstDay: now,
-      lastDay: lastSelectableDay,
+      lastDay: now.add(Duration(days: 13)), // 保持两周的显示
       focusedDay: focusedDay,
       selectedDayPredicate: (day) => isSameDay(selectedDay, day),
-      onDaySelected: onDaySelected,
+      onDaySelected: (selectedDay, focusedDay) {
+        if (isDateSelectable(selectedDay)) {
+          onDaySelected(selectedDay, focusedDay);
+        }
+      },
       calendarFormat: CalendarFormat.twoWeeks, // 强制使用两周格式
       availableCalendarFormats: const {
         CalendarFormat.twoWeeks: '两周',
       }, // 只允许两周格式
       calendarStyle: CalendarStyle(
+        cellMargin: EdgeInsets.zero, // 添加这行
+        cellPadding: EdgeInsets.zero, // 添加这行
         todayDecoration: BoxDecoration(
           color: theme.colorScheme.primary.withOpacity(0.5), // 使用主题颜色
           shape: BoxShape.circle,
@@ -40,13 +51,7 @@ class ReservationCalendar extends StatelessWidget {
           color: theme.colorScheme.primary, // 使用主题颜色
           shape: BoxShape.circle,
         ),
-        todayTextStyle: TextStyle(
-          color: theme.colorScheme.onPrimary, // 使用主题文本颜色
-        ),
-        selectedTextStyle: TextStyle(
-          color: theme.colorScheme.onPrimary, // 使用主题文本颜色
-        ),
-        // 添加默认日期的装饰
+        // 添加尺寸约束，使默认圆圈与选中圆圈大小一致
         defaultDecoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5)),
@@ -79,28 +84,76 @@ class ReservationCalendar extends StatelessWidget {
           bool isSelectable = day.isAfter(now.subtract(Duration(days: 1))) &&
               day.isBefore(lastSelectableDay.add(Duration(days: 1)));
 
-          return Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelectable
-                    ? theme.colorScheme.primary.withOpacity(0.5)
-                    : Colors.transparent,
-                width: 1,
-              ),
-            ),
-            child: Text(
-              '${day.day}',
-              style: TextStyle(
-                fontWeight: isSelectable ? FontWeight.bold : FontWeight.normal,
-                color: isSelectable
-                    ? theme.textTheme.bodyMedium?.color
-                    : theme.disabledColor, // 使用主题文本颜色
-              ),
-            ),
+          return _buildDayContainer(
+            context,
+            day,
+            isDateSelectable(day),
+            decoration: isDateSelectable(day)
+                ? BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  )
+                : null,
+            textColor: isDateSelectable(day)
+                ? theme.textTheme.bodyMedium?.color
+                : theme.disabledColor,
           );
         },
+        // 添加 todayBuilder，确保今天的日期样式一致
+        todayBuilder: (context, day, focusedDay) {
+          return _buildDayContainer(
+            context,
+            day,
+            isDateSelectable(day),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+            textColor: theme.colorScheme.onPrimary,
+          );
+        },
+        // 添加 selectedBuilder，确保选中日期的样式一致
+        selectedBuilder: (context, day, focusedDay) {
+          return _buildDayContainer(
+            context,
+            day,
+            isDateSelectable(day),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            textColor: theme.colorScheme.onPrimary,
+          );
+        },
+        // 如果有需要，还可以添加 weekendBuilder 等其他构建器
+      ),
+    );
+  }
+
+  Widget _buildDayContainer(
+    BuildContext context,
+    DateTime day,
+    bool isSelectable, {
+    BoxDecoration? decoration,
+    required Color? textColor,
+  }) {
+    return Center(
+      child: Container(
+        width: 32, // 设置一个较小的固定宽度
+        height: 32, // 设置一个较小的固定高度
+        decoration: decoration,
+        child: Center(
+          child: Text(
+            '${day.day}',
+            style: TextStyle(
+              color: textColor,
+              fontWeight: isSelectable ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -339,23 +339,19 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     bool isNoBusAvailable =
         _errorMessage == '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
 
-    Color cardColor;
     Color textColor;
     Color borderColor;
     Color buttonColor;
 
     if (isNoBusAvailable) {
-      cardColor = Colors.grey[200]!;
       textColor = Colors.grey[700]!;
       borderColor = Colors.grey[400]!;
       buttonColor = Colors.grey[300]!;
     } else if (_codeType == '临时码') {
-      cardColor = Colors.white;
       textColor = Colors.orange[700]!;
       borderColor = Colors.orange[200]!.withOpacity(0.5);
       buttonColor = Colors.orange[100]!.withOpacity(0.5);
     } else {
-      cardColor = Colors.white;
       textColor = Colors.blue;
       borderColor = Colors.blue.withOpacity(0.2);
       buttonColor = Theme.of(context).colorScheme.primary.withOpacity(0.1);
