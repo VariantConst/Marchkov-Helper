@@ -34,6 +34,14 @@ class ReservationCalendar extends StatelessWidget {
       onDaySelected: (selectedDay, focusedDay) {
         if (isDateSelectable(selectedDay)) {
           onDaySelected(selectedDay, focusedDay);
+        } else if (selectedDay.isAfter(lastSelectableDay)) {
+          // 显示短暂提示
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('前面的日期以后再来探索吧！'),
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
       },
       calendarFormat: CalendarFormat.twoWeeks, // 强制使用两周格式
