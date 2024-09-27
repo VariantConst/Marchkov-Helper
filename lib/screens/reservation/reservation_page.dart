@@ -29,8 +29,6 @@ class _ReservationPageState extends State<ReservationPage> {
   late DauService _dauService;
   bool? _showTip;
   Map<String, bool> _buttonCooldowns = {};
-  OverlayEntry? _overlayEntry;
-  Timer? _overlayTimer;
 
   @override
   void initState() {
@@ -190,50 +188,6 @@ class _ReservationPageState extends State<ReservationPage> {
     }
   }
 
-  void _showFloatingMessage(String message) {
-    print('Showing floating message: $message'); // 调试输出
-
-    if (_overlayEntry != null) {
-      // 如果提示已经显示，重置计时器
-      _overlayTimer?.cancel();
-    } else {
-      // 创建新的 OverlayEntry
-      _overlayEntry = OverlayEntry(
-        builder: (context) => Positioned(
-          bottom: 50,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  message,
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      Overlay.of(context).insert(_overlayEntry!);
-      print('Overlay inserted'); // 调试输出
-    }
-
-    // 启动或重置计时器
-    _overlayTimer?.cancel();
-    _overlayTimer = Timer(Duration(milliseconds: 1500), () {
-      _overlayEntry?.remove();
-      _overlayEntry = null;
-      print('Overlay removed'); // 调试输出
-    });
-  }
-
   void _onBusCardTap(Map<String, dynamic> busData) async {
     String resourceId = busData['bus_id'].toString();
     String date = busData['abscissa'];
@@ -242,37 +196,16 @@ class _ReservationPageState extends State<ReservationPage> {
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
 
-    print('Bus tapped: $key'); // 调试输出
-
-    // 检查按钮是否在冷却中
-    if (_buttonCooldowns[key] == true) {
-      print('Button is in cooldown'); // 调试输出
-      _showFloatingMessage('点击太频繁了，请稍后再试');
-      return;
-    }
-
-    print('Setting cooldown for button: $key'); // 调试输出
     // 设置按钮冷却
-    _buttonCooldowns[key] = true;
-
-    // 触发界面更新以显示冷却状态（如果有必要的话，可以在按钮样式中加入冷却状态的视觉效果）
-    setState(() {});
-
-    // 3秒后解除冷却
-    Future.delayed(Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _buttonCooldowns[key] = false;
-        });
-        print('Cooldown removed for button: $key'); // 调试输出
-      }
+    setState(() {
+      _buttonCooldowns[key] = true;
     });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
-    if (_reservedBuses.containsKey(key)) {
-      try {
+    try {
+      if (_reservedBuses.containsKey(key)) {
         String appointmentId = _reservedBuses[key]['id'].toString();
         String hallAppointmentDataId =
             _reservedBuses[key]['hall_appointment_data_id'].toString();
@@ -286,14 +219,8 @@ class _ReservationPageState extends State<ReservationPage> {
         });
 
         await _cacheReservedBuses();
-
-        // 添加震动反馈，表示取消成功
         HapticFeedback.lightImpact();
-      } catch (e) {
-        _showErrorDialog('取消预约失败', e.toString());
-      }
-    } else {
-      try {
+      } else {
         final reservationResult =
             await reservationService.makeReservation(resourceId, date, period);
         if (!mounted) return;
@@ -306,15 +233,20 @@ class _ReservationPageState extends State<ReservationPage> {
           _filterBusList();
         });
         await _cacheReservedBuses();
-
-        // 立即刷新预约状态
         await _refreshReservationStatus();
-
-        // 添加震动反馈，表示预约成功
         HapticFeedback.mediumImpact();
-      } catch (e) {
-        _showErrorDialog('预约失败', e.toString());
       }
+    } catch (e) {
+      _showErrorDialog('操作失败', e.toString());
+    } finally {
+      // 3秒后解除冷却
+      Future.delayed(Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _buttonCooldowns[key] = false;
+          });
+        }
+      });
     }
   }
 
@@ -503,8 +435,6 @@ class _ReservationPageState extends State<ReservationPage> {
 
   @override
   void dispose() {
-    _overlayTimer?.cancel();
-    _overlayEntry?.remove();
     super.dispose();
   }
 }

@@ -25,30 +25,25 @@ class BusButton extends StatelessWidget {
     String date = busData['abscissa'];
     String appointmentTime = '$date $time';
     String key = '$resourceId$appointmentTime';
+    bool isCooling = buttonCooldowns[key] == true;
 
     return Expanded(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
         child: ElevatedButton(
-          onPressed: () {
-            // 添加震动反馈
-            HapticFeedback.selectionClick();
-            onBusCardTap(busData);
-          },
+          onPressed: isCooling
+              ? null
+              : () {
+                  HapticFeedback.selectionClick();
+                  onBusCardTap(busData);
+                },
           onLongPress: () {
-            // 添加震动反馈
             HapticFeedback.heavyImpact();
             showBusDetails(busData);
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: isReserved
-                ? Colors.blueAccent
-                : (buttonCooldowns[key] == true
-                    ? Colors.grey[300]
-                    : Colors.white),
-            foregroundColor: isReserved
-                ? Colors.white
-                : (buttonCooldowns[key] == true ? Colors.grey : Colors.black),
+            backgroundColor: isReserved ? Colors.blueAccent : Colors.white,
+            foregroundColor: isReserved ? Colors.white : Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
@@ -60,10 +55,21 @@ class BusButton extends StatelessWidget {
             elevation: 4,
             shadowColor: Colors.black.withOpacity(0.2),
           ),
-          child: Text(
-            time,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          child: isCooling
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isReserved ? Colors.white : Colors.blueAccent,
+                    ),
+                  ),
+                )
+              : Text(
+                  time,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
         ),
       ),
     );
