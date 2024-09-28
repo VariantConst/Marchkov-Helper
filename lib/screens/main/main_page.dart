@@ -20,7 +20,7 @@ class MainPageState extends State<MainPage> {
   ];
 
   void _onItemTapped(int index) {
-    HapticFeedback.lightImpact(); // 修改为轻柔的震动反馈
+    HapticFeedback.selectionClick(); // 修改为更轻柔的震动反馈
     setState(() {
       _selectedIndex = index;
     });
