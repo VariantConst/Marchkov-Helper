@@ -63,6 +63,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     super.dispose();
   }
 
+  // 修改 _initialize 方法以并行获取所有班车的数据
   Future<void> _initialize() async {
     await _loadNearbyBuses();
 
@@ -82,7 +83,11 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                   'errorMessage': '',
                 });
       });
-      await _selectBus(0); // 选择一个可用的班车
+      // 并行获取所有班车的二维码
+      await Future.wait([
+        for (int i = 0; i < _nearbyBuses.length; i++)
+          _fetchBusData(i), // 新增方法，用于获取每个班车的数据
+      ]);
     } else {
       setState(() {});
     }
@@ -92,6 +97,82 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  // 新增方法，用于并行获取每个班车的数据而不改变选中的班车索引
+  Future<void> _fetchBusData(int index) async {
+    final bus = _nearbyBuses[index];
+    final reservationProvider =
+        Provider.of<ReservationProvider>(context, listen: false);
+    final reservationService =
+        ReservationService(Provider.of<AuthProvider>(context, listen: false));
+
+    try {
+      await reservationProvider.loadCurrentReservations();
+      Reservation? matchingReservation;
+
+      try {
+        matchingReservation =
+            reservationProvider.currentReservations.firstWhere(
+          (reservation) =>
+              reservation.resourceName == bus['route_name'] &&
+              reservation.appointmentTime ==
+                  '${bus['abscissa']} ${bus['yaxis']}',
+        );
+      } catch (e) {
+        matchingReservation = null; // 如果没有找到匹配的预约，设置为 null
+      }
+
+      if (matchingReservation != null) {
+        await _fetchQRCode(reservationProvider, matchingReservation, index);
+      } else {
+        final departureTime =
+            DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
+        final now = DateTime.now();
+
+        if (departureTime.isBefore(now) ||
+            departureTime.isAtSameMomentAs(now)) {
+          final tempCode = await _fetchTempCode(reservationService, bus);
+          if (tempCode != null) {
+            if (mounted) {
+              setState(() {
+                _cardStates[index] = {
+                  'qrCode': tempCode['code'],
+                  'departureTime': tempCode['departureTime']!,
+                  'routeName': tempCode['routeName']!,
+                  'codeType': '临时码',
+                  'errorMessage': '',
+                };
+              });
+            }
+          } else {
+            if (mounted) {
+              setState(() {
+                _cardStates[index]['errorMessage'] = '无法获取乘车码';
+              });
+            }
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _cardStates[index] = {
+                'qrCode': null,
+                'departureTime': bus['yaxis'],
+                'routeName': bus['route_name'],
+                'codeType': '待预约',
+                'errorMessage': '',
+              };
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cardStates[index]['errorMessage'] = '加载数据时出错: $e';
+        });
+      }
     }
   }
 
@@ -203,6 +284,12 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       _selectedBusIndex = index;
     });
 
+    // 如果已经有状态，并且不是错误状态，就不需要重新获取数据
+    if (_cardStates[index] != null &&
+        _cardStates[index]['errorMessage'] == '') {
+      return;
+    }
+
     final bus = _nearbyBuses[index];
     final reservationProvider =
         Provider.of<ReservationProvider>(context, listen: false);
@@ -228,23 +315,42 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       if (matchingReservation != null) {
         await _fetchQRCode(reservationProvider, matchingReservation, index);
       } else {
-        final tempCode = await _fetchTempCode(reservationService, bus);
-        if (tempCode != null) {
-          if (mounted) {
-            setState(() {
-              _cardStates[index] = {
-                'qrCode': tempCode['code'],
-                'departureTime': tempCode['departureTime']!,
-                'routeName': tempCode['routeName']!,
-                'codeType': '临时码',
-                'errorMessage': '',
-              };
-            });
+        final departureTime =
+            DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
+        final now = DateTime.now();
+
+        if (departureTime.isBefore(now) ||
+            departureTime.isAtSameMomentAs(now)) {
+          final tempCode = await _fetchTempCode(reservationService, bus);
+          if (tempCode != null) {
+            if (mounted) {
+              setState(() {
+                _cardStates[index] = {
+                  'qrCode': tempCode['code'],
+                  'departureTime': tempCode['departureTime']!,
+                  'routeName': tempCode['routeName']!,
+                  'codeType': '临时码',
+                  'errorMessage': '',
+                };
+              });
+            }
+          } else {
+            if (mounted) {
+              setState(() {
+                _cardStates[index]['errorMessage'] = '无法获取乘车码';
+              });
+            }
           }
         } else {
           if (mounted) {
             setState(() {
-              _cardStates[index]['errorMessage'] = '无法获取乘车码';
+              _cardStates[index] = {
+                'qrCode': null,
+                'departureTime': bus['yaxis'],
+                'routeName': bus['route_name'],
+                'codeType': '待预约',
+                'errorMessage': '',
+              };
             });
           }
         }
@@ -548,13 +654,92 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                         ),
                       ],
                     )
-                  else if (cardState['qrCode'] != null &&
-                      cardState['qrCode']!.isNotEmpty)
-                    ..._buildQRCodeContent(textColor, borderColor, cardState)
                   else
-                    Text(
-                      '暂无二维码',
-                      style: TextStyle(fontSize: 16, color: textColor),
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: 50,
+                          child: Center(
+                            child: Text(
+                              cardState['routeName'],
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: textColor,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          cardState['departureTime'],
+                          style: TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        if (cardState['qrCode'] != null &&
+                            cardState['qrCode']!.isNotEmpty)
+                          Container(
+                            width: 240,
+                            height: 240,
+                            decoration: BoxDecoration(
+                              color:
+                                  isDarkMode ? Colors.grey[400]! : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: borderColor, width: 2),
+                            ),
+                            child: Center(
+                              child: QrImageView(
+                                data: cardState['qrCode'],
+                                version: 13,
+                                size: 200.0,
+                                padding: EdgeInsets.zero,
+                                backgroundColor: isDarkMode
+                                    ? Colors.grey[400]!
+                                    : Colors.white,
+                                eyeStyle: QrEyeStyle(
+                                  color: isDarkMode
+                                      ? Colors.black
+                                      : Colors.grey[700]!,
+                                  eyeShape: QrEyeShape.square,
+                                ),
+                                dataModuleStyle: QrDataModuleStyle(
+                                  color: isDarkMode
+                                      ? Colors.black
+                                      : Colors.grey[700]!,
+                                  dataModuleShape: QrDataModuleShape.square,
+                                ),
+                                errorCorrectionLevel: QrErrorCorrectLevel.M,
+                              ),
+                            ),
+                          )
+                        else if (cardState['codeType'] == '待预约')
+                          Container(
+                            width: 240,
+                            height: 240,
+                            decoration: BoxDecoration(
+                              color: backgroundColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: borderColor, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '待预约',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   SizedBox(height: 20),
                   _buildReverseButton(buttonColor, textColor, index),
@@ -581,16 +766,29 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       endColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
       textColor = isDarkMode ? Colors.grey[300]! : Colors.grey[700]!;
       headerText = '无车可坐';
-    } else if (codeType == '临时码') {
-      startColor = theme.colorScheme.secondary.withOpacity(0.2);
-      endColor = theme.colorScheme.secondary.withOpacity(0.05);
-      textColor = theme.colorScheme.secondary;
-      headerText = codeType;
     } else {
-      startColor = theme.colorScheme.primary.withOpacity(0.2);
-      endColor = theme.colorScheme.primary.withOpacity(0.05);
-      textColor = theme.colorScheme.primary;
-      headerText = codeType;
+      final bus = _nearbyBuses[_selectedBusIndex];
+      final departureTime =
+          DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
+      final now = DateTime.now();
+
+      if (codeType == '乘车码') {
+        startColor = theme.colorScheme.primary.withOpacity(0.2);
+        endColor = theme.colorScheme.primary.withOpacity(0.05);
+        textColor = theme.colorScheme.primary;
+        headerText = '乘车码';
+      } else if (departureTime.isBefore(now) ||
+          departureTime.isAtSameMomentAs(now)) {
+        startColor = theme.colorScheme.secondary.withOpacity(0.2);
+        endColor = theme.colorScheme.secondary.withOpacity(0.05);
+        textColor = theme.colorScheme.secondary;
+        headerText = '临时码';
+      } else {
+        startColor = theme.colorScheme.tertiary.withOpacity(0.2);
+        endColor = theme.colorScheme.tertiary.withOpacity(0.05);
+        textColor = theme.colorScheme.tertiary;
+        headerText = '待预约';
+      }
     }
 
     return Container(
@@ -804,24 +1002,44 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         cardState['hallAppointmentDataId'],
       );
 
-      // 获取临时码
+      // 获取对应班车的发车时间
       final bus = _nearbyBuses[index];
-      final tempCode = await _fetchTempCode(reservationService, bus);
-      if (tempCode != null) {
+      final departureTime =
+          DateTime.parse('${bus['abscissa']} ${bus['yaxis']}');
+      final now = DateTime.now();
+
+      // 修改部分: 根据发车时间决定状态
+      if (departureTime.isAfter(now)) {
+        // 如果发车时间在未来，将状态设置为"待预约"并不显示任何码
         setState(() {
           _cardStates[index] = {
-            'qrCode': tempCode['code'],
-            'departureTime': tempCode['departureTime']!,
-            'routeName': tempCode['routeName']!,
-            'codeType': '临时码',
+            'qrCode': null,
+            'departureTime': bus['yaxis'],
+            'routeName': bus['route_name'],
+            'codeType': '待预约',
             'errorMessage': '',
           };
         });
       } else {
-        setState(() {
-          cardState['errorMessage'] = '无法获取临时码';
-        });
+        // 如果发车时间已到或过去，获取临时码
+        final tempCode = await _fetchTempCode(reservationService, bus);
+        if (tempCode != null) {
+          setState(() {
+            _cardStates[index] = {
+              'qrCode': tempCode['code'],
+              'departureTime': tempCode['departureTime']!,
+              'routeName': tempCode['routeName']!,
+              'codeType': '临时码',
+              'errorMessage': '',
+            };
+          });
+        } else {
+          setState(() {
+            cardState['errorMessage'] = '无法获取临时码';
+          });
+        }
       }
+      // 修改结束
     } catch (e) {
       setState(() {
         cardState['errorMessage'] = '取消预约失败: $e';
