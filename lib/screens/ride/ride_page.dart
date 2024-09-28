@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 // 新增导入 RideHistoryService
 import '../../services/ride_history_service.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart'; // 新增导入
 
 class RidePage extends StatefulWidget {
   const RidePage({super.key});
@@ -905,9 +906,15 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       child: ElevatedButton(
         onPressed: _isToggleLoading
             ? null
-            : (isReservation
-                ? () => _cancelReservation(index)
-                : () => _makeReservation(index)),
+            : () {
+                // 添加震动反馈
+                HapticFeedback.lightImpact();
+                if (isReservation) {
+                  _cancelReservation(index);
+                } else {
+                  _makeReservation(index);
+                }
+              },
         style: ElevatedButton.styleFrom(
           backgroundColor:
               _isToggleLoading ? Colors.grey.shade200 : buttonColor,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../ride/ride_page.dart';
 import '../settings/settings_page.dart';
 import '../reservation/reservation_page.dart';
+import 'package:flutter/services.dart'; // 新增导入
 
 class MainPage extends StatefulWidget {
   @override
@@ -19,6 +20,7 @@ class MainPageState extends State<MainPage> {
   ];
 
   void _onItemTapped(int index) {
+    HapticFeedback.vibrate(); // 添加震动反馈
     setState(() {
       _selectedIndex = index;
     });
