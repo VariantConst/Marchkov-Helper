@@ -47,6 +47,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加新的属性
   bool? _showTip;
 
+  // 添加一个新的列表来存储每个卡片的状态
+  List<Map<String, dynamic>> _cardStates = [];
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +78,16 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     if (_nearbyBuses.isNotEmpty) {
       setState(() {
         _selectedBusIndex = 0;
+        // 初始化每个卡片的状态
+        _cardStates = List.generate(
+            _nearbyBuses.length,
+            (index) => {
+                  'qrCode': null,
+                  'departureTime': '',
+                  'routeName': '',
+                  'codeType': '',
+                  'errorMessage': '',
+                });
       });
       await _selectBus(0); // 选择一个可用的班车
     } else {
@@ -223,22 +236,25 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       }
 
       if (matchingReservation != null) {
-        await _fetchQRCode(reservationProvider, matchingReservation);
+        await _fetchQRCode(reservationProvider, matchingReservation, index);
       } else {
         final tempCode = await _fetchTempCode(reservationService, bus);
         if (tempCode != null) {
           if (mounted) {
             setState(() {
-              _qrCode = tempCode['code'];
-              _departureTime = tempCode['departureTime']!;
-              _routeName = tempCode['routeName']!;
-              _codeType = '临时码';
+              _cardStates[index] = {
+                'qrCode': tempCode['code'],
+                'departureTime': tempCode['departureTime']!,
+                'routeName': tempCode['routeName']!,
+                'codeType': '临时码',
+                'errorMessage': '',
+              };
             });
           }
         } else {
           if (mounted) {
             setState(() {
-              _errorMessage = '无法获取乘车码';
+              _cardStates[index]['errorMessage'] = '无法获取乘车码';
             });
           }
         }
@@ -246,14 +262,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '加载数据时出错: $e';
+          _cardStates[index]['errorMessage'] = '加载数据时出错: $e';
         });
       }
     }
   }
 
   Future<void> _fetchQRCode(
-      ReservationProvider provider, Reservation reservation) async {
+      ReservationProvider provider, Reservation reservation, int index) async {
     try {
       await provider.fetchQRCode(
         reservation.id.toString(),
@@ -264,19 +280,22 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
       if (mounted) {
         setState(() {
-          _qrCode = provider.qrCode;
-          _departureTime = actualDepartureTime;
-          _routeName = reservation.resourceName;
-          _codeType = '乘车码';
-          _appointmentId = reservation.id.toString(); // 存储预约ID
-          _hallAppointmentDataId =
-              reservation.hallAppointmentDataId.toString(); // 存储大厅预约数据ID
+          _cardStates[index] = {
+            'qrCode': provider.qrCode,
+            'departureTime': actualDepartureTime,
+            'routeName': reservation.resourceName,
+            'codeType': '乘车码',
+            'appointmentId': reservation.id.toString(),
+            'hallAppointmentDataId':
+                reservation.hallAppointmentDataId.toString(),
+            'errorMessage': '',
+          };
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '获取二维码时出错: $e';
+          _cardStates[index]['errorMessage'] = '获取二维码时出错: $e';
         });
       }
     }
@@ -424,7 +443,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                           _selectBus(index);
                         },
                         itemBuilder: (context, index) {
-                          return _buildCard();
+                          return _buildCard(index);
                         },
                       ),
               ),
@@ -457,9 +476,10 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildCard() {
-    bool isNoBusAvailable =
-        _errorMessage == '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
+  Widget _buildCard(int index) {
+    final cardState = _cardStates[index];
+    final isNoBusAvailable = cardState['errorMessage'] ==
+        '这会去${_isGoingToYanyuan ? '燕园' : '昌平'}没有班车可坐😅';
 
     Color textColor;
     Color borderColor;
@@ -474,7 +494,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
       buttonColor = isDarkMode ? Colors.grey[800]! : Colors.grey[200]!;
       backgroundColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
-    } else if (_codeType == '临时码') {
+    } else if (cardState['codeType'] == '临时码') {
       textColor = theme.colorScheme.secondary;
       borderColor = theme.colorScheme.secondary.withOpacity(0.3);
       buttonColor = theme.colorScheme.secondary.withOpacity(0.1);
@@ -498,7 +518,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildCardHeader(isNoBusAvailable),
+          _buildCardHeader(isNoBusAvailable, cardState['codeType']),
           Expanded(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -538,15 +558,16 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                         ),
                       ],
                     )
-                  else if (_qrCode != null && _qrCode!.isNotEmpty)
-                    ..._buildQRCodeContent(textColor, borderColor)
+                  else if (cardState['qrCode'] != null &&
+                      cardState['qrCode']!.isNotEmpty)
+                    ..._buildQRCodeContent(textColor, borderColor, cardState)
                   else
                     Text(
                       '暂无二维码',
                       style: TextStyle(fontSize: 16, color: textColor),
                     ),
                   SizedBox(height: 20),
-                  _buildReverseButton(buttonColor, textColor),
+                  _buildReverseButton(buttonColor, textColor, index),
                 ],
               ),
             ),
@@ -556,7 +577,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildCardHeader(bool isNoBusAvailable) {
+  Widget _buildCardHeader(bool isNoBusAvailable, String codeType) {
     Color startColor;
     Color endColor;
     Color textColor;
@@ -570,16 +591,16 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       endColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
       textColor = isDarkMode ? Colors.grey[300]! : Colors.grey[700]!;
       headerText = '无车可坐';
-    } else if (_codeType == '临时码') {
+    } else if (codeType == '临时码') {
       startColor = theme.colorScheme.secondary.withOpacity(0.2);
       endColor = theme.colorScheme.secondary.withOpacity(0.05);
       textColor = theme.colorScheme.secondary;
-      headerText = _codeType;
+      headerText = codeType;
     } else {
       startColor = theme.colorScheme.primary.withOpacity(0.2);
       endColor = theme.colorScheme.primary.withOpacity(0.05);
       textColor = theme.colorScheme.primary;
-      headerText = _codeType;
+      headerText = codeType;
     }
 
     return Container(
@@ -605,7 +626,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  List<Widget> _buildQRCodeContent(Color textColor, Color borderColor) {
+  List<Widget> _buildQRCodeContent(
+      Color textColor, Color borderColor, Map<String, dynamic> cardState) {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
@@ -618,7 +640,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
         height: 50,
         child: Center(
           child: Text(
-            _routeName,
+            cardState['routeName'],
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w500,
@@ -632,7 +654,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       ),
       SizedBox(height: 12),
       Text(
-        _departureTime,
+        cardState['departureTime'],
         style: TextStyle(
           fontSize: 38,
           fontWeight: FontWeight.bold,
@@ -649,9 +671,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           border: Border.all(color: borderColor, width: 2),
         ),
         child: Center(
-          child: _qrCode != null
+          child: cardState['qrCode'] != null
               ? QrImageView(
-                  data: _qrCode!,
+                  data: cardState['qrCode'],
                   version: 13,
                   size: 200.0,
                   padding: EdgeInsets.zero,
@@ -672,14 +694,19 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     ];
   }
 
-  Widget _buildReverseButton(Color buttonColor, Color textColor) {
+  Widget _buildReverseButton(Color buttonColor, Color textColor, int index) {
+    final cardState = _cardStates[index];
+    final isReservation = cardState['codeType'] == '乘车码';
+
     return SizedBox(
       width: 240,
       height: 56,
       child: ElevatedButton(
         onPressed: _isToggleLoading
             ? null
-            : (_codeType == '临时码' ? _makeReservation : _cancelReservation),
+            : (isReservation
+                ? () => _cancelReservation(index)
+                : () => _makeReservation(index)),
         style: ElevatedButton.styleFrom(
           backgroundColor:
               _isToggleLoading ? Colors.grey.shade200 : buttonColor,
@@ -701,27 +728,20 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                 ),
               )
             : Text(
-                _codeType == '临时码' ? '预约' : '取消预约',
+                isReservation ? '取消预约' : '预约',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
       ),
     );
   }
 
-  Future<void> _makeReservation() async {
-    if (_selectedBusIndex == -1) {
-      setState(() {
-        _errorMessage = '请选择一个班车进行预约';
-      });
-      return;
-    }
-
+  Future<void> _makeReservation(int index) async {
     setState(() {
       _isToggleLoading = true;
-      _errorMessage = '';
+      _cardStates[index]['errorMessage'] = '';
     });
 
-    final bus = _nearbyBuses[_selectedBusIndex];
+    final bus = _nearbyBuses[index];
     final reservationService =
         ReservationService(Provider.of<AuthProvider>(context, listen: false));
     final reservationProvider =
@@ -753,15 +773,15 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
       if (matchingReservation != null) {
         // 获取乘车码
-        await _fetchQRCode(reservationProvider, matchingReservation);
+        await _fetchQRCode(reservationProvider, matchingReservation, index);
       } else {
         setState(() {
-          _errorMessage = '无法找到匹配的预约信息';
+          _cardStates[index]['errorMessage'] = '无法找到匹配的预约信息';
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '预约失败: $e';
+        _cardStates[index]['errorMessage'] = '预约失败: $e';
       });
     } finally {
       setState(() {
@@ -770,17 +790,19 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
-  Future<void> _cancelReservation() async {
-    if (_appointmentId == null || _hallAppointmentDataId == null) {
+  Future<void> _cancelReservation(int index) async {
+    final cardState = _cardStates[index];
+    if (cardState['appointmentId'] == null ||
+        cardState['hallAppointmentDataId'] == null) {
       setState(() {
-        _errorMessage = '无有效的预约信息';
+        cardState['errorMessage'] = '无有效的预约信息';
       });
       return;
     }
 
     setState(() {
       _isToggleLoading = true;
-      _errorMessage = '';
+      cardState['errorMessage'] = '';
     });
 
     final reservationService =
@@ -788,30 +810,31 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     try {
       await reservationService.cancelReservation(
-        _appointmentId!,
-        _hallAppointmentDataId!,
+        cardState['appointmentId'],
+        cardState['hallAppointmentDataId'],
       );
 
       // 获取临时码
-      final bus = _nearbyBuses[_selectedBusIndex];
+      final bus = _nearbyBuses[index];
       final tempCode = await _fetchTempCode(reservationService, bus);
       if (tempCode != null) {
         setState(() {
-          _qrCode = tempCode['code'];
-          _departureTime = tempCode['departureTime']!;
-          _routeName = tempCode['routeName']!;
-          _codeType = '临时码';
-          _appointmentId = null;
-          _hallAppointmentDataId = null;
+          _cardStates[index] = {
+            'qrCode': tempCode['code'],
+            'departureTime': tempCode['departureTime']!,
+            'routeName': tempCode['routeName']!,
+            'codeType': '临时码',
+            'errorMessage': '',
+          };
         });
       } else {
         setState(() {
-          _errorMessage = '无法获取临时码';
+          cardState['errorMessage'] = '无法获取临时码';
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '取消预约失败: $e';
+        cardState['errorMessage'] = '取消预约失败: $e';
       });
     } finally {
       setState(() {
