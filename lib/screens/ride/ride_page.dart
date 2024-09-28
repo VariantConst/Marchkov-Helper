@@ -449,8 +449,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('1. 本页面只会显示过去30分钟到未来30分钟内发车的班车。'),
-            Text('2. 如果已错过发车时刻，预约按钮将变为灰色，无法点击。'),
-            Text('3. 应用会学习您的乘车偏好，根据历史乘车记录智能推荐班车。'),
+            Text('2. 如果已错过发车时刻，将无法预约，只会显示乘车码或临时码。'),
+            Text('3. 应用会学习您的乘车偏好，根据历史乘车记录智能推荐班车。目前需要您手动打开设置-乘车历史，以缓存乘车记录。'),
+            Text('4. 如果加载太慢，尝试关闭代理。'),
           ],
         ),
         actions: [
