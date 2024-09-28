@@ -55,52 +55,26 @@ class MyApp extends StatelessWidget {
             // 添加更多的暗黑主题配置
           ),
           themeMode: themeProvider.themeMode,
-          home: SplashScreen(),
+          home: AuthWrapper(),
         );
       },
     );
   }
 }
 
-class SplashScreen extends StatefulWidget {
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _checkLoginState();
-  }
-
-  Future<void> _checkLoginState() async {
-    await Future.delayed(Duration(seconds: 2));
-    if (!mounted) return;
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final isLoggedIn = await authProvider.checkLoginState();
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => isLoggedIn ? MainPage() : LoginPage(),
-      ),
-    );
-  }
-
+class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FlutterLogo(size: 100),
-            SizedBox(height: 20),
-            Text('Marchkov Helper',
-                style: Theme.of(context).textTheme.headlineMedium),
-          ],
-        ),
-      ),
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return FutureBuilder<bool>(
+      future: authProvider.checkLoginState(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        final isLoggedIn = snapshot.data ?? false;
+        return isLoggedIn ? MainPage() : LoginPage();
+      },
     );
   }
 }

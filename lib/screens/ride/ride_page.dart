@@ -22,12 +22,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
-  String? _qrCode;
   bool _isToggleLoading = false;
-  String _errorMessage = '';
-  String _departureTime = '';
-  String _routeName = '';
-  String _codeType = '';
 
   bool _isGoingToYanyuan = true;
 
@@ -35,8 +30,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   int _selectedBusIndex = -1;
 
   // 添加预约相关变量
-  String? _appointmentId;
-  String? _hallAppointmentDataId;
 
   // 添加 PageController 属性
   late PageController _pageController;
@@ -91,9 +84,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       });
       await _selectBus(0); // 选择一个可用的班车
     } else {
-      setState(() {
-        _errorMessage = '无车可坐';
-      });
+      setState(() {});
     }
 
     // 数据加载完成，更新加载状态
@@ -210,7 +201,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     setState(() {
       _selectedBusIndex = index;
-      _errorMessage = '';
     });
 
     final bus = _nearbyBuses[index];
