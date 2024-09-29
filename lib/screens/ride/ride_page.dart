@@ -550,6 +550,27 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
+  // 新增方法，用于全屏显示二维码
+  void _showFullScreenQRCode(String qrCode) {
+    showDialog(
+      context: context,
+      builder: (context) => GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Container(
+          color: Colors.black.withOpacity(0.8),
+          child: Center(
+            child: QrImageView(
+              data: qrCode,
+              version: QrVersions.auto,
+              size: 300.0,
+              backgroundColor: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -766,42 +787,51 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                         SizedBox(height: 20),
                         if (cardState['codeType'] == '乘车码' ||
                             cardState['codeType'] == '临时码')
-                          Container(
-                            width: 240,
-                            height: 240,
-                            decoration: BoxDecoration(
-                              color:
-                                  isDarkMode ? Colors.grey[400]! : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: borderColor, width: 2),
-                            ),
-                            child: Center(
-                              child: cardState['qrCode'] != null
-                                  ? QrImageView(
-                                      data: cardState['qrCode'],
-                                      version: 13,
-                                      size: 200.0,
-                                      padding: EdgeInsets.zero,
-                                      backgroundColor: isDarkMode
-                                          ? Colors.grey[400]!
-                                          : Colors.white,
-                                      eyeStyle: QrEyeStyle(
-                                        color: isDarkMode
-                                            ? Colors.black
-                                            : Colors.grey[700]!,
-                                        eyeShape: QrEyeShape.square,
-                                      ),
-                                      dataModuleStyle: QrDataModuleStyle(
-                                        color: isDarkMode
-                                            ? Colors.black
-                                            : Colors.grey[700]!,
-                                        dataModuleShape:
-                                            QrDataModuleShape.square,
-                                      ),
-                                      errorCorrectionLevel:
-                                          QrErrorCorrectLevel.M,
-                                    )
-                                  : Text('无效的二维码'),
+                          GestureDetector(
+                            onTap: () {
+                              if (cardState['qrCode'] != null) {
+                                _showFullScreenQRCode(cardState['qrCode']);
+                              }
+                            },
+                            child: Container(
+                              width: 240,
+                              height: 240,
+                              decoration: BoxDecoration(
+                                color: isDarkMode
+                                    ? Colors.grey[400]!
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border:
+                                    Border.all(color: borderColor, width: 2),
+                              ),
+                              child: Center(
+                                child: cardState['qrCode'] != null
+                                    ? QrImageView(
+                                        data: cardState['qrCode'],
+                                        version: 13,
+                                        size: 200.0,
+                                        padding: EdgeInsets.zero,
+                                        backgroundColor: isDarkMode
+                                            ? Colors.grey[400]!
+                                            : Colors.white,
+                                        eyeStyle: QrEyeStyle(
+                                          color: isDarkMode
+                                              ? Colors.black
+                                              : Colors.grey[700]!,
+                                          eyeShape: QrEyeShape.square,
+                                        ),
+                                        dataModuleStyle: QrDataModuleStyle(
+                                          color: isDarkMode
+                                              ? Colors.black
+                                              : Colors.grey[700]!,
+                                          dataModuleShape:
+                                              QrDataModuleShape.square,
+                                        ),
+                                        errorCorrectionLevel:
+                                            QrErrorCorrectLevel.M,
+                                      )
+                                    : Text('无效的二维码'),
+                              ),
                             ),
                           )
                         else if (cardState['codeType'] == '待预约')
