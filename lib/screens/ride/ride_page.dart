@@ -590,79 +590,88 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(height: 16), // 顶部间距
-              if (_showTip == true)
-                Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                  child: ElevatedButton(
-                    onPressed: _showTipDialog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.secondaryContainer,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.info_outline,
-                            color: Theme.of(context).colorScheme.primary),
-                        SizedBox(width: 8),
-                        Text(
-                          '查看乘车提示',
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).textTheme.titleMedium?.color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  kToolbarHeight,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center, // 添加此行以垂直居中内容
+              children: [
+                if (_showTip == true)
+                  Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                    child: ElevatedButton(
+                      onPressed: _showTipDialog,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.secondaryContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              SizedBox(
-                height: 600,
-                child: _nearbyBuses.isEmpty
-                    ? Center(child: Text('无车可坐'))
-                    : PageView.builder(
-                        controller: _pageController,
-                        itemCount: _nearbyBuses.length,
-                        onPageChanged: (index) {
-                          _selectBus(index);
-                        },
-                        itemBuilder: (context, index) {
-                          return _buildCard(index);
-                        },
                       ),
-              ),
-              SizedBox(height: 16),
-              // 底部指示槽
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    _nearbyBuses.length,
-                    (index) => Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      width: 8.0,
-                      height: 8.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _selectedBusIndex == index
-                            ? primaryColor
-                            : secondaryColor.withOpacity(0.3),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.info_outline,
+                              color: Theme.of(context).colorScheme.primary),
+                          SizedBox(width: 8),
+                          Text(
+                            '查看乘车提示',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.color,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                SizedBox(
+                  height: 600,
+                  child: _nearbyBuses.isEmpty
+                      ? Center(child: Text('无车可坐'))
+                      : PageView.builder(
+                          controller: _pageController,
+                          itemCount: _nearbyBuses.length,
+                          onPageChanged: (index) {
+                            _selectBus(index);
+                          },
+                          itemBuilder: (context, index) {
+                            return _buildCard(index);
+                          },
+                        ),
                 ),
-              ),
-            ],
+                SizedBox(height: 16),
+                // 底部指示槽
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      _nearbyBuses.length,
+                      (index) => Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                        width: 8.0,
+                        height: 8.0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _selectedBusIndex == index
+                              ? primaryColor
+                              : secondaryColor.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

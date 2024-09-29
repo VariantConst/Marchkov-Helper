@@ -44,6 +44,7 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'Marchkov Helper',
+          debugShowCheckedModeBanner: false, // 添加这一行
           theme: ThemeData(
             primarySwatch: Colors.blue,
             brightness: Brightness.light,
