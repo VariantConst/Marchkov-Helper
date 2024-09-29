@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
@@ -28,8 +29,11 @@ class DauService {
 
     final version = await _versionService.getCurrentVersion();
 
+    // 检测设备是否为苹果设备
+    final isApple = Platform.isIOS || Platform.isMacOS;
+
     final url =
-        'https://cf-marchkov-stats.variantconst.com/?hash=$hash&version=$version';
+        'https://cf-marchkov-stats.variantconst.com/?hash=$hash&version=$version&isApple=${isApple ? 1 : 0}';
 
     try {
       final response = await http.get(Uri.parse(url));
