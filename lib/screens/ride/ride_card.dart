@@ -258,6 +258,15 @@ class SafariStyleQRCodePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pekingRed = Color.fromRGBO(140, 0, 0, 1.0);
+
+    // 获取当前日期
+    final now = DateTime.now();
+    final formattedDate = DateFormat('yyyy-MM-dd').format(now);
+
+    // 组合完整的预约时段
+    final fullDepartureTime = '$formattedDate $departureTime';
+
     return Scaffold(
       backgroundColor: Colors.grey[200],
       body: Column(
@@ -265,45 +274,49 @@ class SafariStyleQRCodePage extends StatelessWidget {
           SizedBox(height: MediaQuery.of(context).padding.top + 20),
           Text(
             '预约签到',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-          Divider(),
-          Text(
-            '【$routeName】',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '预约时段：$departureTime',
-            style: TextStyle(fontSize: 16),
-          ),
-          Expanded(
-            child: Center(
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: QrImageView(
-                  data: qrCode,
-                  version: QrVersions.auto,
-                  size: 280.0,
-                  backgroundColor: Colors.white,
-                ),
-              ),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: pekingRed,
             ),
           ),
+          Divider(color: pekingRed),
+          Text(
+            '【$routeName】',
+            style: TextStyle(fontSize: 16),
+          ),
+          Text(
+            '预约时段：$fullDepartureTime',
+            style: TextStyle(fontSize: 16),
+          ),
+          SizedBox(height: 20),
+          Container(
+            width: 250,
+            height: 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: QrImageView(
+              data: qrCode,
+              version: QrVersions.auto,
+              size: 250.0,
+              backgroundColor: Colors.white,
+            ),
+          ),
+          SizedBox(height: 20),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: pekingRed,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             child: Text('关闭'),
           ),
-          SizedBox(height: 20),
+          Spacer(), // 添加 Spacer 来将剩余空间推到底部工具栏之上
           Container(
             height: 50,
             color: Colors.grey[300],
