@@ -268,7 +268,7 @@ class SafariStyleQRCodePage extends StatelessWidget {
     final fullDepartureTime = '$formattedDate $departureTime';
 
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Colors.grey[100], // 更淡的灰色背景
       body: Column(
         children: [
           SizedBox(height: MediaQuery.of(context).padding.top + 20),
@@ -305,30 +305,99 @@ class SafariStyleQRCodePage extends StatelessWidget {
             ),
           ),
           SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: pekingRed,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+          SizedBox(
+            width: 100, // 增加按钮宽度
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: pekingRed,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 8), // 增加垂直内边距
+              ),
+              child: Text(
+                '关 闭',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold, // 加粗字体
+                  fontSize: 14, // 稍微增加字体大小
+                ),
               ),
             ),
-            child: Text('关闭'),
           ),
           Spacer(), // 添加 Spacer 来将剩余空间推到底部工具栏之上
+          _buildSafariBottomBar(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSafariBottomBar(BuildContext context) {
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 239, 239, 239),
+        border: Border(
+          top: BorderSide(
+            color: Colors.grey[400]!, // 灰色边框
+            width: 0.5, // 边框宽度
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
           Container(
-            height: 50,
-            color: Colors.grey[300],
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Icon(Icons.arrow_back_ios, color: Colors.blue),
-                Icon(Icons.arrow_forward_ios, color: Colors.blue),
-                Icon(Icons.share, color: Colors.blue),
-                Icon(Icons.book, color: Colors.blue),
+            margin: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            width: MediaQuery.of(context).size.width - 40,
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
               ],
             ),
+            child: Row(
+              children: [
+                Icon(Icons.extension, size: 18, color: Colors.grey[600]),
+                SizedBox(width: 12),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(color: Colors.black87, fontSize: 18),
+                      children: [
+                        WidgetSpan(
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(Icons.lock,
+                                size: 18, color: Colors.grey[600]),
+                          ),
+                        ),
+                        TextSpan(text: 'wproc.pku.edu.cn'),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Icon(Icons.refresh, size: 22, color: Colors.black),
+              ],
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Icon(Icons.arrow_back_ios, color: Colors.blue),
+              Icon(Icons.arrow_forward_ios, color: Colors.blue),
+              Icon(Icons.share, color: Colors.blue),
+              Icon(Icons.book, color: Colors.blue),
+              Icon(Icons.web_stories, color: Colors.blue),
+            ],
           ),
         ],
       ),
