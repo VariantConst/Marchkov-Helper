@@ -231,21 +231,93 @@ class RideCard extends StatelessWidget {
   }
 
   void _showFullScreenQRCode(BuildContext context, String qrCode) {
-    showDialog(
-      context: context,
-      builder: (context) => GestureDetector(
-        onTap: () => Navigator.of(context).pop(),
-        child: Container(
-          color: Colors.black.withOpacity(0.8),
-          child: Center(
-            child: QrImageView(
-              data: qrCode,
-              version: QrVersions.auto,
-              size: 300.0,
-              backgroundColor: Colors.white,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SafariStyleQRCodePage(
+          qrCode: qrCode,
+          routeName: cardState['routeName'],
+          departureTime: cardState['departureTime'],
+        ),
+      ),
+    );
+  }
+}
+
+class SafariStyleQRCodePage extends StatelessWidget {
+  final String qrCode;
+  final String routeName;
+  final String departureTime;
+
+  const SafariStyleQRCodePage({
+    super.key,
+    required this.qrCode,
+    required this.routeName,
+    required this.departureTime,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[200],
+      body: Column(
+        children: [
+          SizedBox(height: MediaQuery.of(context).padding.top + 20),
+          Text(
+            '预约签到',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          Divider(),
+          Text(
+            '【$routeName】',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '预约时段：$departureTime',
+            style: TextStyle(fontSize: 16),
+          ),
+          Expanded(
+            child: Center(
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: QrImageView(
+                  data: qrCode,
+                  version: QrVersions.auto,
+                  size: 280.0,
+                  backgroundColor: Colors.white,
+                ),
+              ),
             ),
           ),
-        ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('关闭'),
+          ),
+          SizedBox(height: 20),
+          Container(
+            height: 50,
+            color: Colors.grey[300],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Icon(Icons.arrow_back_ios, color: Colors.blue),
+                Icon(Icons.arrow_forward_ios, color: Colors.blue),
+                Icon(Icons.share, color: Colors.blue),
+                Icon(Icons.book, color: Colors.blue),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
