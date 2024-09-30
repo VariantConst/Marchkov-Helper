@@ -36,8 +36,6 @@
 	<string>我们需要访问您的位置信息以提供准确的班车服务。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问您的相册以选择图片。</string>
-	<key>NSVibrationUsageDescription</key>
-	<string>需要访问您的振动功能。</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

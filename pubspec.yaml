@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
   table_calendar: ^3.0.0
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.0.0
   http: ^1.2.2
@@ -53,9 +50,8 @@ dependencies:
   fl_chart: ^0.69.0
   url_launcher: ^6.1.5 # 新增
   package_info_plus: ^8.0.2 # 用于获取应用程序信息
-  emoji_picker_flutter: ^3.0.0
+  emoji_picker_flutter: ^3.1.0
   crypto: ^3.0.3
-  vibration: ^2.0.0
   screen_brightness: ^1.0.1
 
 dev_dependencies:
