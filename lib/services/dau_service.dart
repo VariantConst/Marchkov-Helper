@@ -40,6 +40,7 @@ class DauService {
       if (response.statusCode == 200) {
         // 发送成功，记录今天的日期
         await prefs.setString('lastDauSentDate', todayString);
+        print('发送 DAU 请求成功，发送内容为: $url');
       } else {
         print('发送 DAU 请求失败，状态码: ${response.statusCode}');
       }
