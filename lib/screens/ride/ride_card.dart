@@ -283,11 +283,11 @@ class SafariStyleQRCodePage extends StatelessWidget {
           Divider(color: pekingRed),
           Text(
             '【$routeName】',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16, color: Colors.black),
           ),
           Text(
             '预约时段：$fullDepartureTime',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16, color: Colors.black),
           ),
           SizedBox(height: 20),
           Container(

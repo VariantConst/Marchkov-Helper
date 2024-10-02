@@ -485,13 +485,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('二维码提示'),
+        title: Text('二维码可以点击！'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('二维码可以点击！'),
-            Text('点击二维码可以切换到仿官方页面。'),
+            Text('1. 点击二维码可以切换到仿官方页面。'),
+            Text('2. 主页面和仿官方页面的二维码都是有效的。'),
           ],
         ),
         actions: [
