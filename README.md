@@ -26,4 +26,5 @@
 
 点击二维码呼出仿真官方签到页面
 
-<img src="https://github.com/user-attachments/assets/2ad1eb8f-53dc-4bb3-aa77-5b5edeff5327" width="30%" />
+
+<img src="https://github.com/user-attachments/assets/203e26dc-decd-41cb-b3f3-bf7070f9a2e6" width="30%" />
