@@ -112,6 +112,7 @@ class _ReservationPageState extends State<ReservationPage> {
     final prefs = await SharedPreferences.getInstance();
     final busDataString = jsonEncode(_busList);
     final todayString = DateTime.now().toIso8601String().split('T')[0];
+    print('busDataString, $busDataString');
     await prefs.setString('cachedBusData', busDataString);
     await prefs.setString('cachedDate', todayString);
   }

@@ -3,77 +3,104 @@ import '../models/bus_route.dart';
 import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
 import 'package:intl/intl.dart';
+import '../services/auth_service.dart';
 
 class ReservationService {
-  final AuthProvider _authProvider;
+  final AuthService _authService;
 
-  ReservationService(this._authProvider);
+  ReservationService(AuthProvider authProvider) : _authService = AuthService();
 
-  Future<bool> login(String username, String password) async {
-    try {
-      await _authProvider.login(username, password);
-      return true;
-    } catch (e) {
-      print('登录失败: $e');
-      return false;
+  // 验证登录状态的私有方法
+  Future<void> _ensureLoggedIn() async {
+    print('开始验证登录状态...');
+    String currentCookies = await _authService.cookies;
+    print('当前的 cookies: $currentCookies');
+
+    bool isValid = await _authService.validateAndRefreshLoginStatus();
+    print('Cookie 验证结果: ${isValid ? "有效" : "无效"}');
+
+    if (isValid) {
+      print('登录状态有效，无需重新登录');
+    } else {
+      print('登录状态无效，尝试重新登录');
+      throw Exception('登录状态无效，请重新登录');
     }
+  }
+
+  // 修改现有的 http 请求方法，添加登录状态验证
+  Future<T> _authenticatedRequest<T>(
+      Future<T> Function() requestFunction) async {
+    print('开始执行经过身份验证的请求...');
+    await _ensureLoggedIn();
+    print('登录状态验证完成，开始执行实际请求');
+    T result = await requestFunction();
+    print('请求执行完成');
+    return result;
   }
 
   Future<List<BusRoute>> fetchBusRoutes(int hallId, String time) async {
-    // 确保已登录
-    if (!_authProvider.isLoggedIn) {
-      throw Exception('未登录,请先登录');
-    }
+    return _authenticatedRequest(() async {
+      print('开始获取班车路线...');
+      final uri =
+          Uri.parse('https://wproc.pku.edu.cn/site/reservation/list-page')
+              .replace(
+        queryParameters: {
+          'hall_id': hallId.toString(),
+          'time': time,
+          'p': '1',
+          'page_size': '0',
+        },
+      );
 
-    final uri = Uri.parse('https://wproc.pku.edu.cn/site/reservation/list-page')
-        .replace(
-      queryParameters: {
-        'hall_id': hallId.toString(),
-        'time': time,
-        'p': '1',
-        'page_size': '0',
-      },
-    );
+      final response = await http.get(
+        uri,
+        headers: {
+          'Cookie': await _authService.cookies,
+        },
+      );
 
-    final response = await http.get(
-      uri,
-      headers: {
-        'Cookie': _authProvider.cookies,
-      },
-    );
+      print('班车路线请求状态码: ${response.statusCode}');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['e'] == 0) {
-        List<dynamic> list = data['d']['list'];
-        return list
-            .map((json) => BusRoute(id: json['id'], name: json['name']))
-            .toList();
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['e'] == 0) {
+          List<dynamic> list = data['d']['list'];
+          print('成功获取 ${list.length} 条班车路线');
+          return list
+              .map((json) => BusRoute(id: json['id'], name: json['name']))
+              .toList();
+        } else {
+          throw Exception(data['m']);
+        }
       } else {
-        throw Exception(data['m']);
+        throw Exception('请求失败，状态码: ${response.statusCode}');
       }
-    } else {
-      throw Exception('请求失败，状态码: ${response.statusCode}');
-    }
+    });
   }
 
   Future<String> fetchReservationData(String date) async {
-    final cookies = _authProvider.cookies;
-    final url = Uri.parse(
-        'https://wproc.pku.edu.cn/site/reservation/list-page?hall_id=1&time=$date&p=1&page_size=0');
+    return _authenticatedRequest(() async {
+      print('开始获取预约数据，日期: $date');
+      final cookies = await _authService.cookies;
+      final url = Uri.parse(
+          'https://wproc.pku.edu.cn/site/reservation/list-page?hall_id=1&time=$date&p=1&page_size=0');
 
-    final response = await http.get(
-      url,
-      headers: {
-        'Cookie': cookies,
-      },
-    );
+      final response = await http.get(
+        url,
+        headers: {
+          'Cookie': cookies,
+        },
+      );
 
-    if (response.statusCode == 200) {
-      return response.body;
-    } else {
-      throw Exception('请求失败: ${response.statusCode}');
-    }
+      print('预约数据请求状态码: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        print('成功获取预约数据');
+        return response.body;
+      } else {
+        throw Exception('请求失败: ${response.statusCode}');
+      }
+    });
   }
 
   Future<List<dynamic>> getAllBuses(List<String> dateStrings) async {
@@ -151,37 +178,35 @@ class ReservationService {
 
   Future<Map<String, dynamic>> makeReservation(
       String resourceId, String date, String period) async {
-    if (!_authProvider.isLoggedIn) {
-      throw Exception('未登录，请先登录');
-    }
+    return _authenticatedRequest(() async {
+      final uri = Uri.parse('https://wproc.pku.edu.cn/site/reservation/launch');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Cookie': await _authService.cookies,
+        },
+        body: {
+          'resource_id': resourceId,
+          'data':
+              '[{"date": "$date", "period": $period, "sub_resource_id": 0}]',
+        },
+      );
 
-    final uri = Uri.parse('https://wproc.pku.edu.cn/site/reservation/launch');
-    final response = await http.post(
-      uri,
-      headers: {
-        'Cookie': _authProvider.cookies,
-      },
-      body: {
-        'resource_id': resourceId,
-        'data': '[{"date": "$date", "period": $period, "sub_resource_id": 0}]',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['m'] == '操作成功') {
-        // 确保返回正确的数据结构
-        return {
-          'id': data['d']['id'].toString(),
-          'hall_appointment_data_id':
-              data['d']['hall_appointment_data_id'].toString(),
-        };
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['m'] == '操作成功') {
+          return {
+            'id': data['d']['id'].toString(),
+            'hall_appointment_data_id':
+                data['d']['hall_appointment_data_id'].toString(),
+          };
+        } else {
+          throw Exception(data['m']);
+        }
       } else {
-        throw Exception(data['m']);
+        throw Exception('请求失败，状态码: ${response.statusCode}');
       }
-    } else {
-      throw Exception('请求失败，状态码: ${response.statusCode}');
-    }
+    });
   }
 
   // 添加获取用户预约列表的方法
@@ -193,7 +218,7 @@ class ReservationService {
     final response = await http.get(
       uri,
       headers: {
-        'Cookie': _authProvider.cookies,
+        'Cookie': await _authService.cookies,
       },
     );
 
@@ -220,7 +245,7 @@ class ReservationService {
       final response = await http.get(
         uri,
         headers: {
-          'Cookie': _authProvider.cookies,
+          'Cookie': await _authService.cookies,
         },
       );
 
@@ -248,7 +273,7 @@ class ReservationService {
     final response = await http.get(
       uri,
       headers: {
-        'Cookie': _authProvider.cookies,
+        'Cookie': await _authService.cookies,
       },
     );
 
@@ -266,16 +291,12 @@ class ReservationService {
 
   Future<void> cancelReservation(
       String appointmentId, String hallAppointmentDataId) async {
-    if (!_authProvider.isLoggedIn) {
-      throw Exception('未登录，请先登录');
-    }
-
     final uri = Uri.parse(
         'https://wproc.pku.edu.cn/site/reservation/single-time-cancel');
     final response = await http.post(
       uri,
       headers: {
-        'Cookie': _authProvider.cookies,
+        'Cookie': await _authService.cookies,
       },
       body: {
         'appointment_id': appointmentId,
@@ -307,7 +328,7 @@ class ReservationService {
     final response = await http.get(
       uri,
       headers: {
-        'Cookie': _authProvider.cookies,
+        'Cookie': await _authService.cookies,
       },
     );
 

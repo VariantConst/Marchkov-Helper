@@ -8,10 +8,6 @@ class ReservationRepository {
   ReservationRepository(AuthProvider authProvider)
       : _reservationService = ReservationService(authProvider);
 
-  Future<bool> login(String username, String password) {
-    return _reservationService.login(username, password);
-  }
-
   Future<List<BusRoute>> getBusRoutes(int hallId, String time) {
     return _reservationService.fetchBusRoutes(hallId, time);
   }

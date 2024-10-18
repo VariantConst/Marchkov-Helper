@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/bus_route.dart';
 import '../repositories/reservation_repository.dart';
 import '../providers/auth_provider.dart';
@@ -7,36 +7,28 @@ import '../models/reservation.dart';
 
 class ReservationProvider with ChangeNotifier {
   final ReservationRepository _reservationRepository;
+  // ignore: unused_field
+  final AuthProvider _authProvider;
   List<BusRoute> _busRoutes = [];
   bool _isLoading = false;
   String? _error;
+  bool _isLoadingReservations = false;
+  bool _isLoadingQRCode = false;
 
   List<Reservation> _currentReservations = [];
   String? _qrCode; // 保存二维码
 
-  bool _isLoadingReservations = false;
-  bool _isLoadingQRCode = false;
-
-  ReservationProvider(AuthProvider authProvider)
-      : _reservationRepository = ReservationRepository(authProvider);
+  ReservationProvider(this._authProvider)
+      : _reservationRepository = ReservationRepository(_authProvider);
 
   List<BusRoute> get busRoutes => _busRoutes;
   bool get isLoading => _isLoading;
   String? get error => _error;
-
-  List<Reservation> get currentReservations => _currentReservations;
-  String? get qrCode => _qrCode;
   bool get isLoadingReservations => _isLoadingReservations;
   bool get isLoadingQRCode => _isLoadingQRCode;
 
-  Future<void> login(String username, String password) async {
-    try {
-      await _reservationRepository.login(username, password);
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
+  List<Reservation> get currentReservations => _currentReservations;
+  String? get qrCode => _qrCode;
 
   Future<void> loadBusRoutes() async {
     _isLoading = true;
@@ -69,10 +61,9 @@ class ReservationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final reservationsData =
-          await _reservationRepository.fetchMyReservations();
+      final reservations = await _reservationRepository.fetchMyReservations();
       _currentReservations =
-          reservationsData.map((data) => Reservation.fromJson(data)).toList();
+          reservations.map((r) => Reservation.fromJson(r)).toList();
       _isLoadingReservations = false;
       notifyListeners();
     } catch (e) {
@@ -82,7 +73,7 @@ class ReservationProvider with ChangeNotifier {
     }
   }
 
-  // 获取二维
+  // 获取二维码
   Future<void> fetchQRCode(String id, String hallAppointmentDataId) async {
     _isLoadingQRCode = true;
     _error = null;

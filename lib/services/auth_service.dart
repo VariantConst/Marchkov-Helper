@@ -110,6 +110,12 @@ class AuthService extends ChangeNotifier {
 
         await _saveCredentials(username, password);
         notifyListeners();
+
+        // 登录成功后，验证并刷新登录状态
+        bool isValid = await validateAndRefreshLoginStatus();
+        if (!isValid) {
+          throw Exception('登录成功但无法验证登录状态');
+        }
       } else {
         throw Exception('登录失败: ${response.statusCode}');
       }
@@ -211,5 +217,65 @@ class AuthService extends ChangeNotifier {
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       },
     );
+  }
+
+  // 新增方法：验证并刷新登录状态
+  Future<bool> validateAndRefreshLoginStatus() async {
+    if (_cookieJar == null) {
+      await _initCookieJar();
+    }
+
+    // 打印当前的 cookie 内容
+    String currentCookies = await cookies;
+    print('当前的 cookies: $currentCookies');
+
+    // 首先尝试使用现有的 cookie 进行验证
+    bool isValid = await _validateExistingCookies();
+    print('Cookie 验证结果: ${isValid ? "有效" : "无效"}');
+
+    if (isValid) {
+      print('现有 cookie 有效，无需重新登录');
+      return true;
+    }
+
+    // 如果 cookie 无效，且有保存的凭据，尝试重新登录
+    if (_user != null && _password.isNotEmpty) {
+      print('现有 cookie 无效，尝试使用保存的凭据重新登录');
+      try {
+        await login(_user!.username, _password);
+        // 重新登录后，再次打印 cookie 内容
+        String newCookies = await cookies;
+        print('重新登录后的 cookies: $newCookies');
+        return true;
+      } catch (e) {
+        print('使用保存的凭据重新登录失败: $e');
+        return false;
+      }
+    }
+
+    print('无有效的 cookie 或登录凭据');
+    return false;
+  }
+
+  // 验证现有 cookie 是否有效
+  Future<bool> _validateExistingCookies() async {
+    try {
+      // 这里我们假设访问预约页面来验证 cookie 是否有效
+      final response =
+          await get(Uri.parse('https://wproc.pku.edu.cn/v2/reserve/'));
+
+      // 打印响应状态码和部分响应内容
+      print('验证请求响应状态码: ${response.statusCode}');
+      print('验证请求响应内容片段: ${response.body.substring(0, 100)}...'); // 只打印前100个字符
+
+      // 如果能成功访问预约页面，则认为 cookie 有效
+      bool isValid =
+          response.statusCode == 200 && !response.body.contains('login');
+      print('Cookie 验证结果: ${isValid ? "有效" : "无效"}');
+      return isValid;
+    } catch (e) {
+      print('验证现有 cookie 时出错: $e');
+      return false;
+    }
   }
 }

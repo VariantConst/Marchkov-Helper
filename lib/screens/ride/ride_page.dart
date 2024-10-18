@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/reservation_provider.dart';
 import '../../models/reservation.dart';
 import '../../services/reservation_service.dart';
+import '../../services/auth_service.dart'; // 新增导入
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../providers/auth_provider.dart';
@@ -23,6 +24,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
+  late Future<bool> _cookieValidationFuture;
+
   bool _isToggleLoading = false;
 
   bool _isGoingToYanyuan = true;
@@ -35,19 +38,22 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加 PageController 属性
   late PageController _pageController;
 
-  // 添加一个加载状态变量
+  // 添加一个加载状��变量
   bool _isLoading = true;
 
   // 添加新的属性
   bool? _showTip1;
   bool? _showTip2;
 
-  // 添加一个新的列���来存储每个卡片的状态
+  // 添加一个新的列来存储每个卡片的状态
   List<Map<String, dynamic>> _cardStates = [];
+
+  bool _showSlowLoadingTip = false;
 
   @override
   void initState() {
     super.initState();
+    _cookieValidationFuture = _validateCookies();
     _initialize();
     _loadTipPreference();
 
@@ -56,6 +62,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       initialPage: 0,
       viewportFraction: 0.9, // 调整视口Fraction，使卡片占据更大的宽度
     );
+    _startSlowLoadingTimer();
+  }
+
+  void _startSlowLoadingTimer() {
+    Future.delayed(Duration(milliseconds: 1500), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _showSlowLoadingTip = true;
+        });
+      }
+    });
   }
 
   @override
@@ -63,6 +80,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     // 释放 PageController 资源
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<bool> _validateCookies() async {
+    final authService = AuthService();
+    print('开始验证 cookies...');
+    bool isValid = await authService.validateAndRefreshLoginStatus();
+    print('Cookies 验证结果: ${isValid ? "有效" : "无效"}');
+    return isValid;
   }
 
   // 修改 _initialize 方法以并行获取所有班车的数据
@@ -88,7 +113,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       // 并行获取所有班车的二维码
       await Future.wait([
         for (int i = 0; i < _nearbyBuses.length; i++)
-          _fetchBusData(i), // 新增方法，用于获取每个班车的数据
+          _fetchBusData(i), // 新增方法，用于获取每个班车的���据
       ]);
     } else {
       setState(() {});
@@ -185,6 +210,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     // 尝试从缓存中读取数据
     final cachedBusDataString = prefs.getString('cachedBusData');
+    // print('cachedBusDataString: $cachedBusDataString');
     final cachedDate = prefs.getString('cachedDate');
 
     if (cachedBusDataString != null && cachedDate == todayString) {
@@ -286,7 +312,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       _selectedBusIndex = index;
     });
 
-    // 修改���下条件：基于 'codeType' 而不是 'errorMessage'
+    // 修改下条件：基于 'codeType' 而不是 'errorMessage'
     if (_cardStates[index]['codeType'] == '乘车码') {
       return; // 如果已经是乘车码，不需要重新获取数据
     }
@@ -593,6 +619,43 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
 
+    return FutureBuilder<bool>(
+      future: _cookieValidationFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting || _isLoading) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  if (_showSlowLoadingTip)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text(
+                        '加载缓慢，尝试关闭代理、连接校园网或退出登录重进',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        } else if (snapshot.hasError || snapshot.data == false) {
+          return Scaffold(
+            body: Center(
+              child: Text('登录状态验证失败，请重新登录'),
+            ),
+          );
+        } else {
+          return _buildMainContent();
+        }
+      },
+    );
+  }
+
+  Widget _buildMainContent() {
     if (_isLoading) {
       return Scaffold(
         body: Center(
