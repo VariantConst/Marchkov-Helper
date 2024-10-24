@@ -46,13 +46,15 @@ class MyApp extends StatelessWidget {
           title: 'Marchkov Helper',
           debugShowCheckedModeBanner: false, // 添加这一行
           theme: ThemeData(
-            primarySwatch: Colors.blue,
+            colorScheme: ColorScheme.fromSeed(seedColor: themeProvider.selectedColor, brightness: Brightness.light), 
             brightness: Brightness.light,
+            useMaterial3: true,
             // 添加更多的主题配置以适配夜间模式
           ),
           darkTheme: ThemeData(
-            primarySwatch: Colors.blue,
+            colorScheme: ColorScheme.fromSeed(seedColor: themeProvider.selectedColor, brightness: Brightness.dark), 
             brightness: Brightness.dark,
+            useMaterial3: true,
             // 添加更多的暗黑主题配置
           ),
           themeMode: themeProvider.themeMode,

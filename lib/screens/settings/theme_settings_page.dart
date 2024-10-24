@@ -20,9 +20,19 @@ class ThemeSettingsPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                _buildColorOption(context, themeProvider),
+                SizedBox(height: 5), // Spacing after color selection
+                Text(
+                  '主题颜色选择',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 6), // Increased spacing before theme options
                 _buildThemeOption(context, '浅色模式', 'assets/day_mode.svg',
                     ThemeMode.light, themeProvider),
-                SizedBox(height: 24),
+                SizedBox(height: 20),
                 _buildThemeOption(context, '深色模式', 'assets/night_mode.svg',
                     ThemeMode.dark, themeProvider),
                 SizedBox(height: 24),
@@ -33,6 +43,42 @@ class ThemeSettingsPage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildColorOption(BuildContext context, ThemeProvider themeProvider) {
+    final pekingRed = Color.fromRGBO(140, 0, 0, 1.0);
+    final colors = [
+      pekingRed,
+      Colors.purple,
+      Colors.green,
+      Colors.teal,
+      Colors.blue,
+      Colors.cyan,
+      Colors.yellow,
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: colors.map((color) {
+        return GestureDetector(
+          onTap: () {
+            themeProvider.setSelectedColor(color);
+          },
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: themeProvider.selectedColor == color ? Colors.black : Colors.transparent,
+                width: 1.6,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
