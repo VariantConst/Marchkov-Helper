@@ -17,7 +17,8 @@ class ThemeProvider with ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? themeModeString = prefs.getString('themeMode');
     if (themeModeString != null) {
-      _themeMode = ThemeMode.values.firstWhere((e) => e.toString() == themeModeString);
+      _themeMode =
+          ThemeMode.values.firstWhere((e) => e.toString() == themeModeString);
       notifyListeners();
     }
   }

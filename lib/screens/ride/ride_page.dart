@@ -38,7 +38,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加 PageController 属性
   late PageController _pageController;
 
-  // 添加一个加载状��变量
+  // 添加一个加载状态变量
   bool _isLoading = true;
 
   // 添加新的属性

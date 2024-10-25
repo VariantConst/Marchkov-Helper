@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import './username_field.dart';
 import './password_field.dart';
-// 删除未使用的导入
-// import './terms_checkbox.dart';
 import '../main/main_page.dart';
 import '../../widgets/error_dialog.dart';
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 
 class ThemeSettingsPage extends StatelessWidget {
   @override
@@ -10,37 +11,44 @@ class ThemeSettingsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('主题设置'),
-        elevation: 0,
+        title: Text(
+          '主题设置',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildColorOption(context, themeProvider),
-                SizedBox(height: 5), // Spacing after color selection
-                Text(
-                  '主题颜色选择',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '主题颜色',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    SizedBox(height: 16),
+                    _buildColorOption(context, themeProvider),
+                    SizedBox(height: 32),
+                    Text(
+                      '外观',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    SizedBox(height: 16),
+                    _buildThemeOptions(context, themeProvider),
+                  ],
                 ),
-                SizedBox(height: 6), // Increased spacing before theme options
-                _buildThemeOption(context, '浅色模式', 'assets/day_mode.svg',
-                    ThemeMode.light, themeProvider),
-                SizedBox(height: 20),
-                _buildThemeOption(context, '深色模式', 'assets/night_mode.svg',
-                    ThemeMode.dark, themeProvider),
-                SizedBox(height: 24),
-                _buildThemeOption(context, '跟随系统', 'assets/auto_mode.svg',
-                    ThemeMode.system, themeProvider),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -58,183 +66,185 @@ class ThemeSettingsPage extends StatelessWidget {
       Colors.yellow,
     ];
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: colors.map((color) {
-        return GestureDetector(
-          onTap: () {
-            themeProvider.setSelectedColor(color);
-          },
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: themeProvider.selectedColor == color ? Colors.black : Colors.transparent,
-                width: 1.6,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return Card(
+      elevation: 0,
+      color: Theme.of(context)
+          .colorScheme
+          .surfaceContainerHighest
+          .withOpacity(0.3),
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: colors.map((color) {
+            final isSelected = themeProvider.selectedColor == color;
+            return Stack(
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () {
+                      HapticFeedback.selectionClick(); // 添加震动反馈
+                      themeProvider.setSelectedColor(color);
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.4),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check,
+                                size: 16,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+                if (isSelected)
+                  Positioned.fill(
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
-  Widget _buildThemeOption(BuildContext context, String title, String svgPath,
+  Widget _buildThemeOptions(BuildContext context, ThemeProvider themeProvider) {
+    return Column(
+      children: [
+        _buildThemeOption(
+          context,
+          '浅色模式',
+          ThemeMode.light,
+          themeProvider,
+        ),
+        SizedBox(height: 16),
+        _buildThemeOption(
+          context,
+          '深色模式',
+          ThemeMode.dark,
+          themeProvider,
+        ),
+        SizedBox(height: 16),
+        _buildThemeOption(
+          context,
+          '跟随系统',
+          ThemeMode.system,
+          themeProvider,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildThemeOption(BuildContext context, String title,
       ThemeMode themeMode, ThemeProvider themeProvider) {
     final isSelected = themeProvider.themeMode == themeMode;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    Color textColor;
-    if (isSelected) {
-      textColor = isDarkMode ? Colors.white : Theme.of(context).primaryColor;
-    } else {
-      textColor = isDarkMode ? Colors.white70 : Colors.black87;
+    String svgAsset;
+    switch (themeMode) {
+      case ThemeMode.light:
+        svgAsset = 'assets/light_mode.svg';
+        break;
+      case ThemeMode.dark:
+        svgAsset = 'assets/dark_mode.svg';
+        break;
+      case ThemeMode.system:
+        svgAsset = 'assets/auto_mode.svg';
+        break;
     }
 
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      margin: EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            width: MediaQuery.of(context).size.width * 0.7,
-            height: MediaQuery.of(context).size.width * 0.7 * 9 / 16,
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: isSelected
-                      ? (isDarkMode
-                          ? Colors.white12
-                          : Theme.of(context).primaryColor.withOpacity(0.3))
-                      : Colors.grey.withOpacity(0.2),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => themeProvider.setThemeMode(themeMode),
-                  child: Stack(
-                    children: [
-                      ColorFiltered(
-                        colorFilter: ColorFilter.matrix(isSelected
-                            ? [
-                                1,
-                                0,
-                                0,
-                                0,
-                                0,
-                                0,
-                                1,
-                                0,
-                                0,
-                                0,
-                                0,
-                                0,
-                                1,
-                                0,
-                                0,
-                                0,
-                                0,
-                                0,
-                                1,
-                                0
-                              ]
-                            : [
-                                0.2126,
-                                0.7152,
-                                0.0722,
-                                0,
-                                0,
-                                0.2126,
-                                0.7152,
-                                0.0722,
-                                0,
-                                0,
-                                0.2126,
-                                0.7152,
-                                0.0722,
-                                0,
-                                0,
-                                0,
-                                0,
-                                0,
-                                1,
-                                0
-                              ]),
-                        child: SvgPicture.asset(
-                          svgPath,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
+    return Stack(
+      children: [
+        Card(
+          elevation: 0,
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withOpacity(0.3),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              HapticFeedback.selectionClick(); // 添加震动反馈
+              themeProvider.setThemeMode(themeMode);
+            },
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SvgPicture.asset(
+                      svgAsset,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.primary,
+                        BlendMode.srcIn,
                       ),
-                      if (isSelected)
-                        AnimatedContainer(
-                          duration: Duration(milliseconds: 300),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? Colors.white
-                                  : Theme.of(context).primaryColor,
-                              width: 3,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: AnimatedOpacity(
-                          duration: Duration(milliseconds: 300),
-                          opacity: isSelected ? 1.0 : 0.0,
-                          child: Container(
-                            padding: EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              color: isDarkMode
-                                  ? Colors.white
-                                  : Theme.of(context).primaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.check,
-                              color: isDarkMode
-                                  ? Theme.of(context).primaryColor
-                                  : Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  if (isSelected)
+                    Icon(
+                      Icons.check_circle,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isSelected)
+          Positioned.fill(
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
                 ),
               ),
             ),
           ),
-          SizedBox(height: 10),
-          AnimatedDefaultTextStyle(
-            duration: Duration(milliseconds: 300),
-            style: TextStyle(
-              fontSize: isSelected ? 18 : 16,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: textColor,
-            ),
-            child: Text(title),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
