@@ -7,6 +7,7 @@ import '../../services/user_service.dart';
 import 'theme_settings_page.dart';
 import '../visualization/visualization_page.dart';
 import 'about_page.dart';
+import 'ride_settings_page.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -207,6 +208,17 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                     ),
                     _buildSettingOption(
+                      title: '乘车设置',
+                      icon: Icons.directions_bus,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => RideSettingsPage()),
+                        );
+                      },
+                    ),
+                    _buildSettingOption(
                       title: '乘车历史',
                       icon: Icons.history,
                       onTap: () {
@@ -287,5 +299,6 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('showReservationTip'); // 添加此行以清除使用提示设置
     await prefs.remove('showRideTip'); // 添加此行以清除使用提示设置
     await prefs.remove('lastDauSentDate');
+    await prefs.remove('autoReservationEnabled');
   }
 }
