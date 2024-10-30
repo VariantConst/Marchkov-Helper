@@ -158,133 +158,205 @@ class _SettingsPageState extends State<SettingsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: theme.colorScheme.background,
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(top: 20),
-          child: Column(
-            children: [
-              SizedBox(height: 40),
-              GestureDetector(
-                onTap: _selectEmoji,
-                child: CircleAvatar(
-                  radius: 36,
-                  backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
-                  child: Text(
-                    _selectedEmoji,
-                    style: TextStyle(fontSize: 48),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                name,
-                style: theme.textTheme.titleLarge, // 修改：headline6 改为 titleLarge
-              ),
-              SizedBox(height: 8),
-              Text(
-                college,
-                style:
-                    theme.textTheme.titleMedium, // 修改：subtitle1 改为 titleMedium
-              ),
-              SizedBox(height: 8),
-              Text(
-                'ID: $studentId',
-                style: theme.textTheme.bodySmall, // 修改：caption 改为 bodySmall
-              ),
-              SizedBox(height: 16),
-              Expanded(
-                child: ListView(
-                  children: [
-                    _buildSettingOption(
-                      title: '主题设置',
-                      icon: Icons.palette,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ThemeSettingsPage()),
-                        );
-                      },
-                    ),
-                    _buildSettingOption(
-                      title: '乘车设置',
-                      icon: Icons.directions_bus,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => RideSettingsPage()),
-                        );
-                      },
-                    ),
-                    _buildSettingOption(
-                      title: '乘车历史',
-                      icon: Icons.history,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  VisualizationSettingsPage()),
-                        );
-                      },
-                    ),
-                    _buildSettingOption(
-                      title: '关于',
-                      icon: Icons.info,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => AboutPage()),
-                        );
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.logout),
-                        label: Text('退出登录'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme
-                              .secondary, // 修改：primary 改为 backgroundColor
-                          foregroundColor: theme.colorScheme
-                              .onSecondary, // 修改：onPrimary 改为 foregroundColor
+        child: ListView(
+          children: [
+            // 个人信息区域
+            Container(
+              padding: EdgeInsets.fromLTRB(24, 32, 24, 24),
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: _selectEmoji,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.primaryContainer,
+                      ),
+                      child: Center(
+                        child: Text(
+                          _selectedEmoji,
+                          style: TextStyle(fontSize: 40),
                         ),
-                        onPressed: () async {
-                          final navigator = Navigator.of(context);
-                          await _clearUserInfo();
-                          await authProvider.logout();
-                          if (!mounted) return;
-                          navigator.pushReplacement(
-                              MaterialPageRoute(builder: (_) => LoginPage()));
-                        },
                       ),
                     ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    name,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    college,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onBackground.withOpacity(0.8),
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'ID: $studentId',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onBackground.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 设置选项组
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, bottom: 8),
+                    child: Text(
+                      '应用设置',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildSettingOption(
+                          title: '主题设置',
+                          icon: Icons.palette_outlined,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => ThemeSettingsPage()),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56),
+                        _buildSettingOption(
+                          title: '乘车设置',
+                          icon: Icons.directions_bus_outlined,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => RideSettingsPage()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, bottom: 8),
+                    child: Text(
+                      '信息与帮助',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildSettingOption(
+                          title: '乘车历史',
+                          icon: Icons.history_outlined,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    VisualizationSettingsPage()),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56),
+                        _buildSettingOption(
+                          title: '关于',
+                          icon: Icons.info_outline,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => AboutPage()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 退出登录按钮
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: FilledButton.tonal(
+                onPressed: () async {
+                  final navigator = Navigator.of(context);
+                  await _clearUserInfo();
+                  await authProvider.logout();
+                  if (!mounted) return;
+                  navigator.pushReplacement(
+                      MaterialPageRoute(builder: (_) => LoginPage()));
+                },
+                style: FilledButton.styleFrom(
+                  minimumSize: Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout, size: 20),
+                    SizedBox(width: 8),
+                    Text('退出登录'),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  ListTile _buildSettingOption({
+  Widget _buildSettingOption({
     required String title,
     required IconData icon,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: theme.iconTheme.color),
+      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Icon(
+        icon,
+        color: theme.colorScheme.primary,
+        size: 24,
+      ),
       title: Text(
         title,
-        style: theme.textTheme.titleMedium, // 修改：subtitle1 改为 titleMedium
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
       ),
-      trailing: Icon(Icons.arrow_forward_ios, color: theme.iconTheme.color),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
       onTap: onTap,
     );
   }
