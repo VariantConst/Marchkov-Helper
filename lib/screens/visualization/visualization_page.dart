@@ -254,7 +254,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                     ),
                     _buildChartSection(
                       icon: Icons.pie_chart_outline,
-                      title: '已签到与已违约比例',
+                      title: '违约统计',
                       content: CheckedInReservedPieChart(rides: rides),
                     ),
                   ],

@@ -86,7 +86,7 @@ class ThemeSettingsPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     onTap: () {
                       HapticFeedback.selectionClick(); // 添加震动反馈
-                      themeProvider.setSelectedColor(color);
+                      themeProvider.setSelectedColor(color, context);
                     },
                     child: Padding(
                       padding: EdgeInsets.all(4),
@@ -191,8 +191,8 @@ class ThemeSettingsPage extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              HapticFeedback.selectionClick(); // 添加震动反馈
-              themeProvider.setThemeMode(themeMode);
+              HapticFeedback.selectionClick();
+              themeProvider.setThemeMode(themeMode, context);
             },
             child: Padding(
               padding: EdgeInsets.all(16.0),

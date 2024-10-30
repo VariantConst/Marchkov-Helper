@@ -48,51 +48,43 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
-        // 创建主题以获取正确的背景颜色
-        final currentTheme = isDarkMode
-            ? ThemeData(
-                colorScheme: ColorScheme.fromSeed(
-                    seedColor: themeProvider.selectedColor,
-                    brightness: Brightness.dark),
-                brightness: Brightness.dark,
-                useMaterial3: true,
-              )
-            : ThemeData(
-                colorScheme: ColorScheme.fromSeed(
-                    seedColor: themeProvider.selectedColor,
-                    brightness: Brightness.light),
-                brightness: Brightness.light,
-                useMaterial3: true,
-              );
+        // 创建主题
+        final lightTheme = ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: themeProvider.selectedColor,
+            brightness: Brightness.light,
+          ),
+          brightness: Brightness.light,
+          useMaterial3: true,
+        );
 
-        // 使用主题的背景颜色
-        final backgroundColor = currentTheme.colorScheme.surface;
+        final darkTheme = ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: themeProvider.selectedColor,
+            brightness: Brightness.dark,
+          ),
+          brightness: Brightness.dark,
+          useMaterial3: true,
+        );
 
+        // 获取当前主题
+        final currentTheme = isDarkMode ? darkTheme : lightTheme;
+
+        // 使用当前主题的 scaffoldBackgroundColor 来设置系统导航栏颜色
         SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-          systemNavigationBarColor: backgroundColor,
+          systemNavigationBarColor: currentTheme.scaffoldBackgroundColor,
           systemNavigationBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
               isDarkMode ? Brightness.light : Brightness.dark,
         ));
 
         return MaterialApp(
           title: 'Marchkov Helper',
-          debugShowCheckedModeBanner: false, // 添加这一行
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-                seedColor: themeProvider.selectedColor,
-                brightness: Brightness.light),
-            brightness: Brightness.light,
-            useMaterial3: true,
-            // 添加更多的主题配置以适配夜间模式
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-                seedColor: themeProvider.selectedColor,
-                brightness: Brightness.dark),
-            brightness: Brightness.dark,
-            useMaterial3: true,
-            // 添加更多的暗黑主题配置
-          ),
+          debugShowCheckedModeBanner: false,
+          theme: lightTheme,
+          darkTheme: darkTheme,
           themeMode: themeProvider.themeMode,
           home: AuthWrapper(),
           builder: (context, child) {
