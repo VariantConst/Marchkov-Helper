@@ -7,6 +7,7 @@ import 'providers/ride_history_provider.dart'; // 新增
 import 'providers/brightness_provider.dart';
 import 'screens/login/login_page.dart';
 import 'screens/main/main_page.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(
@@ -45,6 +46,34 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
+        final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+
+        // 创建主题以获取正确的背景颜色
+        final currentTheme = isDarkMode
+            ? ThemeData(
+                colorScheme: ColorScheme.fromSeed(
+                    seedColor: themeProvider.selectedColor,
+                    brightness: Brightness.dark),
+                brightness: Brightness.dark,
+                useMaterial3: true,
+              )
+            : ThemeData(
+                colorScheme: ColorScheme.fromSeed(
+                    seedColor: themeProvider.selectedColor,
+                    brightness: Brightness.light),
+                brightness: Brightness.light,
+                useMaterial3: true,
+              );
+
+        // 使用主题的背景颜色
+        final backgroundColor = currentTheme.colorScheme.background;
+
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+          systemNavigationBarColor: backgroundColor,
+          systemNavigationBarIconBrightness:
+              isDarkMode ? Brightness.light : Brightness.dark,
+        ));
+
         return MaterialApp(
           title: 'Marchkov Helper',
           debugShowCheckedModeBanner: false, // 添加这一行
