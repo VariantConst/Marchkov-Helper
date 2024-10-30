@@ -104,6 +104,8 @@ class RideCalendarCardState extends State<RideCalendarCard> {
                 Icons.chevron_right,
                 color: theme.colorScheme.primary,
               ),
+              titleCentered: true,
+              headerPadding: EdgeInsets.symmetric(horizontal: 16.0),
             ),
             daysOfWeekStyle: DaysOfWeekStyle(
               weekdayStyle: TextStyle(
@@ -240,16 +242,18 @@ class RideCalendarCardState extends State<RideCalendarCard> {
     }
 
     return ListView.separated(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 8,
+      ),
       itemCount: selectedEvents.length,
-      separatorBuilder: (context, index) => SizedBox(height: 12),
+      separatorBuilder: (context, index) => SizedBox(height: 8),
       itemBuilder: (context, index) {
         RideInfo ride = selectedEvents[index];
-        String direction = ride.resourceName.contains('燕园') ? '去燕园' : '去昌平';
-
-        // 修改状态判断逻辑
         String status = ride.statusName;
-        bool isViolation = status == '已预约'; // 将"已预约"视为违约
+        bool isViolation = status == '已预约';
         String statusText = isViolation ? '已违约' : '已签到';
 
         return Container(
@@ -257,112 +261,51 @@ class RideCalendarCardState extends State<RideCalendarCard> {
             borderRadius: BorderRadius.circular(12),
             color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
           ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 左侧状态指示条
-                Container(
-                  width: 4,
-                  margin: EdgeInsets.symmetric(vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isViolation
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 头部信息
-                        Row(
-                          children: [
-                            Icon(
-                              isViolation
-                                  ? Icons.error_outline
-                                  : Icons.directions_bus,
-                              size: 20,
-                              color: isViolation
-                                  ? theme.colorScheme.error
-                                  : theme.colorScheme.primary,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              direction,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            Spacer(),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isViolation
-                                    ? theme.colorScheme.errorContainer
-                                    : theme.colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                statusText, // 使用计算后的状态文本
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: isViolation
-                                      ? theme.colorScheme.onErrorContainer
-                                      : theme.colorScheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        // 时间和地点信息
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: 16,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                ride.appointmentTime,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              size: 16,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                ride.resourceName,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                // 第一行：时间和状态
+                Row(
+                  children: [
+                    Text(
+                      ride.appointmentTime,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
+                    Spacer(),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isViolation
+                            ? theme.colorScheme.errorContainer
+                            : theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: isViolation
+                              ? theme.colorScheme.onErrorContainer
+                              : theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                // 第二行：路线名
+                SizedBox(height: 4),
+                Text(
+                  ride.resourceName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

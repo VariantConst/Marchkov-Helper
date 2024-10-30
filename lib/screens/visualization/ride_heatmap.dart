@@ -351,7 +351,7 @@ class _RideHeatmapState extends State<RideHeatmap> {
     return LayoutBuilder(
       builder: (context, constraints) {
         // 计算每个砖块的大小
-        final availableWidth = constraints.maxWidth - 88;
+        final availableWidth = constraints.maxWidth - 96;
 
         // 根据总天数动态计算每行显示的砖块数量
         int blocksPerRow;

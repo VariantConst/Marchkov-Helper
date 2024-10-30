@@ -35,7 +35,7 @@ class LoginPageState extends State<LoginPage> {
           title: Text('用户须知'),
           content: SingleChildScrollView(
             child: Text(
-              '我们将采集以SHA256加密后的用户名、版本号及设备类型，用于统计每日活跃用户数您的用户名和密码将始终安全保存在您的设备上，不会上传至服务器。',
+              '我们将采集以SHA256加密后的用户名、版本号及设备类型，用于统计每日活跃用户数。您的用户名和密码将始终安全保存在您的设备上，不会上传至服务器。',
             ),
           ),
           actions: <Widget>[
@@ -58,14 +58,14 @@ class LoginPageState extends State<LoginPage> {
       body: Center(
         child: SingleChildScrollView(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 400), // 添加最大宽度约束
+            constraints: BoxConstraints(maxWidth: 400),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center, // 垂直居中
-                  crossAxisAlignment: CrossAxisAlignment.stretch, // 水平拉伸
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       'Marchkov Helper',
@@ -167,7 +167,6 @@ class AnimatedTermsCheckbox extends StatelessWidget {
   final VoidCallback onTermsTap;
 
   const AnimatedTermsCheckbox({
-    super.key, // 修改这里
     required this.value,
     required this.onChanged,
     required this.onTermsTap,

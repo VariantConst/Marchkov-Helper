@@ -388,6 +388,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('selectedEmoji');
     await prefs.remove('cachedRideHistory');
     await prefs.remove('lastDauSentDate');
+    await prefs.remove('selected_time_range');
     // await prefs.remove('autoReservationEnabled');
     // await prefs.remove('safariStyleEnabled');
     await prefs.remove('isBrightnessEnhanced');

@@ -4,6 +4,7 @@ import '../ride/ride_page.dart';
 import '../settings/settings_page.dart';
 import '../reservation/reservation_page.dart';
 import 'package:flutter/services.dart'; // 新增导入
+import 'package:shared_preferences/shared_preferences.dart'; // 新增
 
 class MainPage extends StatefulWidget {
   @override
@@ -12,6 +13,26 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSelectedIndex();
+  }
+
+  // 加载保存的页面索引
+  Future<void> _loadSelectedIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedIndex = prefs.getInt('selectedMainPageIndex') ?? 0;
+    });
+  }
+
+  // 保存当前页面索引
+  Future<void> _saveSelectedIndex(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('selectedMainPageIndex', index);
+  }
 
   static List<Widget> _widgetOptions = <Widget>[
     RidePage(),
@@ -24,6 +45,7 @@ class MainPageState extends State<MainPage> {
     setState(() {
       _selectedIndex = index;
     });
+    _saveSelectedIndex(index); // 保存选中的索引
   }
 
   @override

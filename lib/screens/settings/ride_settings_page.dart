@@ -153,6 +153,11 @@ class RideSettingsPageState extends State<RideSettingsPage>
       _dayBrightness = 75.0;
       _nightBrightness = 50.0;
     });
+
+    // 由于默认是 auto 模式，需要展开亮度调节部分
+    if (_animationController != null) {
+      _animationController!.forward();
+    }
   }
 
   void _showResetConfirmationDialog() {
@@ -289,8 +294,6 @@ class RideSettingsPageState extends State<RideSettingsPage>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                backgroundColor: theme.colorScheme.errorContainer,
-                foregroundColor: theme.colorScheme.onErrorContainer,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,

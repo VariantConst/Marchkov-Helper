@@ -23,17 +23,22 @@ class _ReservationPageState extends State<ReservationPage> {
   List<dynamic> _busList = [];
   List<dynamic> _filteredBusList = [];
   bool _isLoading = true;
-  String _errorMessage = '';
   Map<String, dynamic> _reservedBuses = {};
   late DauService _dauService;
   bool? _showTip;
   Map<String, String> _buttonCooldowns = {};
+  bool _isBackgroundRefreshing = false;
+  bool _showRetryButton = false;
+  bool _isRetrying = false;
+  DateTime? _lastRetryTime;
+  String _loadingStep = '正在初始化...';
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _loadReservationData();
+    _startSlowLoadingTimer();
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final versionService = VersionService();
@@ -41,12 +46,34 @@ class _ReservationPageState extends State<ReservationPage> {
     _dauService.sendDailyActive();
   }
 
+  void _startSlowLoadingTimer() {
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _showRetryButton = true;
+          _loadingStep = '加载缓慢，可能是校园网连接较弱';
+        });
+      }
+    });
+  }
+
   Future<void> _loadReservationData() async {
+    if (mounted) {
+      setState(() {
+        _loadingStep = '正在检查缓存数据...';
+      });
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final cachedDate = prefs.getString('cachedDate');
     final todayString = DateTime.now().toIso8601String().split('T')[0];
 
     if (cachedDate == todayString) {
+      if (mounted) {
+        setState(() {
+          _loadingStep = '正在加载缓存数据...';
+        });
+      }
       final cachedBusDataString = prefs.getString('cachedBusData');
       if (cachedBusDataString != null) {
         final cachedBusData = jsonDecode(cachedBusDataString);
@@ -63,6 +90,7 @@ class _ReservationPageState extends State<ReservationPage> {
           _busList = cachedBusData;
           _filterBusList();
           _isLoading = false;
+          _isBackgroundRefreshing = true;
         });
       }
     } else {
@@ -93,6 +121,8 @@ class _ReservationPageState extends State<ReservationPage> {
         _updateReservedBusesWithRecentReservations(recentReservations);
         _filterBusList();
         _isLoading = false;
+        _isBackgroundRefreshing = false;
+        _loadingStep = '加载完成';
       });
 
       await _cacheBusData();
@@ -100,8 +130,10 @@ class _ReservationPageState extends State<ReservationPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = '加载失败: $e';
-        _isLoading = false;
+        _loadingStep = '加载失败: ${e.toString()}';
+        _isLoading = true;
+        _showRetryButton = true;
+        _isBackgroundRefreshing = false;
       });
     }
   }
@@ -271,6 +303,36 @@ class _ReservationPageState extends State<ReservationPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reservationService = ReservationService(authProvider);
 
+    // 设置加载状态
+    setState(() {
+      _isBackgroundRefreshing = true;
+    });
+
+    // 创建一个计时器，8秒后检查是否仍在加载
+    Timer? timeoutTimer;
+    timeoutTimer = Timer(Duration(seconds: 8), () {
+      if (mounted && _isBackgroundRefreshing) {
+        setState(() {
+          _isBackgroundRefreshing = false;
+          _showRetryButton = true;
+          _loadingStep = '加载缓慢，可能是校园网连接较弱';
+        });
+
+        // 显示一个 SnackBar 提示用户
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('加载缓慢，可能是校园网连接较弱'),
+            action: SnackBarAction(
+              label: '重试',
+              onPressed: _retryWithLogin,
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    });
+
     try {
       final today = DateTime.now();
       final dateStrings = [
@@ -282,18 +344,105 @@ class _ReservationPageState extends State<ReservationPage> {
       final recentReservations =
           await reservationService.fetchRecentReservations();
 
+      // 取消计时器
+      timeoutTimer.cancel();
+
       if (!mounted) return;
       setState(() {
         _busList = allBuses;
         _updateReservedBusesWithRecentReservations(recentReservations);
         _filterBusList();
+        _isBackgroundRefreshing = false;
+        _showRetryButton = false;
       });
 
       await _cacheBusData();
       await _cacheReservedBuses();
     } catch (e) {
-      print('刷新班车数据失败: $e');
-      // 可以选择在这里显示一个短暂的错误提示
+      // 取消计时器
+      timeoutTimer.cancel();
+
+      if (!mounted) return;
+      setState(() {
+        _isBackgroundRefreshing = false;
+        _showRetryButton = true;
+      });
+
+      // 显示错误提示
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('加载失败: ${e.toString()}'),
+          action: SnackBarAction(
+            label: '重试',
+            onPressed: _retryWithLogin,
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _retryWithLogin() async {
+    final now = DateTime.now();
+    if (_lastRetryTime != null &&
+        now.difference(_lastRetryTime!) < Duration(seconds: 3)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('请稍后再试'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    _lastRetryTime = now;
+
+    if (_isRetrying) return;
+
+    setState(() {
+      _isRetrying = true;
+      _loadingStep = '正在刷新登录状态...';
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUsername = prefs.getString('username');
+      final savedPassword = prefs.getString('password');
+
+      if (savedUsername != null && savedPassword != null) {
+        if (!mounted) return;
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await authProvider.login(savedUsername, savedPassword);
+
+        setState(() {
+          _isLoading = true;
+          _showRetryButton = false;
+          _loadingStep = '正在重新加载数据...';
+        });
+
+        await _loadReservationData();
+      } else {
+        throw Exception('未找到登录凭据，请重新登录');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingStep = '重试失败: ${e.toString()}';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('重试失败: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRetrying = false;
+        });
+      }
     }
   }
 
@@ -375,43 +524,47 @@ class _ReservationPageState extends State<ReservationPage> {
               color: theme.colorScheme.primary,
               child: _isLoading
                   ? Center(
-                      child: CircularProgressIndicator(
-                        color: theme.colorScheme.primary,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_isRetrying)
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            _loadingStep,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (_showRetryButton && !_isRetrying) ...[
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _retryWithLogin,
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: Size(120, 36),
+                              ),
+                              child: Text('重试'),
+                            ),
+                          ],
+                        ],
                       ),
                     )
-                  : _errorMessage.isNotEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                size: 48,
-                                color: theme.colorScheme.error,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                _errorMessage,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.error,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 24),
-                              FilledButton.tonal(
-                                onPressed: _refreshBusData,
-                                child: Text('重试'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : BusList(
-                          filteredBusList: _filteredBusList,
-                          onBusCardTap: _onBusCardTap,
-                          showBusDetails: _showBusDetails,
-                          reservedBuses: _reservedBuses,
-                          buttonCooldowns: _buttonCooldowns,
-                        ),
+                  : BusList(
+                      filteredBusList: _filteredBusList,
+                      onBusCardTap: _onBusCardTap,
+                      showBusDetails: _showBusDetails,
+                      reservedBuses: _reservedBuses,
+                      buttonCooldowns: _buttonCooldowns,
+                      isRefreshing: _isBackgroundRefreshing,
+                    ),
             ),
           ),
         ],

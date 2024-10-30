@@ -7,8 +7,7 @@ import 'departure_time_bar_chart.dart';
 import 'check_in_time_histogram.dart';
 import 'checked_in_reserved_pie_chart.dart';
 import 'ride_heatmap.dart';
-
-enum TimeRange { threeMonths, sixMonths, oneYear, all }
+import '../../providers/visualization_settings_provider.dart';
 
 class VisualizationSettingsPage extends StatefulWidget {
   @override
@@ -18,7 +17,6 @@ class VisualizationSettingsPage extends StatefulWidget {
 
 class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
     with SingleTickerProviderStateMixin {
-  TimeRange _selectedTimeRange = TimeRange.all;
   late PageController _pageController;
   int _currentPage = 0;
 
@@ -67,12 +65,12 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
           'shortLabel': '3个月',
         },
         TimeRange.sixMonths: {
-          'icon': Icons.calendar_month,
+          'icon': Icons.date_range_outlined,
           'label': '过去半年',
           'shortLabel': '半年',
         },
         TimeRange.oneYear: {
-          'icon': Icons.calendar_today_outlined,
+          'icon': Icons.calendar_month,
           'label': '过去一年',
           'shortLabel': '一年',
         },
@@ -84,10 +82,12 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
       };
 
   List<RideInfo> _filterRides(List<RideInfo> rides) {
+    final selectedTimeRange =
+        Provider.of<VisualizationSettingsProvider>(context).selectedTimeRange;
     final now = DateTime.now();
     late DateTime startDate;
 
-    switch (_selectedTimeRange) {
+    switch (selectedTimeRange) {
       case TimeRange.threeMonths:
         startDate = now.subtract(Duration(days: 90));
         break;
@@ -175,40 +175,45 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
         actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _toggleFilter,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  height: 36,
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        timeRangeInfo[_selectedTimeRange]!['shortLabel'],
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.w500,
+          Center(
+            child: Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _toggleFilter,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    height: 36,
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color:
+                          theme.colorScheme.primaryContainer.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          timeRangeInfo[context
+                              .watch<VisualizationSettingsProvider>()
+                              .selectedTimeRange]!['shortLabel'],
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 4),
-                      RotationTransition(
-                        turns: _filterRotation,
-                        child: Icon(
-                          Icons.expand_more,
-                          size: 20,
-                          color: theme.colorScheme.onPrimaryContainer,
+                        SizedBox(width: 4),
+                        RotationTransition(
+                          turns: _filterRotation,
+                          child: Icon(
+                            Icons.expand_more,
+                            size: 20,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -242,6 +247,11 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                       content: RideHeatmap(rides: rides),
                     ),
                     _buildChartSection(
+                      icon: Icons.pie_chart_outline,
+                      title: '违约统计',
+                      content: CheckedInReservedPieChart(rides: rides),
+                    ),
+                    _buildChartSection(
                       key: ValueKey('bar_${rides.length}'),
                       icon: Icons.bar_chart_outlined,
                       title: '各时段出发班次统计',
@@ -252,17 +262,22 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                       title: '签到时间差（分钟）分布',
                       content: CheckInTimeHistogram(rides: rides),
                     ),
-                    _buildChartSection(
-                      icon: Icons.pie_chart_outline,
-                      title: '违约统计',
-                      content: CheckedInReservedPieChart(rides: rides),
-                    ),
                   ],
                 ),
               ),
               _buildPageIndicator(),
             ],
           ),
+          if (_isFilterExpanded)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _toggleFilter,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
           if (_isFilterExpanded)
             Positioned(
               top: 0,
@@ -287,33 +302,53 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.filter_list,
-                              size: 20,
-                              color: theme.colorScheme.primary,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              '时间范围',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.bold,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: SizedBox(
+                      width: 200,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: theme.colorScheme.outlineVariant
+                                      .withOpacity(0.5),
+                                  width: 1,
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.filter_list,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  '时间范围',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              children: TimeRange.values
+                                  .map((range) => _buildFilterOption(range))
+                                  .toList(),
+                            ),
+                          ),
+                        ],
                       ),
-                      ...TimeRange.values
-                          .map((range) => _buildFilterOption(range)),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -326,43 +361,61 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
   Widget _buildFilterOption(TimeRange range) {
     final theme = Theme.of(context);
     final info = timeRangeInfo[range]!;
-    final isSelected = _selectedTimeRange == range;
+    final visualizationSettings =
+        Provider.of<VisualizationSettingsProvider>(context);
+    final isSelected = visualizationSettings.selectedTimeRange == range;
 
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedTimeRange = range;
-          _toggleFilter();
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primaryContainer : null,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              info['icon'] as IconData,
-              size: 20,
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(width: 12),
-            Text(
-              info['label'] as String,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface,
-                fontWeight: isSelected ? FontWeight.w500 : null,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          visualizationSettings.setTimeRange(range);
+          Future.delayed(Duration(milliseconds: 200), () {
+            _toggleFilter();
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  info['icon'] as IconData,
+                  size: 18,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            SizedBox(width: 24),
-          ],
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  info['label'] as String,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.w500 : null,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_rounded,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+            ],
+          ),
         ),
       ),
     );

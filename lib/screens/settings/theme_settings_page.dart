@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeSettingsPage extends StatelessWidget {
   @override
@@ -11,6 +12,15 @@ class ThemeSettingsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () async {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('selectedMainPageIndex', 2);
+            // ignore: use_build_context_synchronously
+            Navigator.pop(context);
+          },
+        ),
         title: Text(
           '主题设置',
           style: Theme.of(context).textTheme.titleLarge,

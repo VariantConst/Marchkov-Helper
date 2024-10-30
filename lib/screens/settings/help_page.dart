@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -34,7 +35,7 @@ class HelpPage extends StatelessWidget {
                 icon: Icons.directions_bus_outlined,
               ),
               _HelpItem(
-                title: '仿官方页面',
+                title: '易验丁真',
                 content:
                     '点击二维码可以切换到仿官方页面。主页面和仿官方页面的二维码都是有效的。该功能默认关闭，您可以在设置中开启此功能。',
                 icon: Icons.qr_code,
@@ -60,7 +61,19 @@ class HelpPage extends StatelessWidget {
               _HelpItem(
                 title: '自动预约',
                 content: '应用会自动为您预约最合适的班车，直接出码，无需操作。该功能默认关闭，您可以在设置中开启此功能。',
-                icon: Icons.schedule,
+                icon: Icons.auto_mode,
+              ),
+              _HelpItem(
+                title: '亮度调节',
+                content:
+                    '应用支持自动调节二维码页面的亮度。开启后，显示二维码时会自动提高屏幕亮度，便于扫码；离开二维码页面后会自动恢复原有亮度。',
+                icon: Icons.brightness_auto,
+              ),
+              _HelpItem(
+                title: '预约历史',
+                content:
+                    '您可以在设置中查看预约历史的可视化统计图表，了解自己的乘车习惯。图表展示了您在不同时段的乘车频率，以及常用的班车路线。',
+                icon: Icons.bar_chart,
               ),
             ],
           ),
@@ -74,6 +87,19 @@ class HelpPage extends StatelessWidget {
                 content:
                     '如果加载太慢，请尝试关闭代理或连接校园网。这种情况在校园网连接差的情况下非常常见。如果问题仍然存在，可以尝试退出登录重新进入。',
                 icon: Icons.speed,
+              ),
+              _HelpItem(
+                title: '用户反馈',
+                content:
+                    '如果您有任何建议或者遇到问题，欢迎发送邮件至开发者邮箱，或请求加入用户交流群。\n\n点击复制邮箱：shuttle@variantconst.com',
+                icon: Icons.feedback_outlined,
+                onContentTap: () {
+                  const email = 'shuttle@variantconst.com';
+                  Clipboard.setData(ClipboardData(text: email));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('邮箱已复制到剪贴板')),
+                  );
+                },
               ),
             ],
           ),
@@ -144,12 +170,15 @@ class HelpPage extends StatelessWidget {
               ),
             ),
             children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(56, 0, 16, 16),
-                child: Text(
-                  item.content,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+              InkWell(
+                onTap: item.onContentTap,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(56, 0, 16, 16),
+                  child: Text(
+                    item.content,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
@@ -165,10 +194,12 @@ class _HelpItem {
   final String title;
   final String content;
   final IconData icon;
+  final VoidCallback? onContentTap;
 
   const _HelpItem({
     required this.title,
     required this.content,
     required this.icon,
+    this.onContentTap,
   });
 }
