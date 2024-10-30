@@ -50,12 +50,17 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   bool _showSlowLoadingTip = false;
 
+  // 添加新的属性
+  bool _autoReservationEnabled = false;
+  bool _hasAttemptedAutoReservation = false;
+
   @override
   void initState() {
     super.initState();
     _cookieValidationFuture = _validateCookies();
     _initialize();
     _loadTipPreference();
+    _loadAutoReservationSetting();
 
     // 初始化 PageController，设置初始页面和视口Fraction
     _pageController = PageController(
@@ -113,8 +118,13 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       // 并行获取所有班车的二维码
       await Future.wait([
         for (int i = 0; i < _nearbyBuses.length; i++)
-          _fetchBusData(i), // 新增方法，用于获取每个班车的���据
+          _fetchBusData(i), // 新增方法，用于获取每个班车的据
       ]);
+
+      // 在数据加载完成后尝试自动预约
+      if (_autoReservationEnabled && !_hasAttemptedAutoReservation) {
+        await _tryAutoReservation();
+      }
     } else {
       setState(() {});
     }
@@ -615,6 +625,45 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
+  // 添加新的方法来加载自动预约设置
+  Future<void> _loadAutoReservationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _autoReservationEnabled =
+          prefs.getBool('autoReservationEnabled') ?? false;
+    });
+  }
+
+  // 添加新的方法来尝试自动预约
+  Future<void> _tryAutoReservation() async {
+    if (_nearbyBuses.isEmpty ||
+        _cardStates.isEmpty ||
+        _hasAttemptedAutoReservation) {
+      return;
+    }
+
+    _hasAttemptedAutoReservation = true;
+
+    // 检查第一个卡片是否可以预约
+    final firstCardState = _cardStates[0];
+    if (firstCardState['codeType'] == '待预约') {
+      try {
+        await _makeReservation(0);
+        // 预约成功不需要显示提示，因为卡片状态会自动更新
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('自动预约失败: ${e.toString()}'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -670,156 +719,175 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.top -
-                  kToolbarHeight,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 修改乘车提示部分，添加新的二维码提示
-                if (_showTip1 == true || _showTip2 == true)
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                    child: Row(
-                      children: [
-                        if (_showTip1 == true)
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _showTipDialog1,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .secondaryContainer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 0), // 减小水平内边距
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.info_outline,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      size: 16),
-                                  SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      '查看乘车提示',
-                                      style: TextStyle(
-                                        color: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.color,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                      overflow:
-                                          TextOverflow.ellipsis, // 文本溢出时显示省略号
-                                      maxLines: 1, // 限制为单行
-                                    ),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            // 重置状态
+            setState(() {
+              _isLoading = true;
+              _hasAttemptedAutoReservation = false;
+              _showSlowLoadingTip = false;
+              _nearbyBuses = [];
+              _cardStates = [];
+            });
+
+            // 重新初始化数据
+            await _initialize();
+          },
+          child: SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(), // 添加这一行以确保即使内容不足也能下拉
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    kToolbarHeight,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 修改乘车提示部分，添加新的二维码提示
+                  if (_showTip1 == true || _showTip2 == true)
+                    Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                      child: Row(
+                        children: [
+                          if (_showTip1 == true)
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _showTipDialog1,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .secondaryContainer,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
                                   ),
-                                ],
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 0), // 减小水平内边距
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.info_outline,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        size: 16),
+                                    SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '查看乘车提示',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.color,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                        overflow:
+                                            TextOverflow.ellipsis, // 文本溢出时显示省略号
+                                        maxLines: 1, // 限制为单行
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        if (_showTip1 == true && _showTip2 == true)
-                          SizedBox(width: 8),
-                        if (_showTip2 == true)
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _showTipDialog2,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .secondaryContainer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 0), // 减小水平内边距
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.qr_code,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      size: 16),
-                                  SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      '二维码可以点击！',
-                                      style: TextStyle(
-                                        color: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.color,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                      overflow:
-                                          TextOverflow.ellipsis, // 文本溢出时显示省略号
-                                      maxLines: 1, // 限制为单行
-                                    ),
+                          if (_showTip1 == true && _showTip2 == true)
+                            SizedBox(width: 8),
+                          if (_showTip2 == true)
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _showTipDialog2,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .secondaryContainer,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
                                   ),
-                                ],
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 0), // 减小水平内边距
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.qr_code,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        size: 16),
+                                    SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '二维码可以点击！',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.color,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                        overflow:
+                                            TextOverflow.ellipsis, // 文本溢出时显示省略号
+                                        maxLines: 1, // 限制为单行
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
+                  SizedBox(
+                    height: 600,
+                    child: _nearbyBuses.isEmpty
+                        ? Center(child: Text('无车可坐'))
+                        : PageView.builder(
+                            controller: _pageController,
+                            itemCount: _nearbyBuses.length,
+                            onPageChanged: (index) {
+                              _selectBus(index);
+                            },
+                            itemBuilder: (context, index) {
+                              return RideCard(
+                                cardState: _cardStates[index],
+                                isGoingToYanyuan: _isGoingToYanyuan,
+                                onMakeReservation: () =>
+                                    _makeReservation(index),
+                                onCancelReservation: () =>
+                                    _cancelReservation(index),
+                                isToggleLoading: _isToggleLoading,
+                              );
+                            },
+                          ),
                   ),
-                SizedBox(
-                  height: 600,
-                  child: _nearbyBuses.isEmpty
-                      ? Center(child: Text('无车可坐'))
-                      : PageView.builder(
-                          controller: _pageController,
-                          itemCount: _nearbyBuses.length,
-                          onPageChanged: (index) {
-                            _selectBus(index);
-                          },
-                          itemBuilder: (context, index) {
-                            return RideCard(
-                              cardState: _cardStates[index],
-                              isGoingToYanyuan: _isGoingToYanyuan,
-                              onMakeReservation: () => _makeReservation(index),
-                              onCancelReservation: () =>
-                                  _cancelReservation(index),
-                              isToggleLoading: _isToggleLoading,
-                            );
-                          },
-                        ),
-                ),
-                SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _nearbyBuses.length,
-                      (index) => Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                        width: 8.0,
-                        height: 8.0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _selectedBusIndex == index
-                              ? primaryColor
-                              : secondaryColor.withOpacity(0.3),
+                  SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _nearbyBuses.length,
+                        (index) => Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                          width: 8.0,
+                          height: 8.0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _selectedBusIndex == index
+                                ? primaryColor
+                                : secondaryColor.withOpacity(0.3),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
