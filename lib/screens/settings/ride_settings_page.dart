@@ -63,6 +63,13 @@ class RideSettingsPageState extends State<RideSettingsPage>
       _dayBrightness = prefs.getDouble('dayBrightness') ?? 75.0;
       _nightBrightness = prefs.getDouble('nightBrightness') ?? 50.0;
     });
+
+    // 根据保存的亮度模式设置动画状态
+    if (_brightnessMode != BrightnessControlMode.none) {
+      _animationController?.forward(from: 1.0);
+    } else {
+      _animationController?.reverse(from: 0.0);
+    }
   }
 
   Future<void> _saveSettings(bool value) async {
