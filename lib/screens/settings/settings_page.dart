@@ -379,6 +379,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _clearUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('isLoggedIn');
+    await prefs.remove('username');
+    await prefs.remove('password');
     await prefs.remove('name');
     await prefs.remove('studentId');
     await prefs.remove('college');

@@ -25,6 +25,7 @@ class AuthProvider with ChangeNotifier {
     print('Full cookies: $_cookies');
     await _saveLoginState(true);
     await _saveUsername(username);
+    await _savePassword(password);
     notifyListeners();
   }
 
@@ -64,6 +65,11 @@ class AuthProvider with ChangeNotifier {
   Future<void> _saveUsername(String username) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('username', username);
+  }
+
+  Future<void> _savePassword(String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('password', password);
   }
 
   // 添加一个方法来异步获取最新的cookies

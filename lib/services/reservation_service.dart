@@ -10,29 +10,10 @@ class ReservationService {
 
   ReservationService(AuthProvider authProvider) : _authService = AuthService();
 
-  // 验证登录状态的私有方法
-  Future<void> _ensureLoggedIn() async {
-    print('开始验证登录状态...');
-    String currentCookies = await _authService.cookies;
-    print('当前的 cookies: $currentCookies');
-
-    bool isValid = await _authService.validateAndRefreshLoginStatus();
-    print('Cookie 验证结果: ${isValid ? "有效" : "无效"}');
-
-    if (isValid) {
-      print('登录状态有效，无需重新登录');
-    } else {
-      print('登录状态无效，尝试重新登录');
-      throw Exception('登录状态无效，请重新登录');
-    }
-  }
-
   // 修改现有的 http 请求方法，添加登录状态验证
   Future<T> _authenticatedRequest<T>(
       Future<T> Function() requestFunction) async {
-    print('开始执行经过身份验证的请求...');
-    await _ensureLoggedIn();
-    print('登录状态验证完成，开始执行实际请求');
+    print('开始执行请求...');
     T result = await requestFunction();
     print('请求执行完成');
     return result;

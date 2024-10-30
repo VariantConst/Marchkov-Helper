@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/reservation_provider.dart';
 import '../../models/reservation.dart';
 import '../../services/reservation_service.dart';
-import '../../services/auth_service.dart'; // 新增导入
+// 新增导入
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../providers/auth_provider.dart';
@@ -26,8 +26,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
-  late Future<bool> _cookieValidationFuture;
-
   bool _isToggleLoading = false;
 
   bool _isGoingToYanyuan = true;
@@ -46,8 +44,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加一个新的列来存储每个卡片的状态
   List<Map<String, dynamic>> _cardStates = [];
 
-  bool _showSlowLoadingTip = false;
-
   // 添加新的属性
   bool _autoReservationEnabled = false;
   bool _hasAttemptedAutoReservation = false;
@@ -60,6 +56,18 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加 BrightnessProvider 引用
   late BrightnessProvider _brightnessProvider;
 
+  // 添加新的状态变量来跟踪当前加载步骤
+  String _loadingStep = '正在初始化...';
+
+  // 添加新的状态变量
+  bool _showRetryButton = false;
+  bool _isRetrying = false;
+
+  DateTime? _lastRetryTime;
+
+  // 添加一个新的状态变量来控制初始化流程
+  bool _shouldCancelInitialization = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -70,7 +78,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   void initState() {
     super.initState();
-    _cookieValidationFuture = _validateCookies();
     _initialize();
     _loadAutoReservationSetting();
     _loadSafariStyleSetting();
@@ -90,10 +97,11 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   void _startSlowLoadingTimer() {
-    Future.delayed(Duration(milliseconds: 1500), () {
+    Future.delayed(Duration(seconds: 2), () {
       if (mounted && _isLoading) {
         setState(() {
-          _showSlowLoadingTip = true;
+          _showRetryButton = true;
+          _loadingStep = '加载缓慢，可能是校园网连接较弱';
         });
       }
     });
@@ -110,53 +118,80 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     super.dispose();
   }
 
-  Future<bool> _validateCookies() async {
-    final authService = AuthService();
-    print('开始验证 cookies...');
-    bool isValid = await authService.validateAndRefreshLoginStatus();
-    print('Cookies 验证结果: ${isValid ? "有效" : "无效"}');
-    return isValid;
-  }
-
   // 修改 _initialize 方法以并行获取所有班车的数据
   Future<void> _initialize() async {
-    await _loadNearbyBuses();
-
-    if (!mounted) return; // 检查组件是否仍然在树中
-
-    if (_nearbyBuses.isNotEmpty) {
-      setState(() {
-        _selectedBusIndex = 0;
-        // 初始化每个卡片的状态
-        _cardStates = List.generate(
-            _nearbyBuses.length,
-            (index) => {
-                  'qrCode': null,
-                  'departureTime': '',
-                  'routeName': '',
-                  'codeType': '',
-                  'errorMessage': '',
-                });
-      });
-      // 并行获取所有班车的二维码
-      await Future.wait([
-        for (int i = 0; i < _nearbyBuses.length; i++)
-          _fetchBusData(i), // 新增方法，用于获取每个班车的据
-      ]);
-
-      // 在数据加载完成后尝试自动预约
-      if (_autoReservationEnabled && !_hasAttemptedAutoReservation) {
-        await _tryAutoReservation();
-      }
-    } else {
-      setState(() {});
-    }
-
-    // 数据加载完成，更新加载状态
     if (mounted) {
       setState(() {
-        _isLoading = false;
+        _loadingStep = '正在获取班车列表...';
       });
+    }
+
+    try {
+      // 添加取消检查
+      if (_shouldCancelInitialization) return;
+      await _loadNearbyBuses();
+
+      if (!mounted || _shouldCancelInitialization) return;
+
+      if (_nearbyBuses.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _loadingStep = '当前无可用班车';
+          _cardStates = [];
+        });
+        return;
+      }
+
+      setState(() {
+        _selectedBusIndex = 0;
+        _loadingStep = '正在初始化班车状态...';
+        _cardStates = List.generate(
+          _nearbyBuses.length,
+          (index) => {
+            'qrCode': null,
+            'departureTime': '',
+            'routeName': '',
+            'codeType': '',
+            'errorMessage': '',
+          },
+        );
+      });
+
+      // 添加取消检查
+      if (_shouldCancelInitialization) return;
+      setState(() {
+        _loadingStep = '正在获取班车信息...';
+      });
+
+      await Future.wait([
+        for (int i = 0; i < _nearbyBuses.length; i++)
+          if (!_shouldCancelInitialization) _fetchBusData(i),
+      ]);
+
+      // 添加取消检查
+      if (_shouldCancelInitialization) return;
+      if (_autoReservationEnabled && !_hasAttemptedAutoReservation) {
+        setState(() {
+          _loadingStep = '正在尝试自动预约...';
+        });
+        await _tryAutoReservation();
+      }
+
+      if (mounted && !_shouldCancelInitialization) {
+        setState(() {
+          _isLoading = false;
+          _loadingStep = '加载完成';
+        });
+      }
+    } catch (e) {
+      if (mounted && !_shouldCancelInitialization) {
+        setState(() {
+          _isLoading = false;
+          _loadingStep = '加载失败: ${e.toString()}';
+        });
+      }
+    } finally {
+      _shouldCancelInitialization = false;
     }
   }
 
@@ -237,42 +272,62 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _loadNearbyBuses() async {
+    if (mounted) {
+      setState(() {
+        _loadingStep = '正在检查缓存数据...';
+      });
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final now = DateTime.now();
     final todayString = now.toIso8601String().split('T')[0];
 
-    // 尝试从缓存中读取数据
     final cachedBusDataString = prefs.getString('cachedBusData');
-    // print('cachedBusDataString: $cachedBusDataString');
     final cachedDate = prefs.getString('cachedDate');
 
     if (cachedBusDataString != null && cachedDate == todayString) {
-      // 如果有当天的缓存数据，直接使用
+      if (mounted) {
+        setState(() {
+          _loadingStep = '正在加载缓存数据...';
+        });
+      }
       final cachedBusData = json.decode(cachedBusDataString);
       _processBusData(cachedBusData);
     } else {
-      // 如果没有缓存或缓存不是当天的，重新获取数据
-      if (!mounted) return; // 添加这行来检查组件是否仍然挂载
+      if (!mounted) return;
+
+      setState(() {
+        _loadingStep = '正在从服务器获取班车数据...';
+      });
+
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final reservationService = ReservationService(authProvider);
 
       try {
         final allBuses = await reservationService.getAllBuses([todayString]);
-
-        // 缓存新获取的数据
         await prefs.setString('cachedBusData', json.encode(allBuses));
         await prefs.setString('cachedDate', todayString);
 
-        if (!mounted) return; // 再次检查组件是否仍然挂载
+        if (!mounted) return;
+
+        setState(() {
+          _loadingStep = '正在处理班车数据...';
+        });
         _processBusData(allBuses);
       } catch (e) {
+        if (mounted) {
+          setState(() {
+            _loadingStep = '加载班车数据失败: $e';
+          });
+        }
         print('加载附近班车失败: $e');
       }
     }
 
-    // 新增: 获取预约历史并统计乘坐次数
     if (mounted) {
-      // 添加这行来检查组件是否仍然挂载
+      setState(() {
+        _loadingStep = '正在加载乘车历史...';
+      });
       await _loadRideHistory();
     }
   }
@@ -339,13 +394,32 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   }
 
   Future<void> _selectBus(int index) async {
-    if (!mounted) return; // 检查组件是否仍然在树中
+    if (!mounted) return;
+    if (index < 0 ||
+        index >= _nearbyBuses.length ||
+        index >= _cardStates.length) return;
 
     setState(() {
       _selectedBusIndex = index;
     });
 
-    // 修改下���件：基于 'codeType' 而不是 'errorMessage'
+    // 确保 _cardStates 有足够的元素
+    if (_cardStates.length <= index) {
+      setState(() {
+        _cardStates = List.generate(
+          _nearbyBuses.length,
+          (i) => {
+            'qrCode': null,
+            'departureTime': '',
+            'routeName': '',
+            'codeType': '',
+            'errorMessage': '',
+          },
+        );
+      });
+    }
+
+    // 修改下组件：基于 'codeType' 而不是 'errorMessage'
     if (_cardStates[index]['codeType'] == '乘车码') {
       return; // 如果已经是乘车码，不需要重新获取数据
     }
@@ -581,12 +655,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     _hasAttemptedAutoReservation = true;
 
+    // 确保索引有效
+    if (_cardStates.isEmpty) return;
+
     // 检查第一个卡片是否可以预约
     final firstCardState = _cardStates[0];
     if (firstCardState['codeType'] == '待预约') {
       try {
         await _makeReservation(0);
-        // 预约成功不需要显示提示，因为卡片状态会自动更新
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -622,48 +698,45 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-    return FutureBuilder<bool>(
-      future: _cookieValidationFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting || _isLoading) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  if (_showSlowLoadingTip)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: Text(
-                        '加载缓慢，尝试关闭代理、连接校园网或退出登录重进',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          );
-        } else if (snapshot.hasError || snapshot.data == false) {
-          return Scaffold(
-            body: Center(
-              child: Text('登录状态验证失败，请重新登录'),
-            ),
-          );
-        } else {
-          return _buildMainContent();
-        }
-      },
-    );
+    return _buildMainContent();
   }
 
   Widget _buildMainContent() {
     if (_isLoading) {
       return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isRetrying)
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                _loadingStep,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (_showRetryButton && !_isRetrying) ...[
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _retryWithLogin,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: Size(120, 36),
+                  ),
+                  child: Text('重试'),
+                ),
+              ],
+            ],
+          ),
         ),
       );
     }
@@ -682,10 +755,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                 setState(() {
                   _isLoading = true;
                   _hasAttemptedAutoReservation = false;
-                  _showSlowLoadingTip = false;
+                  _showRetryButton = false;
                   _nearbyBuses = [];
                   _cardStates = [];
+                  _loadingStep = '正在刷新...';
                 });
+
+                // 重新启动慢加载计时器
+                _startSlowLoadingTimer();
 
                 // 重新初始化数据
                 await _initialize();
@@ -709,9 +786,16 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                                 controller: _pageController,
                                 itemCount: _nearbyBuses.length,
                                 onPageChanged: (index) {
-                                  _selectBus(index);
+                                  if (index >= 0 &&
+                                      index < _nearbyBuses.length) {
+                                    _selectBus(index);
+                                  }
                                 },
                                 itemBuilder: (context, index) {
+                                  if (index < 0 ||
+                                      index >= _cardStates.length) {
+                                    return Center(child: Text('加载中...'));
+                                  }
                                   return RideCard(
                                     cardState: _cardStates[index],
                                     isGoingToYanyuan: _isGoingToYanyuan,
@@ -720,8 +804,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                                     onCancelReservation: () =>
                                         _cancelReservation(index),
                                     isToggleLoading: _isToggleLoading,
-                                    isSafariStyleEnabled:
-                                        _safariStyleEnabled, // 新增参数
+                                    isSafariStyleEnabled: _safariStyleEnabled,
                                   );
                                 },
                               ),
@@ -831,6 +914,82 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       setState(() {
         _isToggleLoading = false;
       });
+    }
+  }
+
+  Future<void> _retryWithLogin() async {
+    final now = DateTime.now();
+    if (_lastRetryTime != null &&
+        now.difference(_lastRetryTime!) < Duration(seconds: 3)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('请稍后再试'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    _lastRetryTime = now;
+
+    if (_isRetrying) return;
+
+    // 设置取消标志
+    _shouldCancelInitialization = true;
+
+    if (!mounted) return;
+    setState(() {
+      _isRetrying = true;
+      _loadingStep = '正在刷新登录状态...';
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUsername = prefs.getString('username');
+      final savedPassword = prefs.getString('password');
+
+      if (savedUsername != null && savedPassword != null) {
+        if (!mounted) return;
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        await authProvider.login(savedUsername, savedPassword);
+
+        if (!mounted) return;
+        setState(() {
+          _isLoading = true;
+          _hasAttemptedAutoReservation = false;
+          _showRetryButton = false;
+          _nearbyBuses = [];
+          _cardStates = [];
+          _loadingStep = '正在重新加载数据...';
+        });
+
+        // 重置取消标志
+        _shouldCancelInitialization = false;
+        await _initialize();
+      } else {
+        throw Exception('未找到登录凭据，请重新登录');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadingStep = '重试失败: ${e.toString()}';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('重试失败: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRetrying = false;
+        });
+      }
+      _shouldCancelInitialization = false;
     }
   }
 }
