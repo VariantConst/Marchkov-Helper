@@ -16,17 +16,40 @@ class RideSettingsPage extends StatefulWidget {
   RideSettingsPageState createState() => RideSettingsPageState();
 }
 
-class RideSettingsPageState extends State<RideSettingsPage> {
+class RideSettingsPageState extends State<RideSettingsPage>
+    with SingleTickerProviderStateMixin {
   bool? _isAutoReservationEnabled;
   bool? _isSafariStyleEnabled;
   BrightnessControlMode? _brightnessMode;
   double? _dayBrightness;
   double? _nightBrightness;
 
+  // 移除 late 关键字，使用可空类型
+  AnimationController? _animationController;
+  Animation<double>? _animation;
+
   @override
   void initState() {
     super.initState();
+    _initializeAnimation();
     _loadSettings();
+  }
+
+  void _initializeAnimation() {
+    _animationController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController!,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -202,7 +225,7 @@ class RideSettingsPageState extends State<RideSettingsPage> {
                 children: [
                   // 功能设置组
                   _buildSettingsGroup(
-                    title: '功能设置',
+                    title: '预约逻辑',
                     children: [
                       _buildSettingTile(
                         title: '自动预约班车',
@@ -240,37 +263,9 @@ class RideSettingsPageState extends State<RideSettingsPage> {
 
                   // 显示设置组
                   _buildSettingsGroup(
-                    title: '显示设置',
+                    title: '二维码亮度',
                     children: [
                       _buildBrightnessModeSelector(),
-                      if (_brightnessMode != BrightnessControlMode.none) ...[
-                        Divider(height: 1),
-                        _buildBrightnessSlider(
-                          title: '白天亮度',
-                          value: _dayBrightness!,
-                          min: 50,
-                          max: 100,
-                          onChanged: (value) {
-                            setState(() {
-                              _dayBrightness = value;
-                            });
-                            _saveBrightness('dayBrightness', value);
-                          },
-                        ),
-                        Divider(height: 1),
-                        _buildBrightnessSlider(
-                          title: '夜间亮度',
-                          value: _nightBrightness!,
-                          min: 50,
-                          max: 100,
-                          onChanged: (value) {
-                            setState(() {
-                              _nightBrightness = value;
-                            });
-                            _saveBrightness('nightBrightness', value);
-                          },
-                        ),
-                      ],
                     ],
                   ),
                 ],
@@ -344,23 +339,53 @@ class RideSettingsPageState extends State<RideSettingsPage> {
   }) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
         children: [
-          Text(
-            '$title: ${value.toInt()}%',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '${value.toInt()}%',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: ((max - min) / 5).round(),
-            label: '${value.toInt()}%',
-            onChanged: onChanged,
+          Expanded(
+            flex: 7,
+            child: SliderTheme(
+              data: SliderThemeData(
+                activeTrackColor: theme.colorScheme.primary,
+                inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                thumbColor: theme.colorScheme.primary,
+                overlayColor: theme.colorScheme.primary.withOpacity(0.12),
+                trackHeight: 4.0,
+              ),
+              child: Slider(
+                value: value,
+                min: min,
+                max: max,
+                divisions: ((max - min) / 5).round(),
+                label: '${value.toInt()}%',
+                onChanged: (newValue) {
+                  HapticFeedback.selectionClick();
+                  onChanged(newValue);
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -402,36 +427,119 @@ class RideSettingsPageState extends State<RideSettingsPage> {
     );
   }
 
+  void _updateBrightnessMode(BrightnessControlMode mode) {
+    setState(() {
+      _brightnessMode = mode;
+    });
+    _saveBrightnessMode(mode);
+    if (_animationController != null) {
+      // 添加空值检查
+      if (mode != BrightnessControlMode.none) {
+        _animationController!.forward();
+      } else {
+        _animationController!.reverse();
+      }
+    }
+    HapticFeedback.selectionClick();
+  }
+
   Widget _buildBrightnessModeSelector() {
     final theme = Theme.of(context);
 
+    if (_animation == null) {
+      return SizedBox.shrink();
+    }
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 20, right: 20, top: 8),
-          child: Text(
-            '二维码亮度控制方式',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
+        ...BrightnessControlMode.values.map((mode) {
+          final isFirst = mode == BrightnessControlMode.values.first;
+          final isLast = mode == BrightnessControlMode.values.last;
+
+          return ClipRRect(
+            // 只在顶部或底部项目添加对应的圆角
+            borderRadius: BorderRadius.vertical(
+              top: isFirst ? Radius.circular(12) : Radius.zero,
+              bottom: isLast ? Radius.circular(12) : Radius.zero,
             ),
-          ),
-        ),
-        ...BrightnessControlMode.values
-            .map((mode) => RadioListTile<BrightnessControlMode>(
-                  title: Text(mode.label),
-                  subtitle: Text(_getBrightnessModeDescription(mode)),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _updateBrightnessMode(mode),
+                child: RadioListTile<BrightnessControlMode>(
+                  title: Text(
+                    mode.label,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _getBrightnessModeDescription(mode),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   value: mode,
                   groupValue: _brightnessMode,
-                  onChanged: (BrightnessControlMode? value) {
+                  onChanged: (value) {
                     if (value != null) {
-                      setState(() {
-                        _brightnessMode = value;
-                      });
-                      _saveBrightnessMode(value);
-                      HapticFeedback.mediumImpact();
+                      _updateBrightnessMode(value);
                     }
                   },
-                )),
+                  activeColor: theme.colorScheme.primary,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                ),
+              ),
+            ),
+          );
+        }),
+        SizeTransition(
+          sizeFactor: _animation!, // 使用非空断言，因为我们已经检查过了
+          axisAlignment: -1.0,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 20, right: 20, top: 16, bottom: 8),
+                child: Text(
+                  '亮度调节',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Divider(height: 1),
+              _buildBrightnessSlider(
+                title: '白天亮度',
+                value: _dayBrightness!,
+                min: 50,
+                max: 100,
+                onChanged: (value) {
+                  setState(() {
+                    _dayBrightness = value;
+                  });
+                  _saveBrightness('dayBrightness', value);
+                },
+              ),
+              Divider(height: 1),
+              _buildBrightnessSlider(
+                title: '夜间亮度',
+                value: _nightBrightness!,
+                min: 50,
+                max: 100,
+                onChanged: (value) {
+                  setState(() {
+                    _nightBrightness = value;
+                  });
+                  _saveBrightness('nightBrightness', value);
+                },
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

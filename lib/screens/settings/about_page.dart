@@ -282,7 +282,7 @@ class AboutPageState extends State<AboutPage> {
                     _buildListTile(
                       context,
                       title: '访问官网',
-                      subtitle: '点击访问马池口官网',
+                      subtitle: '点击访问马池口��网',
                       icon: Icons.language_outlined,
                       onTap: _visitWebsite,
                     ),
@@ -323,51 +323,62 @@ class AboutPageState extends State<AboutPage> {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
+    final isFirst = title == '检查更新'; // 第一个选项
+    final isLast = title == '支持我们'; // 最后一个选项
 
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      leading: Icon(
-        icon,
-        color: theme.colorScheme.primary,
-        size: 24,
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(
+        top: isFirst ? Radius.circular(12) : Radius.zero,
+        bottom: isLast ? Radius.circular(12) : Radius.zero,
       ),
-      title: Text(
-        title,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (title == '检查更新' && _isCheckingUpdate)
-            Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    theme.colorScheme.primary,
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          leading: Icon(
+            icon,
+            color: theme.colorScheme.primary,
+            size: 24,
+          ),
+          title: Text(
+            title,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (title == '检查更新' && _isCheckingUpdate)
+                Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
+                size: 20,
               ),
-            ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
-            size: 20,
+            ],
           ),
-        ],
+          onTap: onTap,
+        ),
       ),
-      onTap: onTap,
     );
   }
 }

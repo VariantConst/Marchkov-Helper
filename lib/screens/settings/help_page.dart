@@ -129,27 +129,33 @@ class HelpPage extends StatelessWidget {
   Widget _buildHelpItem(BuildContext context, _HelpItem item) {
     final theme = Theme.of(context);
 
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        leading: Icon(item.icon, color: theme.colorScheme.primary),
-        title: Text(
-          item.title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(56, 0, 16, 16),
-            child: Text(
-              item.content,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: Material(
+          color: Colors.transparent,
+          child: ExpansionTile(
+            leading: Icon(item.icon, color: theme.colorScheme.primary),
+            title: Text(
+              item.title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w500,
               ),
             ),
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(56, 0, 16, 16),
+                child: Text(
+                  item.content,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
