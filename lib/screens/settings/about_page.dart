@@ -282,7 +282,7 @@ class AboutPageState extends State<AboutPage> {
                     _buildListTile(
                       context,
                       title: '访问官网',
-                      subtitle: '点击访问马池口��网',
+                      subtitle: '点击访问马池口官网',
                       icon: Icons.language_outlined,
                       onTap: _visitWebsite,
                     ),
