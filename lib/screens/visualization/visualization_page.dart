@@ -6,6 +6,7 @@ import 'ride_calendar_card.dart';
 import 'departure_time_bar_chart.dart';
 import 'check_in_time_histogram.dart';
 import 'checked_in_reserved_pie_chart.dart';
+import 'ride_heatmap.dart';
 
 enum TimeRange { threeMonths, sixMonths, oneYear, all }
 
@@ -235,6 +236,12 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                       content: RideCalendarCard(rides: rides),
                     ),
                     _buildChartSection(
+                      key: ValueKey('heatmap_${rides.length}'),
+                      icon: Icons.grid_4x4_outlined,
+                      title: '乘车热力图',
+                      content: RideHeatmap(rides: rides),
+                    ),
+                    _buildChartSection(
                       key: ValueKey('bar_${rides.length}'),
                       icon: Icons.bar_chart_outlined,
                       title: '各时段出发班次统计',
@@ -407,7 +414,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
       padding: EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List<Widget>.generate(4, (index) {
+        children: List<Widget>.generate(5, (index) {
           return GestureDetector(
             onTap: () {
               _pageController.animateToPage(
