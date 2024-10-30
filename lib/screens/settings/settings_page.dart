@@ -387,5 +387,6 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('lastDauSentDate');
     // await prefs.remove('autoReservationEnabled');
     // await prefs.remove('safariStyleEnabled');
+    await prefs.remove('isBrightnessEnhanced');
   }
 }

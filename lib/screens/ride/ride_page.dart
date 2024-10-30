@@ -9,6 +9,8 @@ import 'dart:convert';
 import '../../providers/auth_provider.dart';
 import '../../services/ride_history_service.dart';
 import 'package:intl/intl.dart';
+import '../../providers/brightness_provider.dart';
+import '../settings/ride_settings_page.dart'; // 导入 BrightnessControlMode 枚举
 
 // 导入新的组件
 import 'ride_card.dart';
@@ -52,18 +54,37 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   bool _safariStyleEnabled = false; // 新增状态变量
 
+  // 添加新的状态变量
+  BrightnessControlMode? _brightnessMode;
+
+  // 添加 BrightnessProvider 引用
+  late BrightnessProvider _brightnessProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _brightnessProvider =
+        Provider.of<BrightnessProvider>(context, listen: false);
+  }
+
   @override
   void initState() {
     super.initState();
     _cookieValidationFuture = _validateCookies();
     _initialize();
     _loadAutoReservationSetting();
-    _loadSafariStyleSetting(); // 新增加载设置
+    _loadSafariStyleSetting();
+    _loadBrightnessMode().then((_) {
+      if (_brightnessMode == BrightnessControlMode.auto && mounted) {
+        _brightnessProvider =
+            Provider.of<BrightnessProvider>(context, listen: false);
+        _brightnessProvider.enableAutoMode();
+      }
+    });
 
-    // 初始化 PageController，设置初始页面和视口Fraction
     _pageController = PageController(
       initialPage: 0,
-      viewportFraction: 0.9, // 调整视口Fraction，使卡片占据更大的宽度
+      viewportFraction: 0.9,
     );
     _startSlowLoadingTimer();
   }
@@ -80,8 +101,12 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
   @override
   void dispose() {
-    // 释放 PageController 资源
     _pageController.dispose();
+    if (_brightnessMode == BrightnessControlMode.auto) {
+      _brightnessProvider.disableAutoMode();
+    } else if (_brightnessMode == BrightnessControlMode.manual) {
+      _brightnessProvider.cleanup();
+    }
     super.dispose();
   }
 
@@ -320,7 +345,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       _selectedBusIndex = index;
     });
 
-    // 修改下条件：基于 'codeType' 而不是 'errorMessage'
+    // 修改下���件：基于 'codeType' 而不是 'errorMessage'
     if (_cardStates[index]['codeType'] == '乘车码') {
       return; // 如果已经是乘车码，不需要重新获取数据
     }
@@ -584,6 +609,16 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     });
   }
 
+  Future<void> _loadBrightnessMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _brightnessMode = BrightnessControlMode.values[
+            prefs.getInt('brightnessMode') ?? BrightnessControlMode.auto.index];
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -639,81 +674,106 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
 
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            // 重置状态
-            setState(() {
-              _isLoading = true;
-              _hasAttemptedAutoReservation = false;
-              _showSlowLoadingTip = false;
-              _nearbyBuses = [];
-              _cardStates = [];
-            });
+        child: Stack(
+          children: [
+            RefreshIndicator(
+              onRefresh: () async {
+                // 重置状态
+                setState(() {
+                  _isLoading = true;
+                  _hasAttemptedAutoReservation = false;
+                  _showSlowLoadingTip = false;
+                  _nearbyBuses = [];
+                  _cardStates = [];
+                });
 
-            // 重新初始化数据
-            await _initialize();
-          },
-          child: SingleChildScrollView(
-            physics: AlwaysScrollableScrollPhysics(), // 添加这一行以确保即使内容不足也能下拉
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top -
-                    kToolbarHeight,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 600,
-                    child: _nearbyBuses.isEmpty
-                        ? Center(child: Text('无车可坐'))
-                        : PageView.builder(
-                            controller: _pageController,
-                            itemCount: _nearbyBuses.length,
-                            onPageChanged: (index) {
-                              _selectBus(index);
-                            },
-                            itemBuilder: (context, index) {
-                              return RideCard(
-                                cardState: _cardStates[index],
-                                isGoingToYanyuan: _isGoingToYanyuan,
-                                onMakeReservation: () =>
-                                    _makeReservation(index),
-                                onCancelReservation: () =>
-                                    _cancelReservation(index),
-                                isToggleLoading: _isToggleLoading,
-                                isSafariStyleEnabled:
-                                    _safariStyleEnabled, // 新增参数
-                              );
-                            },
-                          ),
+                // 重新初始化数据
+                await _initialize();
+              },
+              child: SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(), // 添加这一行以确保即使内容不足也能下拉
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                        MediaQuery.of(context).padding.top -
+                        kToolbarHeight,
                   ),
-                  SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _nearbyBuses.length,
-                        (index) => Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                          width: 8.0,
-                          height: 8.0,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _selectedBusIndex == index
-                                ? primaryColor
-                                : secondaryColor.withOpacity(0.3),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 600,
+                        child: _nearbyBuses.isEmpty
+                            ? Center(child: Text('无车可坐'))
+                            : PageView.builder(
+                                controller: _pageController,
+                                itemCount: _nearbyBuses.length,
+                                onPageChanged: (index) {
+                                  _selectBus(index);
+                                },
+                                itemBuilder: (context, index) {
+                                  return RideCard(
+                                    cardState: _cardStates[index],
+                                    isGoingToYanyuan: _isGoingToYanyuan,
+                                    onMakeReservation: () =>
+                                        _makeReservation(index),
+                                    onCancelReservation: () =>
+                                        _cancelReservation(index),
+                                    isToggleLoading: _isToggleLoading,
+                                    isSafariStyleEnabled:
+                                        _safariStyleEnabled, // 新增参数
+                                  );
+                                },
+                              ),
+                      ),
+                      SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            _nearbyBuses.length,
+                            (index) => Container(
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 4.0),
+                              width: 8.0,
+                              height: 8.0,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _selectedBusIndex == index
+                                    ? primaryColor
+                                    : secondaryColor.withOpacity(0.3),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+
+            // 只在手动模式下显示手电筒按钮
+            if (_brightnessMode == BrightnessControlMode.manual)
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: Consumer<BrightnessProvider>(
+                  builder: (context, brightnessProvider, _) {
+                    return FloatingActionButton(
+                      heroTag: 'flashlight',
+                      onPressed: () => brightnessProvider.toggleFlashlight(),
+                      child: Icon(
+                        brightnessProvider.isFlashlightOn
+                            ? Icons.flashlight_on
+                            : Icons.flashlight_off,
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
