@@ -54,6 +54,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   bool _autoReservationEnabled = false;
   bool _hasAttemptedAutoReservation = false;
 
+  bool _safariStyleEnabled = false; // 新增状态变量
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +63,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     _initialize();
     _loadTipPreference();
     _loadAutoReservationSetting();
+    _loadSafariStyleSetting(); // 新增加载设置
 
     // 初始化 PageController，设置初始页面和视口Fraction
     _pageController = PageController(
@@ -664,6 +667,14 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
+  // 新增加载 Safari 样式设置的方法
+  Future<void> _loadSafariStyleSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _safariStyleEnabled = prefs.getBool('safariStyleEnabled') ?? false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -861,6 +872,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                                 onCancelReservation: () =>
                                     _cancelReservation(index),
                                 isToggleLoading: _isToggleLoading,
+                                isSafariStyleEnabled:
+                                    _safariStyleEnabled, // 新增参数
                               );
                             },
                           ),

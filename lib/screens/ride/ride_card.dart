@@ -10,6 +10,7 @@ class RideCard extends StatelessWidget {
   final VoidCallback onMakeReservation;
   final VoidCallback onCancelReservation;
   final bool isToggleLoading;
+  final bool isSafariStyleEnabled;
 
   const RideCard({
     super.key,
@@ -18,6 +19,7 @@ class RideCard extends StatelessWidget {
     required this.onMakeReservation,
     required this.onCancelReservation,
     required this.isToggleLoading,
+    required this.isSafariStyleEnabled,
   });
 
   @override
@@ -171,7 +173,7 @@ class RideCard extends StatelessWidget {
         if (cardState['codeType'] == '乘车码' || cardState['codeType'] == '临时码')
           GestureDetector(
             onTap: () {
-              if (cardState['qrCode'] != null) {
+              if (cardState['qrCode'] != null && isSafariStyleEnabled) {
                 _showFullScreenQRCode(context, cardState['qrCode']);
               }
             },

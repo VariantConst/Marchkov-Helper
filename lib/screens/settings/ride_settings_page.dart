@@ -9,6 +9,7 @@ class RideSettingsPage extends StatefulWidget {
 
 class RideSettingsPageState extends State<RideSettingsPage> {
   bool? _isAutoReservationEnabled;
+  bool? _isSafariStyleEnabled;
 
   @override
   void initState() {
@@ -21,12 +22,18 @@ class RideSettingsPageState extends State<RideSettingsPage> {
     setState(() {
       _isAutoReservationEnabled =
           prefs.getBool('autoReservationEnabled') ?? false;
+      _isSafariStyleEnabled = prefs.getBool('safariStyleEnabled') ?? false;
     });
   }
 
   Future<void> _saveSettings(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('autoReservationEnabled', value);
+  }
+
+  Future<void> _saveSafariStyleSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('safariStyleEnabled', value);
   }
 
   void _showConfirmationDialog() {
@@ -131,6 +138,34 @@ class RideSettingsPageState extends State<RideSettingsPage> {
                           _isAutoReservationEnabled = false;
                         });
                       }
+                    },
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Card(
+                elevation: 0,
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                child: ListTile(
+                  title: Text(
+                    '仿官方页面',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  subtitle: Text(
+                    '开启后点击二维码可切换到仿官方页面',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  trailing: Switch(
+                    value: _isSafariStyleEnabled!,
+                    onChanged: (bool value) async {
+                      HapticFeedback.mediumImpact();
+                      await _saveSafariStyleSetting(value);
+                      setState(() {
+                        _isSafariStyleEnabled = value;
+                      });
                     },
                   ),
                 ),

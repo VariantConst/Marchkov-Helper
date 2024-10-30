@@ -300,5 +300,6 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.remove('showRideTip'); // 添加此行以清除使用提示设置
     await prefs.remove('lastDauSentDate');
     await prefs.remove('autoReservationEnabled');
+    await prefs.remove('safariStyleEnabled');
   }
 }
