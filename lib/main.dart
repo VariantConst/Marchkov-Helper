@@ -66,7 +66,7 @@ class MyApp extends StatelessWidget {
               );
 
         // 使用主题的背景颜色
-        final backgroundColor = currentTheme.colorScheme.background;
+        final backgroundColor = currentTheme.colorScheme.surface;
 
         SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
           systemNavigationBarColor: backgroundColor,

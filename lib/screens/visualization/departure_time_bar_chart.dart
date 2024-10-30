@@ -3,18 +3,31 @@ import '../../models/ride_info.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
-class DepartureTimeBarChart extends StatelessWidget {
+class DepartureTimeBarChart extends StatefulWidget {
   final List<RideInfo> rides;
 
   DepartureTimeBarChart({required this.rides});
 
   @override
+  State<DepartureTimeBarChart> createState() => _DepartureTimeBarChartState();
+}
+
+class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
+  Map<String, dynamic>? _chartData;
+
+  @override
   Widget build(BuildContext context) {
+    _chartData ??= _prepareChartData(context);
+
+    if (_chartData == null) {
+      return Center(child: CircularProgressIndicator());
+    }
+
     // 处理数据
-    final data = _prepareChartData(context);
+    final data = _chartData;
 
     // **动态计算 y 轴间隔**
-    double range = data['maxY'] - data['minY'];
+    double range = data?['maxY'] - data?['minY'];
     int desiredIntervals = 9; // 期望的标签数量
     double interval = (range / desiredIntervals).ceilToDouble();
 
@@ -28,8 +41,8 @@ class DepartureTimeBarChart extends StatelessWidget {
     }
 
     // **调整 maxY 和 minY 为 interval 的整数倍**
-    double adjustedMaxY = (data['maxY'] / interval).ceil() * interval;
-    double adjustedMinY = (data['minY'] / interval).floor() * interval;
+    double adjustedMaxY = (data?['maxY'] / interval).ceil() * interval;
+    double adjustedMinY = (data?['minY'] / interval).floor() * interval;
 
     final textColor = Theme.of(context).colorScheme.onSurface;
 
@@ -108,7 +121,7 @@ class DepartureTimeBarChart extends StatelessWidget {
                         horizontalInterval: interval,
                       ),
                       borderData: FlBorderData(show: false),
-                      barGroups: data['barGroups'],
+                      barGroups: data?['barGroups'],
                       extraLinesData: ExtraLinesData(horizontalLines: [
                         HorizontalLine(
                             y: 0, color: Colors.black, strokeWidth: 1),
@@ -142,7 +155,7 @@ class DepartureTimeBarChart extends StatelessWidget {
     Map<int, int> toYanyuan = {};
     Map<int, int> toChangping = {};
 
-    for (var ride in rides) {
+    for (var ride in widget.rides) {
       DateTime appointmentTime = DateTime.parse(ride.appointmentTime);
       int hour = appointmentTime.hour;
 
@@ -151,30 +164,24 @@ class DepartureTimeBarChart extends StatelessWidget {
       int indexXin = resourceName.indexOf('新');
 
       if (indexYan == -1 || indexXin == -1) {
-        // 无法判断方向，跳过
         continue;
       }
 
       if (indexXin < indexYan) {
-        // 去燕园
         toYanyuan[hour] = (toYanyuan[hour] ?? 0) + 1;
       } else if (indexYan < indexXin) {
-        // 去昌平
         toChangping[hour] = (toChangping[hour] ?? 0) + 1;
       }
     }
 
     List<BarChartGroupData> barGroups = [];
-
     double maxY = 0;
     double minY = 0;
 
-    // 将时间范围调整为6到23点
     for (int i = 6; i <= 23; i++) {
       int toYanyuanCount = toYanyuan[i] ?? 0;
       int toChangpingCount = toChangping[i] ?? 0;
 
-      // 更新最大最小值
       if (toChangpingCount > maxY) maxY = toChangpingCount.toDouble();
       if (-toYanyuanCount < minY) minY = -toYanyuanCount.toDouble();
 
@@ -182,11 +189,10 @@ class DepartureTimeBarChart extends StatelessWidget {
         BarChartGroupData(
           x: i,
           barRods: [
-            // 去昌平（正值）
             BarChartRodData(
               fromY: 0,
               toY: toChangpingCount.toDouble(),
-              color: Theme.of(context).colorScheme.primary, // 使用主题颜色
+              color: Theme.of(context).colorScheme.primary,
               width: 8,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
@@ -195,11 +201,10 @@ class DepartureTimeBarChart extends StatelessWidget {
                 bottomRight: Radius.circular(0),
               ),
             ),
-            // 去燕园（负值）
             BarChartRodData(
               fromY: 0,
               toY: -toYanyuanCount.toDouble(),
-              color: Theme.of(context).colorScheme.secondary, // 使用主题颜色
+              color: Theme.of(context).colorScheme.secondary,
               width: 8,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(0),
@@ -213,7 +218,6 @@ class DepartureTimeBarChart extends StatelessWidget {
       );
     }
 
-    // 为了视觉效果，增加一定的上下边距
     maxY = maxY + 1;
     minY = minY - 1;
 
@@ -222,6 +226,16 @@ class DepartureTimeBarChart extends StatelessWidget {
       'maxY': maxY,
       'minY': minY,
     };
+  }
+
+  @override
+  void didUpdateWidget(DepartureTimeBarChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.rides != oldWidget.rides) {
+      setState(() {
+        _chartData = _prepareChartData(context);
+      });
+    }
   }
 }
 

@@ -30,6 +30,15 @@ class RideCalendarCardState extends State<RideCalendarCard> {
     _lastDay = _getLastDay();
   }
 
+  @override
+  void didUpdateWidget(RideCalendarCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.rides != oldWidget.rides) {
+      _groupEvents(widget.rides);
+      setState(() {});
+    }
+  }
+
   void _groupEvents(List<RideInfo> rides) {
     _groupedRides = {};
     for (var ride in rides) {
@@ -63,59 +72,140 @@ class RideCalendarCardState extends State<RideCalendarCard> {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = Theme.of(context).colorScheme.onSurface;
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
 
     return Column(
       children: [
-        TableCalendar<RideInfo>(
-          firstDay: _firstDay,
-          lastDay: _lastDay,
-          focusedDay: _focusedDay,
-          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-          eventLoader: _getEventsForDay,
-          startingDayOfWeek: StartingDayOfWeek.monday,
-          calendarFormat: _calendarFormat,
-          availableCalendarFormats: const {
-            CalendarFormat.month: 'Month',
-          },
-          onFormatChanged: (format) {
-            setState(() {
-              _calendarFormat = format;
-            });
-          },
-          onPageChanged: (focusedDay) {
-            _focusedDay = focusedDay;
-          },
-          onDaySelected: (selectedDay, focusedDay) {
-            setState(() {
-              _selectedDay = selectedDay;
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: TableCalendar<RideInfo>(
+            firstDay: _firstDay,
+            lastDay: _lastDay,
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            eventLoader: _getEventsForDay,
+            startingDayOfWeek: StartingDayOfWeek.monday,
+            calendarFormat: _calendarFormat,
+            availableCalendarFormats: const {
+              CalendarFormat.month: 'Month',
+            },
+            headerStyle: HeaderStyle(
+              titleTextStyle: theme.textTheme.titleMedium!.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+              formatButtonVisible: false,
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                color: theme.colorScheme.primary,
+              ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: TextStyle(
+                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+              ),
+              weekendStyle: TextStyle(
+                color: theme.colorScheme.primary.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            calendarStyle: CalendarStyle(
+              outsideDaysVisible: false,
+              defaultTextStyle: TextStyle(color: textColor),
+              weekendTextStyle: TextStyle(color: theme.colorScheme.primary),
+              selectedDecoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              todayDecoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              markerDecoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
+            onFormatChanged: (format) {
+              setState(() {
+                _calendarFormat = format;
+              });
+            },
+            onPageChanged: (focusedDay) {
               _focusedDay = focusedDay;
-            });
-          },
-          calendarBuilders: CalendarBuilders(
-            defaultBuilder: (context, date, _) {
-              if (_getEventsForDay(date).isNotEmpty) {
+            },
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, date, _) {
+                if (_getEventsForDay(date).isNotEmpty) {
+                  return Container(
+                    margin: const EdgeInsets.all(6.0),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(
+                      '${date.day}',
+                      style: TextStyle(color: textColor),
+                    ),
+                  );
+                }
+                return null;
+              },
+              selectedBuilder: (context, date, _) {
                 return Container(
                   margin: const EdgeInsets.all(6.0),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 2), // 使用主题颜色
+                    color: theme.colorScheme.primary,
                   ),
                   child: Text(
                     '${date.day}',
-                    style: TextStyle(color: textColor),
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 );
-              }
-              return null;
-            },
-            markerBuilder: (context, date, events) => SizedBox.shrink(), // 添加此行
+              },
+              todayBuilder: (context, date, _) {
+                return Container(
+                  margin: const EdgeInsets.all(6.0),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primaryContainer,
+                  ),
+                  child: Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+              markerBuilder: (context, date, events) => SizedBox.shrink(),
+            ),
           ),
         ),
-        const SizedBox(height: 8.0),
+        Divider(height: 1),
         Expanded(
           child: _buildRideList(),
         ),
@@ -124,28 +214,162 @@ class RideCalendarCardState extends State<RideCalendarCard> {
   }
 
   Widget _buildRideList() {
-    final textColor = Theme.of(context).colorScheme.onSurface;
+    final theme = Theme.of(context);
     final selectedEvents = _getEventsForDay(_selectedDay ?? _focusedDay);
+
     if (selectedEvents.isEmpty) {
       return Center(
-        child: Text('这一天没有乘车记录', style: TextStyle(color: textColor)),
-      );
-    } else {
-      return ListView.builder(
-        itemCount: selectedEvents.length,
-        itemBuilder: (context, index) {
-          RideInfo ride = selectedEvents[index];
-          return Card(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: ListTile(
-              title: Text('乘车时间: ${ride.appointmentTime}',
-                  style: TextStyle(color: textColor)),
-              subtitle: Text('状态: ${ride.statusName}',
-                  style: TextStyle(color: textColor.withOpacity(0.7))),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.directions_bus_outlined,
+              size: 48,
+              color: theme.colorScheme.onSurface.withOpacity(0.2),
             ),
-          );
-        },
+            SizedBox(height: 16),
+            Text(
+              '这一天没有乘车记录',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ],
+        ),
       );
     }
+
+    return ListView.separated(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: selectedEvents.length,
+      separatorBuilder: (context, index) => SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        RideInfo ride = selectedEvents[index];
+        String direction = ride.resourceName.contains('燕园') ? '去燕园' : '去昌平';
+
+        // 修改状态判断逻辑
+        String status = ride.statusName;
+        bool isViolation = status == '已预约'; // 将"已预约"视为违约
+        String statusText = isViolation ? '已违约' : '已签到';
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 左侧状态指示条
+                Container(
+                  width: 4,
+                  margin: EdgeInsets.symmetric(vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isViolation
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 头部信息
+                        Row(
+                          children: [
+                            Icon(
+                              isViolation
+                                  ? Icons.error_outline
+                                  : Icons.directions_bus,
+                              size: 20,
+                              color: isViolation
+                                  ? theme.colorScheme.error
+                                  : theme.colorScheme.primary,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              direction,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            Spacer(),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isViolation
+                                    ? theme.colorScheme.errorContainer
+                                    : theme.colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                statusText, // 使用计算后的状态文本
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: isViolation
+                                      ? theme.colorScheme.onErrorContainer
+                                      : theme.colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        // 时间和地点信息
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 16,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                ride.appointmentTime,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 16,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                ride.resourceName,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

@@ -2,14 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../models/ride_info.dart';
 
-class CheckedInReservedPieChart extends StatelessWidget {
+class CheckedInReservedPieChart extends StatefulWidget {
   final List<RideInfo> rides;
 
   CheckedInReservedPieChart({required this.rides});
 
   @override
+  State<CheckedInReservedPieChart> createState() =>
+      _CheckedInReservedPieChartState();
+}
+
+class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
+  List<PieChartSectionData>? _pieData;
+
+  @override
+  void initState() {
+    super.initState();
+    _preparePieData(null, null, null);
+  }
+
+  @override
+  void didUpdateWidget(CheckedInReservedPieChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.rides != oldWidget.rides) {
+      setState(() {
+        _preparePieData(null, null, null);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = _preparePieData(context);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
+    _pieData = _preparePieData(primaryColor, secondaryColor, textColor);
+
+    if (_pieData == null) {
+      return Center(child: CircularProgressIndicator());
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -25,7 +57,7 @@ class CheckedInReservedPieChart extends StatelessWidget {
                   height: chartHeight,
                   child: PieChart(
                     PieChartData(
-                      sections: data,
+                      sections: _pieData!,
                       sectionsSpace: 2,
                       centerSpaceRadius: 40,
                       borderData: FlBorderData(show: false),
@@ -43,7 +75,7 @@ class CheckedInReservedPieChart extends StatelessWidget {
                     SizedBox(width: 16),
                     LegendItem(
                         color: Theme.of(context).colorScheme.secondary,
-                        text: '已预约'),
+                        text: '已违约'),
                   ],
                 ),
               ],
@@ -54,10 +86,15 @@ class CheckedInReservedPieChart extends StatelessWidget {
     );
   }
 
-  List<PieChartSectionData> _preparePieData(BuildContext context) {
-    // 修改以下两行，使用 statusName 字段
-    int checkedInCount = rides.where((ride) => ride.statusName == '已签到').length;
-    int reservedCount = rides.where((ride) => ride.statusName == '已预约').length;
+  List<PieChartSectionData> _preparePieData(
+    Color? primaryColor,
+    Color? secondaryColor,
+    Color? textColor,
+  ) {
+    int checkedInCount =
+        widget.rides.where((ride) => ride.statusName == '已签到').length;
+    int reservedCount =
+        widget.rides.where((ride) => ride.statusName == '已预约').length;
 
     final total = checkedInCount + reservedCount;
     if (total == 0) {
@@ -76,29 +113,28 @@ class CheckedInReservedPieChart extends StatelessWidget {
     double checkedInPercentage = (checkedInCount / total) * 100;
     double reservedPercentage = (reservedCount / total) * 100;
 
-    // 修改 _preparePieData 方法中的 PieChartSectionData，添加具体数量并将文字移到饼外部
-    final textColor = Theme.of(context).colorScheme.onSurface;
-
     return [
       PieChartSectionData(
-        color: Theme.of(context).colorScheme.primary, // 使用主题颜色
+        color: primaryColor ?? Colors.grey,
         value: checkedInPercentage,
-        title:
-            '${checkedInPercentage.toStringAsFixed(1)}% ($checkedInCount)', // 保留数量
+        title: '${checkedInPercentage.toStringAsFixed(1)}% ($checkedInCount)',
         radius: 50,
         titleStyle: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-        titlePositionPercentageOffset: 1.6, // 将标题位置进一步偏移到饼图外部
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: textColor ?? Colors.black),
+        titlePositionPercentageOffset: 1.6,
       ),
       PieChartSectionData(
-        color: Theme.of(context).colorScheme.secondary, // 使用主题颜色
+        color: secondaryColor ?? Colors.grey.shade400,
         value: reservedPercentage,
-        title:
-            '${reservedPercentage.toStringAsFixed(1)}% ($reservedCount)', // 保留数量
+        title: '${reservedPercentage.toStringAsFixed(1)}% ($reservedCount)',
         radius: 50,
         titleStyle: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-        titlePositionPercentageOffset: 1.6, // 将标题位置进一步偏移到饼图外部
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: textColor ?? Colors.black),
+        titlePositionPercentageOffset: 1.6,
       ),
     ];
   }

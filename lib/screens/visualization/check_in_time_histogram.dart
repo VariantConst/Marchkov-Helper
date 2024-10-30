@@ -3,10 +3,25 @@ import '../../models/ride_info.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
 
-class CheckInTimeHistogram extends StatelessWidget {
+class CheckInTimeHistogram extends StatefulWidget {
   final List<RideInfo> rides;
 
   CheckInTimeHistogram({required this.rides});
+
+  @override
+  State<CheckInTimeHistogram> createState() => _CheckInTimeHistogramState();
+}
+
+class _CheckInTimeHistogramState extends State<CheckInTimeHistogram> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didUpdateWidget(CheckInTimeHistogram oldWidget) {
+    super.didUpdateWidget(oldWidget);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +136,7 @@ class CheckInTimeHistogram extends StatelessWidget {
   Map<String, dynamic> _prepareHistogramData(BuildContext context) {
     List<int> timeDifferences = [];
 
-    for (var ride in rides) {
+    for (var ride in widget.rides) {
       if (ride.statusName == '已签到') {
         // 根据 statusName 过滤
         try {

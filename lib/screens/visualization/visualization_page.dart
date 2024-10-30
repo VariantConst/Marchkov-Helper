@@ -3,12 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/ride_history_provider.dart';
 import '../../models/ride_info.dart';
 import 'ride_calendar_card.dart';
-// 添加以下导入
 import 'departure_time_bar_chart.dart';
-import 'check_in_time_histogram.dart'; // 恢复导入
-import 'checked_in_reserved_pie_chart.dart'; // 添加导入
+import 'check_in_time_histogram.dart';
+import 'checked_in_reserved_pie_chart.dart';
 
-// 将 TimeRange 枚举移动到类外部
 enum TimeRange { threeMonths, sixMonths, oneYear, all }
 
 class VisualizationSettingsPage extends StatefulWidget {
@@ -17,29 +15,73 @@ class VisualizationSettingsPage extends StatefulWidget {
       _VisualizationSettingsPageState();
 }
 
-class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
+class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
+    with SingleTickerProviderStateMixin {
   TimeRange _selectedTimeRange = TimeRange.all;
   late PageController _pageController;
   int _currentPage = 0;
+
+  late AnimationController _filterController;
+  late Animation<double> _filterRotation;
+  bool _isFilterExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<RideHistoryProvider>(context, listen: false)
+
+    _filterController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _filterRotation = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(
+      parent: _filterController,
+      curve: Curves.easeInOut,
+    ));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Provider.of<RideHistoryProvider>(context, listen: false)
           .loadRideHistory();
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _filterController.dispose();
     super.dispose();
   }
 
-  // 添加选择的时间范围变量，默认值为全部
-  // 根据选定的时间范围过滤乘
+  Map<TimeRange, Map<String, dynamic>> get timeRangeInfo => {
+        TimeRange.threeMonths: {
+          'icon': Icons.calendar_today,
+          'label': '过去3个月',
+          'shortLabel': '3个月',
+        },
+        TimeRange.sixMonths: {
+          'icon': Icons.calendar_month,
+          'label': '过去半年',
+          'shortLabel': '半年',
+        },
+        TimeRange.oneYear: {
+          'icon': Icons.calendar_today_outlined,
+          'label': '过去一年',
+          'shortLabel': '一年',
+        },
+        TimeRange.all: {
+          'icon': Icons.all_inclusive,
+          'label': '全部时间',
+          'shortLabel': '全部',
+        },
+      };
+
   List<RideInfo> _filterRides(List<RideInfo> rides) {
     final now = DateTime.now();
     late DateTime startDate;
@@ -55,102 +97,314 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
         startDate = now.subtract(Duration(days: 365));
         break;
       case TimeRange.all:
-        return rides; // 不过滤，返回全部数据
+        return rides;
     }
 
-    // 过滤掉不在选定时间范围内的乘车记录
     return rides.where((ride) {
       DateTime rideDate = DateTime.parse(ride.appointmentTime);
       return rideDate.isAfter(startDate) && rideDate.isBefore(now);
     }).toList();
   }
 
+  void _toggleFilter() {
+    setState(() {
+      _isFilterExpanded = !_isFilterExpanded;
+      if (_isFilterExpanded) {
+        _filterController.forward();
+      } else {
+        _filterController.reverse();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final rideHistoryProvider = Provider.of<RideHistoryProvider>(context);
+
+    if (rideHistoryProvider.isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('乘车历史', style: theme.textTheme.titleLarge),
+          centerTitle: true,
+          surfaceTintColor: Colors.transparent,
+        ),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (rideHistoryProvider.error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('乘车历史', style: theme.textTheme.titleLarge),
+          centerTitle: true,
+          surfaceTintColor: Colors.transparent,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline,
+                  size: 48, color: theme.colorScheme.error),
+              SizedBox(height: 16),
+              Text('加载失败，请重试'),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  rideHistoryProvider.loadRideHistory();
+                },
+                child: Text('重新加载'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final rides = _filterRides(rideHistoryProvider.rides);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('乘车历史'),
+        title: Text(
+          '乘车历史',
+          style: theme.textTheme.titleLarge,
+        ),
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
         actions: [
-          PopupMenuButton<TimeRange>(
-            icon: Icon(Icons.filter_list),
-            onSelected: (TimeRange newValue) {
-              setState(() {
-                _selectedTimeRange = newValue;
-              });
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<TimeRange>>[
-              PopupMenuItem<TimeRange>(
-                value: TimeRange.threeMonths,
-                child: Text('过去3个月'),
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _toggleFilter,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  height: 36,
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        timeRangeInfo[_selectedTimeRange]!['shortLabel'],
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      RotationTransition(
+                        turns: _filterRotation,
+                        child: Icon(
+                          Icons.expand_more,
+                          size: 20,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              PopupMenuItem<TimeRange>(
-                value: TimeRange.sixMonths,
-                child: Text('过去半年'),
-              ),
-              PopupMenuItem<TimeRange>(
-                value: TimeRange.oneYear,
-                child: Text('过去一年'),
-              ),
-              PopupMenuItem<TimeRange>(
-                value: TimeRange.all,
-                child: Text('全部'),
-              ),
-            ],
+            ),
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
-              },
-              children: [
-                _buildPage('乘车日历', RideCalendarCard(rides: rides)),
-                _buildPage('各时段出发班次统计', DepartureTimeBarChart(rides: rides)),
-                _buildPage('签到时间差（分钟）分布', CheckInTimeHistogram(rides: rides)),
-                _buildPage(
-                    '已签到与已预约比例', CheckedInReservedPieChart(rides: rides)),
-              ],
-            ),
+          Column(
+            children: [
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                    });
+                  },
+                  children: [
+                    _buildChartSection(
+                      key: ValueKey('calendar_${rides.length}'),
+                      icon: Icons.calendar_month_outlined,
+                      title: '乘车日历',
+                      content: RideCalendarCard(rides: rides),
+                    ),
+                    _buildChartSection(
+                      key: ValueKey('bar_${rides.length}'),
+                      icon: Icons.bar_chart_outlined,
+                      title: '各时段出发班次统计',
+                      content: DepartureTimeBarChart(rides: rides),
+                    ),
+                    _buildChartSection(
+                      icon: Icons.schedule_outlined,
+                      title: '签到时间差（分钟）分布',
+                      content: CheckInTimeHistogram(rides: rides),
+                    ),
+                    _buildChartSection(
+                      icon: Icons.pie_chart_outline,
+                      title: '已签到与已违约比例',
+                      content: CheckedInReservedPieChart(rides: rides),
+                    ),
+                  ],
+                ),
+              ),
+              _buildPageIndicator(),
+            ],
           ),
-          _buildPageIndicator(),
-          SizedBox(height: 20), // 添加这行来增加底部间距
+          if (_isFilterExpanded)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: TweenAnimationBuilder<double>(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Transform.translate(
+                    offset: Offset(0, -20 * (1 - value)),
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Card(
+                  margin: EdgeInsets.only(top: 8, right: 8),
+                  elevation: 8,
+                  shadowColor: theme.colorScheme.shadow.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.filter_list,
+                              size: 20,
+                              color: theme.colorScheme.primary,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '时间范围',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ...TimeRange.values
+                          .map((range) => _buildFilterOption(range)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildPage(String title, Widget content) {
+  Widget _buildFilterOption(TimeRange range) {
+    final theme = Theme.of(context);
+    final info = timeRangeInfo[range]!;
+    final isSelected = _selectedTimeRange == range;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedTimeRange = range;
+          _toggleFilter();
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.primaryContainer : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              info['icon'] as IconData,
+              size: 20,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            SizedBox(width: 12),
+            Text(
+              info['label'] as String,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface,
+                fontWeight: isSelected ? FontWeight.w500 : null,
+              ),
+            ),
+            SizedBox(width: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartSection({
+    Key? key,
+    required IconData icon,
+    required String title,
+    required Widget content,
+  }) {
+    final theme = Theme.of(context);
+
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            title,
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface), // 使用 onSurface 代替 onBackground
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+          child: Row(
+            children: [
+              Icon(icon, color: theme.colorScheme.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
-        Expanded(child: content),
+        Expanded(
+          child: Card(
+            margin: EdgeInsets.symmetric(horizontal: 16),
+            elevation: 0,
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: content,
+            ),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildPageIndicator() {
     return Container(
-      padding: EdgeInsets.only(bottom: 16), // 修改这里，增加底部内边距
+      padding: EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List<Widget>.generate(4, (index) {
@@ -163,14 +417,17 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage> {
               );
             },
             child: Container(
-              width: 12,
-              height: 12,
+              width: 8,
+              height: 8,
               margin: EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _currentPage == index
                     ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withOpacity(0.4),
               ),
             ),
           );
