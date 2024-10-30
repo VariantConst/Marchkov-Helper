@@ -16,7 +16,7 @@ class RideHistoryService {
       throw Exception('未找到用户凭证');
     }
 
-    // 获取缓存的乘车历史
+    // 获取缓存的预约历史
     final cachedHistory = await _getCachedRideHistory();
     final lastFetchDate =
         cachedHistory?.lastFetchDate ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -36,7 +36,7 @@ class RideHistoryService {
       'https://wproc.pku.edu.cn/site/reservation/my-list-time?p=1&page_size=0&status=5&sort_time=true&sort=desc&date_sta=$dateStringStart&date_end=$dateStringEnd',
     ];
 
-    // 发起请求获取新的乘车历史
+    // 发起请求获取新的预约历史
     List<RideInfo> allNewRides = [];
     for (String url in urlStrings) {
       final rides = await _fetchRideHistory(url);

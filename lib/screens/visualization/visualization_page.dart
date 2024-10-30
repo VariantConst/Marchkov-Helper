@@ -126,7 +126,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
     if (rideHistoryProvider.isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('乘车历史', style: theme.textTheme.titleLarge),
+          title: Text('预约历史', style: theme.textTheme.titleLarge),
           centerTitle: true,
           surfaceTintColor: Colors.transparent,
         ),
@@ -139,7 +139,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
     if (rideHistoryProvider.error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('乘车历史', style: theme.textTheme.titleLarge),
+          title: Text('预约历史', style: theme.textTheme.titleLarge),
           centerTitle: true,
           surfaceTintColor: Colors.transparent,
         ),
@@ -169,7 +169,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '乘车历史',
+          '预约历史',
           style: theme.textTheme.titleLarge,
         ),
         centerTitle: true,
@@ -232,13 +232,13 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                     _buildChartSection(
                       key: ValueKey('calendar_${rides.length}'),
                       icon: Icons.calendar_month_outlined,
-                      title: '乘车日历',
+                      title: '预约日历',
                       content: RideCalendarCard(rides: rides),
                     ),
                     _buildChartSection(
                       key: ValueKey('heatmap_${rides.length}'),
                       icon: Icons.grid_4x4_outlined,
-                      title: '乘车热力图',
+                      title: '预约热力图',
                       content: RideHeatmap(rides: rides),
                     ),
                     _buildChartSection(

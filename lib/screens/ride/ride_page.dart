@@ -270,7 +270,7 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       }
     }
 
-    // 新增: 获取乘车历史并统计乘坐次数
+    // 新增: 获取预约历史并统计乘坐次数
     if (mounted) {
       // 添加这行来检查组件是否仍然挂载
       await _loadRideHistory();

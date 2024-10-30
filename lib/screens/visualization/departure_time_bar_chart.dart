@@ -14,6 +14,160 @@ class DepartureTimeBarChart extends StatefulWidget {
 
 class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
   Map<String, dynamic>? _chartData;
+  Map<int, List<RideInfo>> _toYanyuanRides = {};
+  Map<int, List<RideInfo>> _toChangpingRides = {};
+
+  void _showTimeDetails(BuildContext context, int hour, Offset tapPosition) {
+    final theme = Theme.of(context);
+    final toYanyuan = _toYanyuanRides[hour] ?? [];
+    final toChangping = _toChangpingRides[hour] ?? [];
+
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final size = overlay.size;
+
+    const double tooltipWidth = 280.0;
+    const double tooltipHeight = 120.0;
+
+    double dx = tapPosition.dx - (tooltipWidth / 2);
+    double dy = tapPosition.dy - tooltipHeight - 8;
+
+    if (dx + tooltipWidth > size.width - 8) {
+      dx = size.width - tooltipWidth - 8;
+    }
+    if (dx < 8) dx = 8;
+
+    if (dy < 8) {
+      dy = tapPosition.dy + 8;
+    }
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTapDown: (_) => Navigator.of(context).pop(),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+            Positioned(
+              left: dx,
+              top: dy,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: tooltipWidth,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.shadow.withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainer,
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(12)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_outlined,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '${hour.toString().padLeft(2, '0')}:00 - ${(hour + 1).toString().padLeft(2, '0')}:00',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            _buildDirectionStat(
+                              context,
+                              '去燕园',
+                              toYanyuan.length,
+                              theme.colorScheme.secondary,
+                            ),
+                            SizedBox(width: 16),
+                            _buildDirectionStat(
+                              context,
+                              '去昌平',
+                              toChangping.length,
+                              theme.colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDirectionStat(
+      BuildContext context, String direction, int count, Color color) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              direction,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              count.toString(),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '次预约',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,112 +202,169 @@ class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableHeight = constraints.maxHeight;
-        final chartHeight = availableHeight * 2 / 3;
+        return Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 24, 16, 16),
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.center,
+                    maxY: adjustedMaxY,
+                    minY: adjustedMinY,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipItem: (_, __, ___, ____) => null,
+                      ),
+                      touchCallback: (FlTouchEvent event, response) {
+                        if (event.runtimeType == FlTapUpEvent &&
+                            response?.spot != null) {
+                          final hour = response!.spot!.touchedBarGroup.x;
+                          final RenderBox box =
+                              context.findRenderObject() as RenderBox;
+                          final Offset localPosition =
+                              (event as FlTapUpEvent).localPosition;
+                          final Offset globalPosition =
+                              box.localToGlobal(localPosition);
 
-        return Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  height: chartHeight,
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.center,
-                      maxY: adjustedMaxY,
-                      minY: adjustedMinY,
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            interval: interval,
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              // **只显示数据范围内的标签，且不显示最大值标签**
-                              if (value >= adjustedMaxY ||
-                                  value <= adjustedMinY) {
-                                return SizedBox.shrink();
-                              }
-                              return Text(
-                                value.toInt().abs().toString(),
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 10,
+                          _showTimeDetails(
+                            context,
+                            hour.toInt(),
+                            globalPosition,
+                          );
+                        }
+                      },
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          interval: interval,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            // **只显示数据范围内的标签，且不显示最大值标签**
+                            if (value >= adjustedMaxY ||
+                                value <= adjustedMinY) {
+                              return SizedBox.shrink();
+                            }
+                            return Text(
+                              value.toInt().abs().toString(),
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 10,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            int index = value.toInt();
+                            if (index % 2 == 0) {
+                              return Transform.rotate(
+                                angle: pi / 3, // 60度旋转（pi/3 弧度）
+                                child: Text(
+                                  '$index:00',
+                                  style: TextStyle(
+                                    color: textColor,
+                                    fontSize: 10,
+                                  ),
                                 ),
                               );
-                            },
-                          ),
+                            } else {
+                              return SizedBox.shrink();
+                            }
+                          },
                         ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: 1,
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              int index = value.toInt();
-                              if (index % 2 == 0) {
-                                return Transform.rotate(
-                                  angle: pi / 3, // 60度旋转（pi/3 弧度）
-                                  child: Text(
-                                    '$index:00',
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                return SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ),
-                        rightTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        topTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
                       ),
-                      gridData: FlGridData(
-                        show: true,
-                        horizontalInterval: interval,
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: data?['barGroups'],
-                      extraLinesData: ExtraLinesData(horizontalLines: [
-                        HorizontalLine(
-                            y: 0, color: Colors.black, strokeWidth: 1),
-                      ]),
+                      rightTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
+                    gridData: FlGridData(
+                      show: true,
+                      horizontalInterval: interval,
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: data?['barGroups'],
+                    extraLinesData: ExtraLinesData(horizontalLines: [
+                      HorizontalLine(y: 0, color: Colors.black, strokeWidth: 1),
+                    ]),
                   ),
                 ),
-                SizedBox(height: 8),
-                // 添加自定义图例
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    LegendItem(
-                        color: Theme.of(context).colorScheme.primary,
-                        text: '去昌平'),
-                    SizedBox(width: 16),
-                    LegendItem(
-                        color: Theme.of(context).colorScheme.secondary,
-                        text: '去燕园'),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
+            // 图例部分使用新的设计
+            Container(
+              margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildLegendItem(
+                    context,
+                    color: Theme.of(context).colorScheme.primary,
+                    label: '去昌平',
+                  ),
+                  SizedBox(width: 24),
+                  _buildLegendItem(
+                    context,
+                    color: Theme.of(context).colorScheme.secondary,
+                    label: '去燕园',
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
+  Widget _buildLegendItem(
+    BuildContext context, {
+    required Color color,
+    required String label,
+  }) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        SizedBox(width: 8),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
   Map<String, dynamic> _prepareChartData(BuildContext context) {
-    Map<int, int> toYanyuan = {};
-    Map<int, int> toChangping = {};
+    _toYanyuanRides.clear();
+    _toChangpingRides.clear();
 
     for (var ride in widget.rides) {
       DateTime appointmentTime = DateTime.parse(ride.appointmentTime);
@@ -163,14 +374,12 @@ class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
       int indexYan = resourceName.indexOf('燕');
       int indexXin = resourceName.indexOf('新');
 
-      if (indexYan == -1 || indexXin == -1) {
-        continue;
-      }
+      if (indexYan == -1 || indexXin == -1) continue;
 
       if (indexXin < indexYan) {
-        toYanyuan[hour] = (toYanyuan[hour] ?? 0) + 1;
+        _toYanyuanRides.putIfAbsent(hour, () => []).add(ride);
       } else if (indexYan < indexXin) {
-        toChangping[hour] = (toChangping[hour] ?? 0) + 1;
+        _toChangpingRides.putIfAbsent(hour, () => []).add(ride);
       }
     }
 
@@ -179,8 +388,8 @@ class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
     double minY = 0;
 
     for (int i = 6; i <= 23; i++) {
-      int toYanyuanCount = toYanyuan[i] ?? 0;
-      int toChangpingCount = toChangping[i] ?? 0;
+      int toYanyuanCount = _toYanyuanRides[i]?.length ?? 0;
+      int toChangpingCount = _toChangpingRides[i]?.length ?? 0;
 
       if (toChangpingCount > maxY) maxY = toChangpingCount.toDouble();
       if (-toYanyuanCount < minY) minY = -toYanyuanCount.toDouble();
@@ -188,27 +397,24 @@ class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
       barGroups.add(
         BarChartGroupData(
           x: i,
+          groupVertically: true,
           barRods: [
             BarChartRodData(
               fromY: 0,
               toY: toChangpingCount.toDouble(),
               color: Theme.of(context).colorScheme.primary,
-              width: 8,
+              width: 12,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(4),
-                bottomLeft: Radius.circular(0),
-                bottomRight: Radius.circular(0),
               ),
             ),
             BarChartRodData(
               fromY: 0,
               toY: -toYanyuanCount.toDouble(),
               color: Theme.of(context).colorScheme.secondary,
-              width: 8,
+              width: 12,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(0),
-                topRight: Radius.circular(0),
                 bottomLeft: Radius.circular(4),
                 bottomRight: Radius.circular(4),
               ),
@@ -236,24 +442,5 @@ class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
         _chartData = _prepareChartData(context);
       });
     }
-  }
-}
-
-// 添加例项组件
-class LegendItem extends StatelessWidget {
-  final Color color;
-  final String text;
-
-  LegendItem({required this.color, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 16, height: 16, color: color),
-        SizedBox(width: 4),
-        Text(text),
-      ],
-    );
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/ride_info.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'dart:math';
 
 class CheckInTimeHistogram extends StatefulWidget {
   final List<RideInfo> rides;
@@ -13,185 +12,314 @@ class CheckInTimeHistogram extends StatefulWidget {
 }
 
 class _CheckInTimeHistogramState extends State<CheckInTimeHistogram> {
-  @override
-  void initState() {
-    super.initState();
-  }
+  Map<String, dynamic>? _chartData;
+  Map<int, List<RideInfo>> _timeRangeRides = {};
 
-  @override
-  void didUpdateWidget(CheckInTimeHistogram oldWidget) {
-    super.didUpdateWidget(oldWidget);
-  }
+  void _showTimeDetails(BuildContext context, int minutes, Offset tapPosition) {
+    final theme = Theme.of(context);
+    final rides = _timeRangeRides[minutes] ?? [];
 
-  @override
-  Widget build(BuildContext context) {
-    final data = _prepareHistogramData(context);
-    final textColor = Theme.of(context).colorScheme.onSurface;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final size = overlay.size;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableHeight = constraints.maxHeight;
-        final chartHeight = availableHeight * 3 / 5; // 将图表高度设置为页面高度的 3/5
+    const double tooltipWidth = 120.0;
+    const double tooltipHeight = 80.0;
 
-        return Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Center(
-            // 添加 Center 小部件，使内容居中
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, // 在垂直方向上居中对齐
-              children: [
-                SizedBox(
-                  height: chartHeight,
-                  child: BarChart(
-                    BarChartData(
-                      // 将 'data:' 移除，作为位置参数传递
-                      alignment: BarChartAlignment.center,
-                      minY: 0, // Y轴从0开始
-                      maxY: data['maxY'],
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            interval: data['interval'],
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              return Text(
-                                value.toInt().toString(),
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontSize: 10,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          // 移动到 titlesData 内部
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            // 设置 x 的刻度间隔
-                            interval: 2,
-                            getTitlesWidget: (double value, TitleMeta meta) {
-                              // 仅显示 -10 到 10 的刻度标签
-                              if (value.toInt() % 2 == 0 &&
-                                  value >= -10 &&
-                                  value <= 10) {
-                                return Text(
-                                  value.toInt().toString(),
-                                  style: TextStyle(
-                                    color: textColor,
-                                    fontSize: 10,
-                                  ),
-                                );
-                              } else {
-                                return SizedBox.shrink();
-                              }
-                            },
-                          ),
-                        ),
-                        rightTitles: AxisTitles(
-                          // 移动到 titlesData 内部
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: AxisTitles(
-                          // 移动到 titlesData 内部
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                      ),
-                      gridData: FlGridData(
-                        show: true,
-                        horizontalInterval: data['interval'],
-                        verticalInterval: 2,
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: data['barGroups'],
-                      baselineY: 0,
-                    ), // 添加逗号并关闭 BarChartData
-                  ), // 关闭 BarChart
-                ),
-                SizedBox(height: 8),
-                // 添加图例
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    LegendItem(
-                        color: Theme.of(context).colorScheme.secondary,
-                        text: '提前签到'), // 改为琥珀色
-                    SizedBox(width: 16),
-                    LegendItem(
-                        color: Theme.of(context).colorScheme.primary,
-                        text: '迟到签到'), // 改为青色
-                  ],
-                ),
-              ],
+    double dx = tapPosition.dx - (tooltipWidth / 2);
+    double dy = tapPosition.dy - tooltipHeight - 8;
+
+    if (dx + tooltipWidth > size.width - 8) {
+      dx = size.width - tooltipWidth - 8;
+    }
+    if (dx < 8) dx = 8;
+
+    if (dy < 8) {
+      dy = tapPosition.dy + 8;
+    }
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTapDown: (_) => Navigator.of(context).pop(),
+                child: Container(color: Colors.transparent),
+              ),
             ),
-          ),
+            Positioned(
+              left: dx,
+              top: dy,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: tooltipWidth,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.shadow.withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        minutes < 0 ? '提前' : '迟到',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '${minutes.abs()}分钟',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: minutes < 0
+                              ? theme.colorScheme.secondary
+                              : theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${rides.length}次',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    _chartData ??= _prepareHistogramData(context);
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+
+    if (_chartData == null) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    final data = _chartData!;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 24, 16, 32),
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.center,
+                    maxY: data['maxY'],
+                    minY: 0,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        getTooltipItem: (_, __, ___, ____) => null,
+                      ),
+                      touchCallback: (FlTouchEvent event, response) {
+                        if (event.runtimeType == FlTapUpEvent &&
+                            response?.spot != null) {
+                          final minutes = response!.spot!.touchedBarGroup.x;
+                          final RenderBox box =
+                              context.findRenderObject() as RenderBox;
+                          final Offset localPosition =
+                              (event as FlTapUpEvent).localPosition;
+                          final Offset globalPosition =
+                              box.localToGlobal(localPosition);
+
+                          _showTimeDetails(
+                            context,
+                            minutes.toInt(),
+                            globalPosition,
+                          );
+                        }
+                      },
+                    ),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40,
+                          interval: data['interval'],
+                          getTitlesWidget: (value, meta) {
+                            if (value % data['interval'] != 0 ||
+                                value >= data['maxY']) {
+                              return SizedBox.shrink();
+                            }
+                            return Text(
+                              value.toInt().toString(),
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 10,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 2,
+                          reservedSize: 32,
+                          getTitlesWidget: (value, meta) {
+                            final minutes = value.toInt();
+                            if (minutes % 2 == 0) {
+                              return Container(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  '${minutes > 0 ? '+' : ''}$minutes',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              );
+                            }
+                            return SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                      rightTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles:
+                          AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    gridData: FlGridData(
+                      show: true,
+                      horizontalInterval: data['interval'],
+                      verticalInterval: 2,
+                    ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: data['barGroups'],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildLegendItem(
+                    context,
+                    color: theme.colorScheme.secondary,
+                    label: '提前签到',
+                  ),
+                  SizedBox(width: 24),
+                  _buildLegendItem(
+                    context,
+                    color: theme.colorScheme.primary,
+                    label: '迟到签到',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLegendItem(
+    BuildContext context, {
+    required Color color,
+    required String label,
+  }) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        SizedBox(width: 8),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
   Map<String, dynamic> _prepareHistogramData(BuildContext context) {
-    List<int> timeDifferences = [];
+    _timeRangeRides.clear();
 
     for (var ride in widget.rides) {
-      if (ride.statusName == '已签到') {
-        // 根据 statusName 过滤
+      if (ride.statusName == '已签到' && ride.appointmentSignTime != null) {
         try {
           DateTime appointmentTime = DateTime.parse(ride.appointmentTime);
           DateTime signTime = DateTime.parse(ride.appointmentSignTime!);
           int difference = signTime.difference(appointmentTime).inMinutes;
-          timeDifferences.add(difference);
+          int clampedDiff = difference.clamp(-10, 10);
+          _timeRangeRides.putIfAbsent(clampedDiff, () => []).add(ride);
         } catch (e) {
           continue;
         }
       }
     }
 
-    // 计算频率
-    Map<int, int> frequencyMap = {};
-    for (var diff in timeDifferences) {
-      int clampedDiff = diff.clamp(-10, 10);
-      frequencyMap[clampedDiff] = (frequencyMap[clampedDiff] ?? 0) + 1;
-    }
-
-    // 确保包含所有从 -10 到 10 的 x 值
     List<BarChartGroupData> barGroups = [];
+    double maxY = 0;
+
     for (int i = -10; i <= 10; i++) {
+      final count = _timeRangeRides[i]?.length ?? 0;
+      if (count > maxY) maxY = count.toDouble();
+
       barGroups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: (frequencyMap[i] ?? 0).toDouble(),
+              toY: count.toDouble(),
               color: i < 0
                   ? Theme.of(context).colorScheme.secondary
-                  : Theme.of(context).colorScheme.primary, // 使用主题颜色
-              width: 8, // 调整柱子宽度，与出发时间统计图表一致
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-                bottomLeft: Radius.circular(0),
-                bottomRight: Radius.circular(0),
-              ), // 调整圆角样式，与出发时间统计图表一致
+                  : Theme.of(context).colorScheme.primary,
+              width: 12,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(4),
+              ),
             ),
           ],
         ),
       );
     }
 
-    // 计算 Y 轴的最大值
-    int maxYValue =
-        frequencyMap.values.isNotEmpty ? frequencyMap.values.reduce(max) : 0;
-    double maxY = (maxYValue + 1).toDouble();
-
-    // 设置间隔，确保 interval 不为零
+    maxY = maxY + 1;
     double interval = (maxY / 5).ceilToDouble();
-    if (interval == 0) {
-      interval = 1.0;
-    }
+    if (interval < 1) interval = 1;
 
     return {
       'barGroups': barGroups,
@@ -199,23 +327,14 @@ class _CheckInTimeHistogramState extends State<CheckInTimeHistogram> {
       'interval': interval,
     };
   }
-}
-
-// 添加图例项组件
-class LegendItem extends StatelessWidget {
-  final Color color;
-  final String text;
-
-  LegendItem({required this.color, required this.text});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 16, height: 16, color: color),
-        SizedBox(width: 4),
-        Text(text),
-      ],
-    );
+  void didUpdateWidget(CheckInTimeHistogram oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.rides != oldWidget.rides) {
+      setState(() {
+        _chartData = _prepareHistogramData(context);
+      });
+    }
   }
 }

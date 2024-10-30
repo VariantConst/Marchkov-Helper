@@ -54,7 +54,7 @@ class HelpPage extends StatelessWidget {
               ),
               _HelpItem(
                 title: '智能推荐',
-                content: '应用会学习您的乘车偏好，根据历史乘车记录智能推荐班车。需要您手动打开设置-乘车历史，以缓存乘车记录。',
+                content: '应用会学习您的乘车偏好，根据历史乘车记录智能推荐班车。需要您手动打开设置-预约历史，以缓存乘车记录。',
                 icon: Icons.auto_awesome,
               ),
               _HelpItem(

@@ -279,7 +279,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Column(
                       children: [
                         _buildSettingOption(
-                          title: '乘车历史',
+                          title: '预约历史',
                           icon: Icons.history_outlined,
                           onTap: () => Navigator.push(
                             context,
