@@ -219,7 +219,7 @@ class ReservationService {
   Future<String> getReservationQRCode(
       String id, String hallAppointmentDataId) async {
     final uri = Uri.parse(
-      'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?id=$id&type=0&hall_appointment_data_id=$hallAppointmentDataId',
+      'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?id=$id',
     );
 
     try {
