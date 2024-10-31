@@ -8,6 +8,7 @@ import 'theme_settings_page.dart';
 import '../visualization/visualization_page.dart';
 import 'about_page.dart';
 import 'ride_settings_page.dart';
+import 'help_page.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -158,7 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         child: ListView(
           children: [
@@ -195,14 +196,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text(
                     college,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onBackground.withOpacity(0.8),
+                      color: theme.colorScheme.onSurface.withOpacity(0.8),
                     ),
                   ),
                   SizedBox(height: 4),
                   Text(
                     'ID: $studentId',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onBackground.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -284,7 +285,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         Divider(height: 1, indent: 56),
                         _buildSettingOption(
-                          title: '关于',
+                          title: '帮助中心',
+                          icon: Icons.help_outline,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => HelpPage()),
+                          ),
+                        ),
+                        Divider(height: 1, indent: 56),
+                        _buildSettingOption(
+                          title: '关于应用',
                           icon: Icons.info_outline,
                           onTap: () => Navigator.push(
                             context,
