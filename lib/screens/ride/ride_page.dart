@@ -41,10 +41,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   // 添加一个加载状态变量
   bool _isLoading = true;
 
-  // 添加新的属性
-  bool? _showTip1;
-  bool? _showTip2;
-
   // 添加一个新的列来存储每个卡片的状态
   List<Map<String, dynamic>> _cardStates = [];
 
@@ -61,7 +57,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     super.initState();
     _cookieValidationFuture = _validateCookies();
     _initialize();
-    _loadTipPreference();
     _loadAutoReservationSetting();
     _loadSafariStyleSetting(); // 新增加载设置
 
@@ -467,92 +462,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     };
   }
 
-  // 修改 _loadTipPreference 方法以加载两个提示的状态
-  Future<void> _loadTipPreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _showTip1 = prefs.getBool('showRideTip1') ?? true;
-      _showTip2 = prefs.getBool('showRideTip2') ?? true;
-    });
-  }
-
-  // 修改 _saveTipPreference 方法以保存两个提示的状态
-  Future<void> _saveTipPreference(bool showTip1, bool showTip2) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('showRideTip1', showTip1);
-    await prefs.setBool('showRideTip2', showTip2);
-  }
-
-  // 新增方法用于显示第一个提示对话框
-  void _showTipDialog1() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('乘车提示'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('1. 本页面只会显示过去30分钟到未来30分钟内发车的班车。'),
-            Text('2. 如果已错过发车时刻，将无法预约，只会显示乘车码或临时码。'),
-            Text('3. 应用会学习您的乘车偏好，根据历史乘车记录智能推荐班车。目前需要您手动打开设置-乘车历史，以缓存乘车记录。'),
-            Text('4. 如果加载太慢，尝试关闭代理。'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _showTip1 = false;
-              });
-              _saveTipPreference(false, _showTip2 ?? true);
-            },
-            child: Text('不再显示'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 新增方法用于显示第二个提示对话框
-  void _showTipDialog2() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('二维码可以点击！'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('1. 点击二维码可以切换到仿官方页面。'),
-            Text('2. 主页面和仿官方页面的二维码都是有效的。'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _showTip2 = false;
-              });
-              _saveTipPreference(_showTip1 ?? true, false);
-            },
-            child: Text('不再显示'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('确定'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _cancelReservation(int index) async {
     final cardState = _cardStates[index];
     if (cardState['appointmentId'] == null ||
@@ -755,104 +664,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // 修改乘车提示部分，添加新的二维码提示
-                  if (_showTip1 == true || _showTip2 == true)
-                    Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                      child: Row(
-                        children: [
-                          if (_showTip1 == true)
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _showTipDialog1,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .secondaryContainer,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 0), // 减小水平内边距
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.info_outline,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        size: 16),
-                                    SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        '查看乘车提示',
-                                        style: TextStyle(
-                                          color: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.color,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                        overflow:
-                                            TextOverflow.ellipsis, // 文本溢出时显示省略号
-                                        maxLines: 1, // 限制为单行
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          if (_showTip1 == true && _showTip2 == true)
-                            SizedBox(width: 8),
-                          if (_showTip2 == true)
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _showTipDialog2,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .secondaryContainer,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 0), // 减小水平内边距
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.qr_code,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        size: 16),
-                                    SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        '二维码可以点击！',
-                                        style: TextStyle(
-                                          color: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.color,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                        overflow:
-                                            TextOverflow.ellipsis, // 文本溢出时显示省略号
-                                        maxLines: 1, // 限制为单行
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
                   SizedBox(
                     height: 600,
                     child: _nearbyBuses.isEmpty

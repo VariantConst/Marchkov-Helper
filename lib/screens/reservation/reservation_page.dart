@@ -10,7 +10,6 @@ import '../../services/version_service.dart';
 import 'dart:async';
 import 'reservation_calendar.dart';
 import 'bus_list.dart';
-import 'tip_dialog.dart';
 import 'package:flutter/services.dart';
 
 class ReservationPage extends StatefulWidget {
@@ -35,7 +34,6 @@ class _ReservationPageState extends State<ReservationPage> {
     super.initState();
     _selectedDay = _focusedDay;
     _loadReservationData();
-    _loadTipPreference();
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final versionService = VersionService();
@@ -135,36 +133,6 @@ class _ReservationPageState extends State<ReservationPage> {
             busDateTime.isAfter(DateTime.now());
       }).toList();
     });
-  }
-
-  Future<void> _loadTipPreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _showTip = prefs.getBool('showReservationTip') ?? true;
-    });
-  }
-
-  Future<void> _saveTipPreference(bool show) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('showReservationTip', show);
-  }
-
-  void _showTipDialog() {
-    if (!_showTip!) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => TipDialog(
-        onDismiss: () => Navigator.of(context).pop(),
-        onDoNotShowAgain: () {
-          Navigator.of(context).pop();
-          setState(() {
-            _showTip = false;
-          });
-          _saveTipPreference(false);
-        },
-      ),
-    );
   }
 
   void _updateReservedBusesWithRecentReservations(List<dynamic> reservations) {
@@ -387,32 +355,6 @@ class _ReservationPageState extends State<ReservationPage> {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(30),
-                ),
-                child: ElevatedButton(
-                  onPressed: _showTipDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.secondaryContainer,
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.info_outline,
-                          color: theme.colorScheme.primary),
-                      SizedBox(width: 8),
-                      Text(
-                        '查看使用提示',
-                        style: TextStyle(
-                          color: theme.textTheme.titleMedium?.color,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
