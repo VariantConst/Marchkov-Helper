@@ -88,13 +88,17 @@ class RideSettingsPageState extends State<RideSettingsPage> {
         appBar: AppBar(
           title: Text(
             '乘车设置',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: theme.textTheme.titleLarge,
           ),
           centerTitle: true,
           surfaceTintColor: Colors.transparent,
         ),
         body: Center(
-          child: CircularProgressIndicator(),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(
+              theme.colorScheme.primary,
+            ),
+          ),
         ),
       );
     }
@@ -103,76 +107,111 @@ class RideSettingsPageState extends State<RideSettingsPage> {
       appBar: AppBar(
         title: Text(
           '乘车设置',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: theme.textTheme.titleLarge,
         ),
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
       ),
-      body: SafeArea(
-        child: ListView(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 设置选项
             Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 0,
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                child: ListTile(
-                  title: Text(
-                    '自动预约班车',
-                    style: theme.textTheme.titleMedium,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, bottom: 8),
+                    child: Text(
+                      '功能设置',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  subtitle: Text(
-                    '开启后将自动预约最近的班车',
-                    style: theme.textTheme.bodyMedium,
+                  Card(
+                    elevation: 0,
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
+                    child: Column(
+                      children: [
+                        _buildSettingTile(
+                          title: '自动预约班车',
+                          subtitle: '开启后将自动预约最近的班车',
+                          icon: Icons.schedule_outlined,
+                          value: _isAutoReservationEnabled!,
+                          onChanged: (bool value) async {
+                            if (value) {
+                              _showConfirmationDialog();
+                            } else {
+                              HapticFeedback.mediumImpact();
+                              await _saveSettings(false);
+                              setState(() {
+                                _isAutoReservationEnabled = false;
+                              });
+                            }
+                          },
+                        ),
+                        Divider(height: 1, indent: 56),
+                        _buildSettingTile(
+                          title: '仿官方页面',
+                          subtitle: '开启后点击二维码可切换到仿官方页面',
+                          icon: Icons.qr_code_outlined,
+                          value: _isSafariStyleEnabled!,
+                          onChanged: (bool value) async {
+                            HapticFeedback.mediumImpact();
+                            await _saveSafariStyleSetting(value);
+                            setState(() {
+                              _isSafariStyleEnabled = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                  trailing: Switch(
-                    value: _isAutoReservationEnabled!,
-                    onChanged: (bool value) async {
-                      if (value) {
-                        _showConfirmationDialog();
-                      } else {
-                        HapticFeedback.mediumImpact();
-                        await _saveSettings(false);
-                        setState(() {
-                          _isAutoReservationEnabled = false;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Card(
-                elevation: 0,
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                child: ListTile(
-                  title: Text(
-                    '仿官方页面',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  subtitle: Text(
-                    '开启后点击二维码可切换到仿官方页面',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  trailing: Switch(
-                    value: _isSafariStyleEnabled!,
-                    onChanged: (bool value) async {
-                      HapticFeedback.mediumImpact();
-                      await _saveSafariStyleSetting(value);
-                      setState(() {
-                        _isSafariStyleEnabled = value;
-                      });
-                    },
-                  ),
-                ),
+                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSettingTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Icon(
+        icon,
+        color: theme.colorScheme.primary,
+        size: 24,
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
       ),
     );
   }

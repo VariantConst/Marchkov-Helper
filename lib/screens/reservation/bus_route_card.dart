@@ -1,97 +1,5 @@
 import 'package:flutter/material.dart';
 
-class BusRouteCard extends StatelessWidget {
-  final Map<String, dynamic> busData;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
-  final bool isReserved;
-  final bool isPast;
-  final Color cardColor;
-
-  const BusRouteCard({
-    super.key,
-    required this.busData,
-    this.onTap,
-    this.onLongPress,
-    this.isReserved = false,
-    this.isPast = false,
-    required this.cardColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
-
-    String departureTime = busData['yaxis'] ?? '';
-    int seatsLeft = busData['row']['margin'] ?? 0;
-
-    return Card(
-      color: theme.cardColor, // 使用主题卡片颜色
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
-          width: 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: isPast ? null : onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // 时间列
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    departureTime,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                  Text(
-                    '$seatsLeft 个座位剩余',
-                    style: TextStyle(color: theme.textTheme.bodySmall?.color),
-                  ),
-                ],
-              ),
-              // 右侧按钮
-              if (!isPast)
-                ElevatedButton(
-                  onPressed: onTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isReserved
-                        ? theme.colorScheme.primary
-                        : (isDarkMode ? Colors.grey[800] : Colors.white),
-                    foregroundColor: isReserved
-                        ? theme.colorScheme.onPrimary
-                        : theme.textTheme.bodyLarge?.color,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  child: Text(
-                    isReserved ? '已预约' : '预约',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class BusRouteDetails extends StatelessWidget {
   final Map<String, dynamic> busData;
 
@@ -100,82 +8,281 @@ class BusRouteDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     final routeName = busData['route_name'] ?? '未知路线';
     final date = busData['abscissa'] ?? '';
     final time = busData['yaxis'] ?? '';
     final margin = busData['row']['margin'] ?? 0;
-    final id = busData['bus_id']?.toString() ?? 'N/A'; // 转换为字符串
-    final period = busData['time_id']?.toString() ?? 'N/A'; // 转换为字符串
+    final id = busData['bus_id']?.toString() ?? 'N/A';
+    final period = busData['time_id']?.toString() ?? 'N/A';
 
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            routeName,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.textTheme.titleLarge?.color,
-            ),
-          ),
-          SizedBox(height: 16),
-          _buildDetailRow(context, '日期', date),
-          _buildDetailRow(context, '出发时间', time),
-          _buildDetailRow(context, '剩余座位', margin.toString()),
-          _buildDetailRow(context, 'ID', id),
-          _buildDetailRow(context, 'Period', period),
-          SizedBox(height: 20),
-          Align(
-            alignment: Alignment.center,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+    return Stack(
+      children: [
+        Container(
+          constraints: BoxConstraints(maxWidth: 360),
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.shadow.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 2),
               ),
-              child: Text('关闭'),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 路线信息
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.directions_bus_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 24,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '班车路线',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          routeName,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 20,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          softWrap: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 40),
+                ],
+              ),
+              SizedBox(height: 16),
+
+              // 分隔线和装饰圆点
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: Size(double.infinity, 1),
+                    painter: DashedLinePainter(
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      _buildCircle(theme),
+                      Spacer(),
+                      _buildCircle(theme),
+                    ],
+                  ),
+                ],
+              ),
+
+              // 主要信息区域
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildMainInfo(
+                        context,
+                        icon: Icons.access_time_rounded,
+                        label: '出发时间',
+                        value: time,
+                        subValue: date,
+                      ),
+                    ),
+                    Container(
+                      height: 50,
+                      width: 1,
+                      color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                    ),
+                    Expanded(
+                      child: _buildMainInfo(
+                        context,
+                        icon: Icons.event_seat_rounded,
+                        label: '剩余座位',
+                        value: margin.toString(),
+                        subValue: '座位数',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 详细信息
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest
+                      .withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _buildDetailRow(
+                        context, '班车编号', id, Icons.confirmation_number_rounded),
+                    Divider(height: 12, thickness: 0.5),
+                    _buildDetailRow(
+                        context, '时段编号', period, Icons.schedule_rounded),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 关闭按钮
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton.filledTonal(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(Icons.close_rounded, size: 18),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              foregroundColor: theme.colorScheme.onSurfaceVariant,
+              padding: EdgeInsets.all(8),
+              minimumSize: Size(32, 32),
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCircle(ThemeData theme) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant,
+          width: 1.5,
+        ),
       ),
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, String label, String value) {
+  Widget _buildMainInfo(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required String subValue,
+  }) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodySmall?.color,
-            ),
+    return Column(
+      children: [
+        Icon(icon, color: theme.colorScheme.primary),
+        SizedBox(height: 8),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.textTheme.bodyMedium?.color,
-            ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
           ),
-        ],
-      ),
+        ),
+        Text(
+          subValue,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
+
+  Widget _buildDetailRow(
+      BuildContext context, String label, String value, IconData icon) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        SizedBox(width: 12),
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Spacer(),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// 虚线画笔
+class DashedLinePainter extends CustomPainter {
+  final Color color;
+
+  DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+
+    const dashWidth = 5;
+    const dashSpace = 3;
+    double startX = 0;
+
+    while (startX < size.width) {
+      canvas.drawLine(
+        Offset(startX, 0),
+        Offset(startX + dashWidth, 0),
+        paint,
+      );
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

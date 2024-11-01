@@ -258,11 +258,11 @@ class _ReservationPageState extends State<ReservationPage> {
   void _showBusDetails(Map<String, dynamic> busData) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        content: BusRouteDetails(busData: busData),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: EdgeInsets.zero,
+        child: BusRouteDetails(busData: busData),
       ),
     );
   }
@@ -300,74 +300,111 @@ class _ReservationPageState extends State<ReservationPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: theme.colorScheme.surface,
       body: Column(
         children: [
           SafeArea(
-            child: Card(
-              margin: EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              elevation: 2.0,
-              color: theme.cardColor,
-              shadowColor: isDarkMode
-                  ? Colors.white.withOpacity(0.5)
-                  : Colors.black.withOpacity(0.8),
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: ReservationCalendar(
-                  focusedDay: _focusedDay,
-                  selectedDay: _selectedDay,
-                  onDaySelected: (selectedDay, focusedDay) {
-                    final now = DateTime.now();
-                    final lastSelectableDay = now.add(Duration(days: 5));
-                    if (selectedDay.isAfter(now.subtract(Duration(days: 1))) &&
-                        selectedDay.isBefore(
-                            lastSelectableDay.add(Duration(days: 1)))) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                        _filterBusList();
-                      });
-                    }
-                  },
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.0),
+                  side: BorderSide(
+                    color: theme.colorScheme.outline.withOpacity(0.2),
+                  ),
+                ),
+                color: theme.colorScheme.surface,
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: ReservationCalendar(
+                    focusedDay: _focusedDay,
+                    selectedDay: _selectedDay,
+                    onDaySelected: (selectedDay, focusedDay) {
+                      final now = DateTime.now();
+                      final lastSelectableDay = now.add(Duration(days: 5));
+                      if (selectedDay
+                              .isAfter(now.subtract(Duration(days: 1))) &&
+                          selectedDay.isBefore(
+                              lastSelectableDay.add(Duration(days: 1)))) {
+                        setState(() {
+                          _selectedDay = selectedDay;
+                          _focusedDay = focusedDay;
+                          _filterBusList();
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
             ),
           ),
-          SizedBox(height: 8),
-          if (_showTip == null)
-            SizedBox.shrink()
-          else if (_showTip!)
+          if (_showTip != null && _showTip!)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: theme.brightness == Brightness.dark
-                        ? [Colors.blueGrey.shade700, Colors.blueGrey.shade900]
-                        : [Colors.blue.shade300, Colors.blue.shade500],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '长按班车可查看详细信息',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshBusData,
+              color: theme.colorScheme.primary,
               child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        color: theme.colorScheme.primary,
+                      ),
+                    )
                   : _errorMessage.isNotEmpty
                       ? Center(
-                          child: Text(_errorMessage,
-                              style: TextStyle(
-                                  color: theme.textTheme.bodyMedium?.color)))
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: theme.colorScheme.error,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                _errorMessage,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 24),
+                              FilledButton.tonal(
+                                onPressed: _refreshBusData,
+                                child: Text('重试'),
+                              ),
+                            ],
+                          ),
+                        )
                       : BusList(
                           filteredBusList: _filteredBusList,
                           onBusCardTap: _onBusCardTap,

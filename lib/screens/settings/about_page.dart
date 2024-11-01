@@ -12,6 +12,7 @@ class AboutPage extends StatefulWidget {
 class AboutPageState extends State<AboutPage> {
   String _currentVersion = '';
   final VersionService _versionService = VersionService(); // 添加此行
+  bool _isCheckingUpdate = false; // 添加此行
 
   @override
   void initState() {
@@ -27,16 +28,23 @@ class AboutPageState extends State<AboutPage> {
   }
 
   Future<void> _checkUpdate() async {
+    if (_isCheckingUpdate) return; // 如果正在检查，直接返回
+
+    setState(() {
+      _isCheckingUpdate = true; // 开始检查时设置为true
+    });
+
     try {
       String? latestVersion = await _versionService.getLatestVersion(); // 修改此行
+      if (!mounted) return;
+
       if (latestVersion != null && latestVersion != _currentVersion) {
         if (!mounted) return;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: Text('发现新版本'),
-            content:
-                Text('最新版本为 $latestVersion，当前版本为 $_currentVersion。是否前往更新？'),
+            content: Text('新版本为 $latestVersion，当前版本为 $_currentVersion。是否前往更新？'),
             actions: [
               TextButton(
                 onPressed: () async {
@@ -57,32 +65,88 @@ class AboutPageState extends State<AboutPage> {
         );
       } else if (latestVersion != null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('当前已是最新版本')),
+        _showSnackBar(
+          icon: Icons.check_circle_outline,
+          message: '当前已是最新版本',
+          isError: false,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('检查更新时出现错误')),
+      _showSnackBar(
+        icon: Icons.error_outline,
+        message: '检查更新时出现错误',
+        isError: true,
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingUpdate = false; // 完成检查时设置为false
+        });
+      }
     }
   }
 
+  void _showSnackBar({
+    required IconData icon,
+    required String message,
+    required bool isError,
+  }) {
+    final theme = Theme.of(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        backgroundColor: isError
+            ? theme.colorScheme.errorContainer
+            : theme.colorScheme.primaryContainer,
+        content: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color:
+                  isError ? theme.colorScheme.error : theme.colorScheme.primary,
+            ),
+            SizedBox(width: 12),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isError
+                    ? theme.colorScheme.onErrorContainer
+                    : theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> _launchUpdateURL(String url) async {
-    // 修改此行
     try {
       if (!await launchUrl(Uri.parse(url),
           mode: LaunchMode.externalApplication)) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开更新链接')),
+        _showSnackBar(
+          icon: Icons.error_outline,
+          message: '无法打开更新链接',
+          isError: true,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('获取更新链接时出现错误')),
+      _showSnackBar(
+        icon: Icons.error_outline,
+        message: '获取更新链接时出现错误',
+        isError: true,
       );
     }
   }
@@ -92,8 +156,10 @@ class AboutPageState extends State<AboutPage> {
     if (!await launchUrl(Uri.parse(url),
         mode: LaunchMode.externalApplication)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法打开官网链接')),
+      _showSnackBar(
+        icon: Icons.error_outline,
+        message: '无法打开官网链接',
+        isError: true,
       );
     }
   }
@@ -103,79 +169,205 @@ class AboutPageState extends State<AboutPage> {
     if (!await launchUrl(Uri.parse(url),
         mode: LaunchMode.externalApplication)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法打开支持链接')),
+      _showSnackBar(
+        icon: Icons.error_outline,
+        message: '无法打开支持链接',
+        isError: true,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('关于'),
+        title: Text(
+          '关于应用',
+          style: theme.textTheme.titleLarge,
+        ),
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // 头部信息区域
             Container(
-              padding: EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'MarchKov Helper',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/icon/app_icon.png',
+                        width: 100,
+                        height: 100,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'MarchKov Helper',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'v$_currentVersion',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
                   Text(
                     '你的私有班车预约服务，出示乘车码从未如此优雅。',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    '当前版本：$_currentVersion',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ),
-            Divider(),
-            ListTile(
-              title: Text('检查更新'),
-              subtitle: Text('点击检查是否有新版本可用'),
-              trailing: Icon(Icons.arrow_forward),
-              onTap: _checkUpdate,
-            ),
-            Divider(),
-            ListTile(
-              title: Text('访问官网'),
-              subtitle: Text('点击访问马池口官网'),
-              trailing: Icon(Icons.arrow_forward),
-              onTap: _visitWebsite,
-            ),
-            Divider(),
-            ListTile(
-              title: Text('支持我们'),
-              subtitle: Text('点击访问代码仓库'),
-              trailing: Icon(Icons.arrow_forward),
-              onTap: _launchSupportURL,
-            ),
-            Divider(),
+
+            // 功能列表
             Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: Text(
-                  '© VariantConst 2024',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey,
-                      ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                elevation: 0,
+                color:
+                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                child: Column(
+                  children: [
+                    _buildListTile(
+                      context,
+                      title: '检查更新',
+                      subtitle: '点击检查是否有新版本可用',
+                      icon: Icons.system_update_outlined,
+                      onTap: _checkUpdate,
+                    ),
+                    Divider(height: 1, indent: 56),
+                    _buildListTile(
+                      context,
+                      title: '访问官网',
+                      subtitle: '点击访问马池口官网',
+                      icon: Icons.language_outlined,
+                      onTap: _visitWebsite,
+                    ),
+                    Divider(height: 1, indent: 56),
+                    _buildListTile(
+                      context,
+                      title: '支持我们',
+                      subtitle: '点击访问代码仓库',
+                      icon: Icons.favorite_outline,
+                      onTap: _launchSupportURL,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 版权信息
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                '© VariantConst 2024',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildListTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Icon(
+        icon,
+        color: theme.colorScheme.primary,
+        size: 24,
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (title == '检查更新' && _isCheckingUpdate)
+            Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: theme.colorScheme.onSurfaceVariant,
+            size: 20,
+          ),
+        ],
+      ),
+      onTap: onTap,
     );
   }
 }

@@ -21,20 +21,20 @@ class BusSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     buses.sort((a, b) => a['yaxis'].compareTo(b['yaxis']));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
-          child: Row(
-            children: [
-              Text(
-                title,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(24, 16, 24, 12),
+          child: Text(
+            title,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+            ),
           ),
         ),
         Padding(

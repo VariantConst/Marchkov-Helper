@@ -86,7 +86,7 @@ class _SettingsPageState extends State<SettingsPage> {
       '🐼',
       '🦄',
       '🐶',
-      '🐱',
+      '����',
       '🦊',
       '🦁',
       '🐯',
@@ -176,6 +176,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: theme.colorScheme.primaryContainer,
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.colorScheme.primary.withOpacity(0.2),
+                            blurRadius: 20,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Center(
                         child: Text(
@@ -226,11 +233,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  Card(
+                    elevation: 0,
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
                     child: Column(
                       children: [
                         _buildSettingOption(
@@ -266,11 +272,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  Card(
+                    elevation: 0,
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
                     child: Column(
                       children: [
                         _buildSettingOption(
@@ -319,7 +324,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   await authProvider.logout();
                   if (!mounted) return;
                   navigator.pushReplacement(
-                      MaterialPageRoute(builder: (_) => LoginPage()));
+                    MaterialPageRoute(builder: (_) => LoginPage()),
+                  );
                 },
                 style: FilledButton.styleFrom(
                   minimumSize: Size(double.infinity, 52),
@@ -364,8 +370,8 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       trailing: Icon(
         Icons.chevron_right_rounded,
-        size: 20,
         color: theme.colorScheme.onSurfaceVariant,
+        size: 20,
       ),
       onTap: onTap,
     );
