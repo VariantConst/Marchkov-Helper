@@ -25,7 +25,7 @@ class SummaryMonthlyBarChart extends StatelessWidget {
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceBetween,
-          maxY: maxCount <= 0 ? 1 : (maxCount * 2).toDouble(),
+          maxY: maxCount <= 0 ? 1 : maxCount.toDouble(),
           minY: 0,
           titlesData: FlTitlesData(
             show: true,
