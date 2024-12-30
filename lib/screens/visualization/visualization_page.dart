@@ -8,6 +8,7 @@ import 'check_in_time_histogram.dart';
 import 'checked_in_reserved_pie_chart.dart';
 import 'ride_heatmap.dart';
 import '../../providers/visualization_settings_provider.dart';
+import 'annual_summary_card.dart';
 
 class VisualizationSettingsPage extends StatefulWidget {
   @override
@@ -234,6 +235,14 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                     });
                   },
                   children: [
+                    _buildChartSection(
+                      key: ValueKey(
+                          'summary_${rideHistoryProvider.rides.length}'),
+                      icon: Icons.summarize_outlined,
+                      title: '年度总结',
+                      content:
+                          AnnualSummaryCard(rides: rideHistoryProvider.rides),
+                    ),
                     _buildChartSection(
                       key: ValueKey('calendar_${rides.length}'),
                       icon: Icons.calendar_month_outlined,
@@ -467,7 +476,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
       padding: EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: List<Widget>.generate(5, (index) {
+        children: List<Widget>.generate(6, (index) {
           return GestureDetector(
             onTap: () {
               _pageController.animateToPage(
