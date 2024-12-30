@@ -1,23 +1,70 @@
+import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/ride_info.dart';
 import 'summary_violation_pie_chart.dart';
 import 'summary_monthly_bar_chart.dart';
-import 'package:permission_handler/permission_handler.dart';
 
-class AnnualSummaryCard extends StatelessWidget {
+class AnnualSummaryCard extends StatefulWidget {
   final List<RideInfo> rides;
-  final GlobalKey _globalKey = GlobalKey();
-  late final Map<int, int> monthCount = {};
-  late final int maxMonthCount;
 
-  AnnualSummaryCard({required this.rides}) {
+  const AnnualSummaryCard({
+    Key? key,
+    required this.rides,
+  }) : super(key: key);
+
+  @override
+  State<AnnualSummaryCard> createState() => _AnnualSummaryCardState();
+}
+
+class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
+  final GlobalKey _boundaryKey = GlobalKey();
+  bool _isSaving = false;
+  final Map<int, int> monthCount = {};
+  late int maxMonthCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
     final summary = _calculateSummary();
     if (summary.isNotEmpty) {
       maxMonthCount = monthCount.values.reduce((a, b) => a > b ? a : b);
+    }
+  }
+
+  Future<void> _saveAndShare() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final boundary = _boundaryKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) throw Exception('无法获取渲染边界');
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw Exception('无法生成图片数据');
+
+      final directory = await getTemporaryDirectory();
+      final imagePath =
+          '${directory.path}/annual_summary_${DateTime.now().millisecondsSinceEpoch}.png';
+      final imageFile = File(imagePath);
+      await imageFile.writeAsBytes(byteData.buffer.asUint8List());
+
+      await Share.shareXFiles(
+        [XFile(imagePath)],
+        text: '我的${_getSummaryYear()}年班车总结',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isSaving = false);
     }
   }
 
@@ -33,7 +80,7 @@ class AnnualSummaryCard extends StatelessWidget {
   }
 
   List<RideInfo> _filterRidesByYear(int year) {
-    return rides.where((ride) {
+    return widget.rides.where((ride) {
       final rideDate = DateTime.parse(ride.appointmentTime);
       return rideDate.year == year;
     }).toList();
@@ -41,7 +88,7 @@ class AnnualSummaryCard extends StatelessWidget {
 
   Map<String, dynamic> _calculateSummary() {
     final summaryYear = _getSummaryYear();
-    if (summaryYear == -1 || rides.isEmpty) return {};
+    if (summaryYear == -1 || widget.rides.isEmpty) return {};
 
     final yearRides = _filterRidesByYear(summaryYear);
     if (yearRides.isEmpty) return {};
@@ -131,7 +178,7 @@ class AnnualSummaryCard extends StatelessWidget {
     });
 
     return {
-      'year': summaryYear,
+      'year': _getSummaryYear(),
       'totalRides': totalRides,
       'violationCount': violationCount,
       'violationRate': totalRides > 0 ? (violationCount / totalRides * 100) : 0,
@@ -225,90 +272,6 @@ class AnnualSummaryCard extends StatelessWidget {
     }
   }
 
-  Future<void> _saveScreenshot(BuildContext context) async {
-    try {
-      // 检查并请求权限
-      bool hasPermission = false;
-      if (await Permission.storage.status.isDenied) {
-        if (await Permission.storage.request().isGranted) {
-          hasPermission = true;
-        }
-      } else {
-        hasPermission = true;
-      }
-
-      // 如果是 Android 13 及以上，还需要检查照片权限
-      if (await Permission.photos.status.isDenied) {
-        if (await Permission.photos.request().isGranted) {
-          hasPermission = true;
-        }
-      } else {
-        hasPermission = true;
-      }
-
-      if (!hasPermission) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('需要存储权限才能保存图片'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
-
-      // 显示加载提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('正在生成图片...'),
-          duration: Duration(milliseconds: 1000),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      // 等待一帧完成渲染
-      await Future.delayed(Duration(milliseconds: 500));
-
-      // 获取 RenderRepaintBoundary
-      final boundary = _globalKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) {
-        throw Exception('无法获取渲染对象');
-      }
-
-      // 转换为图片
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-
-      if (byteData != null) {
-        final buffer = byteData.buffer.asUint8List();
-        final result = await ImageGallerySaver.saveImage(
-          buffer,
-          quality: 100,
-          name: "班车年度总结_${DateTime.now().millisecondsSinceEpoch}",
-        );
-
-        if (result['isSuccess']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('已保存到相册'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        } else {
-          throw Exception('保存失败: ${result['error']}');
-        }
-      }
-    } catch (e) {
-      print('保存失败: $e'); // 添加错误日志
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('保存失败: ${e.toString()}'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -331,131 +294,128 @@ class AnnualSummaryCard extends StatelessWidget {
     }
 
     return RepaintBoundary(
-      key: _globalKey,
+      key: _boundaryKey,
       child: Container(
-        color: theme.colorScheme.surface,
-        child: Column(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(24, 32, 24, 24),
           children: [
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(24, 32, 24, 24),
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.auto_awesome,
-                        color: theme.colorScheme.primary,
-                        size: 32,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        '${summary['year']} 班车年度总结',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  color: theme.colorScheme.primary,
+                  size: 32,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  '${summary['year']} 班车年度总结',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    '恭喜你完成了一年的牛马通勤之旅！',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 32),
-                  _buildStoryText(
-                    context,
-                    '在这一年里，你一共乘坐了 **${summary['totalRides']}** 次班车',
-                    highlight: true,
-                  ),
-                  if (summary['violationCount'] > 0) ...[
-                    Divider(height: 32),
-                    _buildStoryText(
-                      context,
-                      _getViolationComment(
-                        summary['violationCount'],
-                        summary['violationRate'],
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    SummaryViolationPieChart(
-                      totalRides: summary['totalRides'],
-                      violationCount: summary['violationCount'],
-                    ),
-                  ],
-                  if (summary['mostFrequentMonth'] != null) ...[
-                    Divider(height: 32),
-                    _buildStoryText(
-                      context,
-                      '你在 **${summary['mostFrequentMonth']}月** 最为勤奋，乘坐了 **${summary['mostFrequentMonthCount']}** 次班车',
-                      highlight: true,
-                    ),
-                    SizedBox(height: 16),
-                    SummaryMonthlyBarChart(
-                      monthlyRides: Map.fromEntries(
-                        monthCount.entries.map((e) => MapEntry(e.key, e.value)),
-                      ),
-                      maxCount: maxMonthCount,
-                    ),
-                  ],
-                  if (summary['mostFrequentHour'] != null &&
-                      summary['mostFrequentRoute'] != null) ...[
-                    Divider(height: 32),
-                    _buildStoryText(
-                      context,
-                      '你乘坐最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车',
-                      highlight: true,
-                    ),
-                  ],
-                  if (summary['mostFrequentMorningBus'] != null) ...[
-                    SizedBox(height: 24),
-                    _buildStoryText(
-                      context,
-                      _getMorningBusComment(
-                        summary['mostFrequentMorningBus'],
-                        summary['mostFrequentMorningBusCount'],
-                      ),
-                    ),
-                  ],
-                  if (summary['mostFrequentNightBus'] != null) ...[
-                    SizedBox(height: 24),
-                    _buildStoryText(
-                      context,
-                      _getNightBusComment(
-                        summary['mostFrequentNightBus'],
-                        summary['mostFrequentNightBusCount'],
-                      ),
-                    ),
-                  ],
-                ],
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+              '恭喜你完成了一年的牛马通勤之旅！',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
-              child: Column(
-                children: [
-                  Divider(),
-                  SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: () => _saveScreenshot(context),
-                    icon: Icon(Icons.save_alt),
-                    label: Text('保存年度总结'),
-                    style: FilledButton.styleFrom(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      minimumSize: Size(200, 48),
-                    ),
-                  ),
-                ],
+            SizedBox(height: 32),
+            _buildStoryText(
+              context,
+              '在这一年里，你一共乘坐了 **${summary['totalRides']}** 次班车',
+              highlight: true,
+            ),
+            if (summary['violationCount'] > 0) ...[
+              Divider(height: 32),
+              _buildStoryText(
+                context,
+                _getViolationComment(
+                  summary['violationCount'],
+                  summary['violationRate'],
+                ),
+              ),
+              SizedBox(height: 16),
+              SummaryViolationPieChart(
+                totalRides: summary['totalRides'],
+                violationCount: summary['violationCount'],
+              ),
+            ],
+            if (summary['mostFrequentMonth'] != null) ...[
+              Divider(height: 32),
+              _buildStoryText(
+                context,
+                '你在 **${summary['mostFrequentMonth']}月** 最为勤奋，乘坐了 **${summary['mostFrequentMonthCount']}** 次班车',
+                highlight: true,
+              ),
+              SizedBox(height: 16),
+              SummaryMonthlyBarChart(
+                monthlyRides: Map.fromEntries(
+                  monthCount.entries.map((e) => MapEntry(e.key, e.value)),
+                ),
+                maxCount: maxMonthCount,
+              ),
+            ],
+            if (summary['mostFrequentHour'] != null &&
+                summary['mostFrequentRoute'] != null) ...[
+              Divider(height: 32),
+              _buildStoryText(
+                context,
+                '你乘坐最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车',
+                highlight: true,
+              ),
+            ],
+            if (summary['mostFrequentMorningBus'] != null) ...[
+              SizedBox(height: 24),
+              _buildStoryText(
+                context,
+                _getMorningBusComment(
+                  summary['mostFrequentMorningBus'],
+                  summary['mostFrequentMorningBusCount'],
+                ),
+              ),
+            ],
+            if (summary['mostFrequentNightBus'] != null) ...[
+              SizedBox(height: 24),
+              _buildStoryText(
+                context,
+                _getNightBusComment(
+                  summary['mostFrequentNightBus'],
+                  summary['mostFrequentNightBusCount'],
+                ),
+              ),
+            ],
+            SizedBox(height: 48),
+            Center(
+              child: TextButton.icon(
+                onPressed: _isSaving ? null : _saveAndShare,
+                icon: _isSaving
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.share),
+                label: Text(_isSaving ? '正在生成...' : '保存并分享年度总结'),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  backgroundColor:
+                      Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor:
+                      Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
             ),
+            SizedBox(height: 24),
           ],
         ),
       ),
