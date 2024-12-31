@@ -158,6 +158,40 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
           (timeRouteCount[timeSlot]![routeName] ?? 0) + 1;
     }
 
+    print('\n=== 时间频次统计 ===');
+    final sortedTimes = timeCount.entries.toList()
+      ..sort((a, b) {
+        int freqCompare = b.value.compareTo(a.value);
+        if (freqCompare != 0) return freqCompare;
+        return a.key.compareTo(b.key);
+      });
+
+    for (var entry in sortedTimes) {
+      print(
+          '${entry.key} - ${entry.value}次 (路线: ${timeRouteCount[entry.key]?.entries.map((e) => "${e.key}: ${e.value}次").join(", ")})');
+    }
+
+    print('\n=== 早班车统计 ===');
+    final sortedMorning = morningBusCount.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (var entry in sortedMorning) {
+      print('${entry.key} - ${entry.value}次');
+    }
+
+    print('\n=== 晚班车统计 ===');
+    final sortedNight = nightBusCount.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (var entry in sortedNight) {
+      print('${entry.key} - ${entry.value}次');
+    }
+
+    print('\n=== 月度统计 ===');
+    final sortedMonths = monthCount.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (var entry in sortedMonths) {
+      print('${entry.key}月 - ${entry.value}次');
+    }
+
     int? mostFrequentMonth;
     int maxMonthCount = 0;
     monthCount.forEach((month, count) {
@@ -219,16 +253,30 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       keywordReason =
           "全年违约率高达 **${violationRate.toStringAsFixed(1)}%**，获得年度鸽王称号！";
       keywordIcon = Icons.flutter_dash;
-    } else if (mostFrequentNightBus != null &&
-        int.parse(mostFrequentNightBus!.split(':')[0]) >= 22) {
-      keyword = "夜猫子";
-      keywordReason = "最常预约 **$mostFrequentNightBus** 的班车，是个不折不扣的夜猫子！";
-      keywordIcon = Icons.nightlight_round;
-    } else if (mostFrequentMorningBus != null &&
-        int.parse(mostFrequentMorningBus!.split(':')[0]) < 8) {
-      keyword = "早鸟";
-      keywordReason = "最常预约 **$mostFrequentMorningBus** 的班车，是个积极向上的早鸟！";
-      keywordIcon = Icons.wb_sunny;
+    } else if (mostFrequentNightBus != null) {
+      final nightHour = int.parse(mostFrequentNightBus!.split(':')[0]);
+      final nightMinute = int.parse(mostFrequentNightBus!.split(':')[1]);
+      if (nightHour >= 22 || (nightHour == 21 && nightMinute >= 30)) {
+        keyword = "夜猫子";
+        keywordReason = "最常预约 **$mostFrequentNightBus** 的班车，是个不折不扣的夜猫子！";
+        keywordIcon = Icons.nightlight_round;
+      } else {
+        keyword = "momo";
+        keywordReason = "全年搭乘 **$totalRides** 次班车，是个稳定的通勤选手！";
+        keywordIcon = Icons.sentiment_satisfied;
+      }
+    } else if (mostFrequentMorningBus != null) {
+      final morningHour = int.parse(mostFrequentMorningBus!.split(':')[0]);
+      final morningMinute = int.parse(mostFrequentMorningBus!.split(':')[1]);
+      if (morningHour < 8 || (morningHour == 8 && morningMinute <= 30)) {
+        keyword = "早鸟";
+        keywordReason = "最常预约 **$mostFrequentMorningBus** 的班车，是个积极向上的早鸟！";
+        keywordIcon = Icons.wb_sunny;
+      } else {
+        keyword = "momo";
+        keywordReason = "全年搭乘 **$totalRides** 次班车，是个稳定的通勤选手！";
+        keywordIcon = Icons.sentiment_satisfied;
+      }
     } else {
       keyword = "momo";
       keywordReason = "全年搭乘 **$totalRides** 次班车，是个稳定的通勤选手！";

@@ -35,15 +35,15 @@ class RandomPercentageWidgetState extends State<RandomPercentageWidget> {
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: 2,
-            vertical: 2,
+            vertical: 4,
           ),
+          height: 36,
           child: AnimatedSwitcher(
             duration: Duration(milliseconds: 200),
             child: randomPercentage == null
                 ? SizedBox(
                     key: ValueKey('initial'),
                     width: 60,
-                    height: 40,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: Stack(
@@ -59,30 +59,33 @@ class RandomPercentageWidgetState extends State<RandomPercentageWidget> {
                               ),
                             ),
                           ),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              'randint\n(50,100)',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontFamily: 'monospace',
-                                fontWeight: FontWeight.w500,
-                              ),
+                          Text(
+                            'randint\n(50,100)',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w500,
+                              height: 1,
                             ),
                           ),
                         ],
                       ),
                     ),
                   )
-                : Text(
-                    key: ValueKey('percentage'),
-                    '$randomPercentage%',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
+                : SizedBox(
+                    width: 60,
+                    child: Text(
+                      key: ValueKey('percentage'),
+                      '$randomPercentage%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
                     ),
                   ),
           ),
