@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/ride_info.dart';
 import 'summary_violation_pie_chart.dart';
 import 'summary_monthly_bar_chart.dart';
 import 'dart:math';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class AnnualSummaryCard extends StatefulWidget {
   final List<RideInfo> rides;
@@ -45,6 +45,11 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     setState(() => _isSaving = true);
 
     try {
+      final summary = _calculateSummary();
+      if (summary.isEmpty) {
+        throw Exception('无法生成年度总结数据');
+      }
+
       // 检查随机数是否已生成，如果没有则自动生成
       final randomPercentageState = _randomPercentageKey.currentState;
       if (randomPercentageState != null &&
@@ -65,7 +70,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       // 确保所有图片都已加载完成
       await precacheImage(boundary);
 
-      final image = await boundary.toImage(pixelRatio: 2.0); // 降低一点分辨率，避免内存问题
+      final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) throw Exception('无法生成图片数据');
 
@@ -77,7 +82,8 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
 
       await Share.shareXFiles(
         [XFile(imagePath)],
-        text: '我的${_getSummaryYear()}年班车总结',
+        text: _getShareText(summary),
+        subject: '我的${summary['year']}年班车总结',
       );
     } catch (e) {
       if (mounted) {
@@ -210,11 +216,49 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       }
     });
 
+    // 计算违约率
+    double violationRate =
+        totalRides > 0 ? (violationCount / totalRides * 100) : 0;
+
+    // 计算年度关键词
+    String keyword;
+    String keywordReason;
+    IconData keywordIcon;
+
+    if (totalRides < 30) {
+      keyword = "大摆子";
+      keywordReason = "全年仅预约了 **$totalRides** 次班车，是个不折不扣的大摆子！";
+      keywordIcon = Icons.directions_walk;
+    } else if (monthCount.values.every((count) => count >= 10)) {
+      keyword = "卷王";
+      keywordReason = "全年每个月都预约了 **10** 次以上的班车，是个不折不扣的卷王！";
+      keywordIcon = Icons.workspace_premium;
+    } else if (violationRate > 30) {
+      keyword = "鸽王";
+      keywordReason =
+          "全年违约率高达 **${violationRate.toStringAsFixed(1)}%**，获得年度鸽王称号！";
+      keywordIcon = Icons.flutter_dash;
+    } else if (mostFrequentNightBus != null &&
+        int.parse(mostFrequentNightBus!.split(':')[0]) >= 22) {
+      keyword = "夜猫子";
+      keywordReason = "最常预约 **$mostFrequentNightBus** 的班车，是个不折不扣的夜猫子！";
+      keywordIcon = Icons.nightlight_round;
+    } else if (mostFrequentMorningBus != null &&
+        int.parse(mostFrequentMorningBus!.split(':')[0]) < 8) {
+      keyword = "早鸟";
+      keywordReason = "最常预约 **$mostFrequentMorningBus** 的班车，是个积极向上的早鸟！";
+      keywordIcon = Icons.wb_sunny;
+    } else {
+      keyword = "momo";
+      keywordReason = "全年搭乘 **$totalRides** 次班车，是个稳定的通勤选手！";
+      keywordIcon = Icons.sentiment_satisfied;
+    }
+
     return {
       'year': _getSummaryYear(),
       'totalRides': totalRides,
       'violationCount': violationCount,
-      'violationRate': totalRides > 0 ? (violationCount / totalRides * 100) : 0,
+      'violationRate': violationRate,
       'mostFrequentMonth': mostFrequentMonth,
       'mostFrequentMonthCount': maxMonthCount,
       'mostFrequentHour': mostFrequentHour,
@@ -224,18 +268,27 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       'mostFrequentMorningBusCount': maxMorningCount,
       'mostFrequentNightBus': mostFrequentNightBus,
       'mostFrequentNightBusCount': maxNightCount,
+      'keyword': keyword,
+      'keywordReason': keywordReason,
+      'keywordIcon': keywordIcon,
     };
   }
 
-  Widget _buildStoryText(BuildContext context, String text,
-      {bool highlight = false}) {
+  Widget _buildStoryText(
+    BuildContext context,
+    String text, {
+    bool highlight = false,
+    double? fontSize,
+    TextAlign? textAlign,
+  }) {
     final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: RichText(
+        textAlign: textAlign ?? TextAlign.left,
         text: TextSpan(
           style: TextStyle(
-            fontSize: highlight ? 20 : 16,
+            fontSize: fontSize ?? (highlight ? 20 : 16),
             height: 1.6,
             fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
             color: theme.colorScheme.onSurface,
@@ -258,7 +311,9 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                   TextSpan(
                     text: segment,
                     style: TextStyle(
-                      fontSize: index % 2 == 1 ? 24 : (highlight ? 20 : 16),
+                      fontSize: index % 2 == 1
+                          ? (fontSize ?? 24)
+                          : (fontSize ?? (highlight ? 20 : 16)),
                       color: index % 2 == 1
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurface,
@@ -281,11 +336,11 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     int hour = int.parse(busTime.split(':')[0]);
 
     if (hour < 7) {
-      return '你最常选择的是 **$busTime** 的早班车，是个起得特别早的早起鸟呢，继续保持这个好习惯吧！';
+      return '早上你最常选择的是 **$busTime** 的早班车，是个起得特别早的早起鸟呢，继续保持这个好习惯吧！';
     } else if (hour < 9) {
-      return '你最常选择的是 **$busTime** 的班车，作息很规律呢，继续保持健康的生活节奏吧！';
+      return '早上你最常选择的是 **$busTime** 的班车，作息很规律呢，继续保持健康的生活节奏吧！';
     } else {
-      return '你最常选择的是 **$busTime** 的班车，看来你很享受睡到自然醒呢，这是在提前适应大厂作息吗？😉';
+      return '早上你最常选择的是 **$busTime** 的班车，看来你很享受睡到自然醒呢，这是在提前适应大厂作息吗？😉';
     }
   }
 
@@ -312,6 +367,14 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     } else {
       return '$baseText，这个违约率有点高哦，建议提前5分钟到达候车点～';
     }
+  }
+
+  // 添加一个方法来生成分享文本
+  String _getShareText(Map<String, dynamic> summary) {
+    return '我的${summary['year']}年班车总结\n'
+        '全年共预约 ${summary['totalRides']} 次班车\n'
+        '年度关键词：${summary['keyword']}\n'
+        '来自 Marchkov Helper';
   }
 
   @override
@@ -385,7 +448,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                     highlight: true,
                   ),
                   if (summary['violationCount'] > 0) ...[
-                    Divider(height: 32),
+                    SizedBox(height: 16),
                     _buildStoryText(
                       context,
                       _getViolationComment(
@@ -419,7 +482,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                     Divider(height: 32),
                     _buildStoryText(
                       context,
-                      '你预约最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车',
+                      '你预约最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车，共预约了 **${summary['mostFrequentHourCount']}** 次',
                       highlight: true,
                     ),
                   ],
@@ -443,29 +506,90 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                       ),
                     ),
                   ],
-                  if (_isSaving) ...[
-                    SizedBox(height: 48),
-                    Container(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: theme.colorScheme.outlineVariant,
-                            width: 1,
+                  SizedBox(height: 32),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer
+                          .withAlpha((0.5 * 255).toInt()),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              summary['keywordIcon'] as IconData,
+                              size: 28,
+                              color: theme.colorScheme.primary,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '${summary['year']}年度关键词',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          summary['keyword'],
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
-                      ),
-                      child: Column(
-                        children: [
+                        SizedBox(height: 16),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.5,
+                          child: _buildStoryText(
+                            context,
+                            summary['keywordReason'],
+                            fontSize: 14,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Container(
+                    padding: EdgeInsets.only(top: 32),
+                    child: Column(
+                      children: [
+                        if (_isSaving) ...[
+                          Text(
+                            '扫码下载 Marchkov Helper',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '自动预约，一键乘车',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          // 二维码部分
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Container(
-                                width: 120,
-                                height: 120,
+                                width: 160,
+                                height: 160,
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black
@@ -478,80 +602,72 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                                 child: QrImageView(
                                   data: 'https://shuttle.variantconst.com',
                                   version: QrVersions.auto,
-                                  size: 100.0,
+                                  size: 140.0,
                                   padding: EdgeInsets.all(10),
                                   backgroundColor: Colors.white,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 16),
-                          Text(
-                            '扫码下载 Marchkov Helper',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
+                        ] else ...[
+                          // 重新设计的分享按钮
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.primary
+                                      .withAlpha((0.8 * 255).toInt()),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(32),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary
+                                      .withAlpha((0.2 * 255).toInt()),
+                                  blurRadius: 12,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '记录你的每一程班车旅程',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    SizedBox(height: 48),
-                    Container(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: theme.colorScheme.outlineVariant,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '分享你的年度班车总结',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '让更多小伙伴了解你的通勤故事',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                          TextButton.icon(
-                            onPressed: _saveAndShare,
-                            icon: Icon(Icons.share_rounded),
-                            label: Text('立即分享'),
-                            style: TextButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: theme.colorScheme.onPrimary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _saveAndShare,
+                                borderRadius: BorderRadius.circular(32),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 32, vertical: 16),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.share_rounded,
+                                        color: theme.colorScheme.onPrimary,
+                                        size: 24,
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        '分享我的年度总结',
+                                        style: TextStyle(
+                                          color: theme.colorScheme.onPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -562,7 +678,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
         if (_isSaving)
           Positioned.fill(
             child: Container(
-              color: Colors.black26,
+              color: theme.scaffoldBackgroundColor.withAlpha(255),
               child: Center(
                 child: Card(
                   child: Padding(
