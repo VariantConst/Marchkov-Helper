@@ -17,24 +17,38 @@ class SummaryMonthlyBarChart extends StatelessWidget {
     final sortedEntries = monthlyRides.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
 
-    // 计算间隔和最大值
-    final interval = _calcInterval(maxCount); // 使用简化后的间隔逻辑
-    final baseMaxY = (maxCount / interval).ceil() * interval;
-    final effectiveMaxY = baseMaxY * 1.1; // 预留 10% 空间
-
     return Container(
-      height: 180.0,
-      padding: EdgeInsets.fromLTRB(8, 24, 16, 8),
+      height: 200.0,
+      padding: EdgeInsets.fromLTRB(8, 12, 16, 8),
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceBetween,
-          maxY: effectiveMaxY,
           minY: 0,
-          barTouchData: BarTouchData(enabled: false),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipRoundedRadius: 8,
+              tooltipPadding: EdgeInsets.all(8),
+              tooltipBorder: BorderSide.none,
+              tooltipMargin: 8,
+              fitInsideHorizontally: true,
+              fitInsideVertically: true,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                return BarTooltipItem(
+                  '${sortedEntries[group.x].value}次',
+                  TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
+            ),
+          ),
           titlesData: FlTitlesData(
             show: true,
             topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -44,7 +58,7 @@ class SummaryMonthlyBarChart extends StatelessWidget {
                     return SizedBox.shrink();
                   }
                   return Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 1),
                     child: Text(
                       '${sortedEntries[index].key}月',
                       style: TextStyle(
@@ -56,39 +70,9 @@ class SummaryMonthlyBarChart extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: interval,
-                reservedSize: 30,
-                getTitlesWidget: (value, meta) {
-                  // 只显示不超过原始 baseMaxY 的整数刻度
-                  if (value % 1 != 0 || value > baseMaxY) {
-                    return SizedBox.shrink();
-                  }
-                  return Text(
-                    value.toInt().toString(),
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 9,
-                    ),
-                  );
-                },
-              ),
-            ),
           ),
           gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: interval,
-            // 只显示到 baseMaxY 的网格线
-            checkToShowHorizontalLine: (value) => value <= baseMaxY,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.outlineVariant
-                  .withAlpha(77), // 0.3 * 255 ≈ 77
-              strokeWidth: 1,
-              dashArray: [4, 4],
-            ),
+            show: false,
           ),
           borderData: FlBorderData(show: false),
           barGroups: List.generate(
@@ -106,6 +90,12 @@ class SummaryMonthlyBarChart extends StatelessWidget {
                       top: Radius.circular(2),
                       bottom: Radius.circular(2),
                     ),
+                    // 应用归一化系数
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      color: theme.colorScheme.primary
+                          .withAlpha((0.1 * 255).toInt()),
+                    ),
                   ),
                 ],
               );
@@ -114,12 +104,5 @@ class SummaryMonthlyBarChart extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  // 简易的间隔计算：让 Y 轴分成大约 4 段
-  // 例如 maxCount=38 => step=10 => 刻度=[0,10,20,30,40]
-  double _calcInterval(int maxCount) {
-    if (maxCount <= 5) return 1;
-    return (maxCount / 4.0).ceilToDouble();
   }
 }

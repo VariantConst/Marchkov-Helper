@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/ride_info.dart';
 import 'summary_violation_pie_chart.dart';
 import 'summary_monthly_bar_chart.dart';
@@ -316,12 +317,11 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
 
     return Stack(
       children: [
-        // 实际显示的可滚动内容
         SingleChildScrollView(
           child: RepaintBoundary(
             key: _boundaryKey,
             child: Container(
-              width: screenWidth, // 固定宽度
+              width: screenWidth,
               color: theme.scaffoldBackgroundColor,
               padding: EdgeInsets.fromLTRB(24, 32, 24, 24),
               child: Column(
@@ -421,25 +421,115 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                       ),
                     ),
                   ],
-                  SizedBox(height: 48),
-                  TextButton.icon(
-                    onPressed: _isSaving ? null : _saveAndShare,
-                    icon: _isSaving
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(Icons.share),
-                    label: Text(_isSaving ? '正在生成...' : '保存并分享年度总结'),
-                    style: TextButton.styleFrom(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      foregroundColor: theme.colorScheme.onPrimaryContainer,
+                  if (_isSaving) ...[
+                    SizedBox(height: 48),
+                    Container(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black
+                                          .withAlpha((0.05 * 255).toInt()),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: QrImageView(
+                                  data: 'https://shuttle.variantconst.com',
+                                  version: QrVersions.auto,
+                                  size: 100.0,
+                                  padding: EdgeInsets.all(10),
+                                  backgroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            '扫码下载 Marchkov Helper',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '记录你的每一程班车旅程',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 24),
+                  ] else ...[
+                    SizedBox(height: 48),
+                    Container(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '分享你的年度班车总结',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '让更多小伙伴了解你的通勤故事',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          TextButton.icon(
+                            onPressed: _saveAndShare,
+                            icon: Icon(Icons.share_rounded),
+                            label: Text('立即分享'),
+                            style: TextButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -43,7 +43,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   material_design_icons_flutter: ^7.0.7296
-  qr_flutter: ^4.0.0
+  qr_flutter: ^4.1.0
   flutter_svg: ^2.0.10+1
   path: ^1.8.2
   # 修改 fl_chart 依赖，从 GitHub 获取最新代码
