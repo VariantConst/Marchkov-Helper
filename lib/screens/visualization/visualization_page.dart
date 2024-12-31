@@ -8,7 +8,7 @@ import 'check_in_time_histogram.dart';
 import 'checked_in_reserved_pie_chart.dart';
 import 'ride_heatmap.dart';
 import '../../providers/visualization_settings_provider.dart';
-import 'annual_summary_card.dart';
+import 'yearly_summary/annual_summary_card.dart';
 
 class VisualizationSettingsPage extends StatefulWidget {
   @override

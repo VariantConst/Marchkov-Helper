@@ -158,6 +158,7 @@ class MainPageState extends State<MainPage> {
                   // 记住用户选择跳过此版本
                   await prefs.setString('skipVersion', latestVersion);
                   if (!mounted) return;
+                  // ignore: use_build_context_synchronously
                   Navigator.of(context).pop();
                 },
                 child: Text('不再提示'),
