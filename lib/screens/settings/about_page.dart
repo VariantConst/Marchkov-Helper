@@ -205,7 +205,8 @@ class AboutPageState extends State<AboutPage> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.2),
+                          color: theme.colorScheme.primary
+                              .withAlpha((0.2 * 255).toInt()),
                           blurRadius: 20,
                           offset: Offset(0, 4),
                         ),
@@ -267,8 +268,8 @@ class AboutPageState extends State<AboutPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Card(
                 elevation: 0,
-                color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withAlpha((0.3 * 255).toInt()),
                 child: Column(
                   children: [
                     _buildListTile(

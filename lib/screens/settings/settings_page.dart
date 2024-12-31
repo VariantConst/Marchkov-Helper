@@ -178,7 +178,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         color: theme.colorScheme.primaryContainer,
                         boxShadow: [
                           BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.2),
+                            color: theme.colorScheme.primary
+                                .withAlpha((0.2 * 255).toInt()),
                             blurRadius: 20,
                             offset: Offset(0, 4),
                           ),
@@ -203,14 +204,16 @@ class _SettingsPageState extends State<SettingsPage> {
                   Text(
                     college,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                      color: theme.colorScheme.onSurface
+                          .withAlpha((0.8 * 255).toInt()),
                     ),
                   ),
                   SizedBox(height: 4),
                   Text(
                     'ID: $studentId',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface
+                          .withAlpha((0.6 * 255).toInt()),
                     ),
                   ),
                 ],
@@ -236,7 +239,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   Card(
                     elevation: 0,
                     color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withAlpha((0.3 * 255).toInt()),
                     child: Column(
                       children: [
                         _buildSettingOption(
@@ -275,7 +278,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   Card(
                     elevation: 0,
                     color: theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.3),
+                        .withAlpha((0.3 * 255).toInt()),
                     child: Column(
                       children: [
                         _buildSettingOption(

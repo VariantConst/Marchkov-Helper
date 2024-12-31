@@ -27,18 +27,18 @@ class RideCardHeader extends StatelessWidget {
       headerText = '无车可坐';
     } else {
       if (codeType == '乘车码') {
-        startColor = theme.colorScheme.primary.withOpacity(0.2);
-        endColor = theme.colorScheme.primary.withOpacity(0.05);
+        startColor = theme.colorScheme.primary.withAlpha((0.2 * 255).toInt());
+        endColor = theme.colorScheme.primary.withAlpha((0.05 * 255).toInt());
         textColor = theme.colorScheme.primary;
         headerText = '乘车码';
       } else if (codeType == '临时码') {
-        startColor = theme.colorScheme.secondary.withOpacity(0.2);
-        endColor = theme.colorScheme.secondary.withOpacity(0.05);
+        startColor = theme.colorScheme.secondary.withAlpha((0.2 * 255).toInt());
+        endColor = theme.colorScheme.secondary.withAlpha((0.05 * 255).toInt());
         textColor = theme.colorScheme.secondary;
         headerText = '临时码';
       } else {
-        startColor = theme.colorScheme.tertiary.withOpacity(0.2);
-        endColor = theme.colorScheme.tertiary.withOpacity(0.05);
+        startColor = theme.colorScheme.tertiary.withAlpha((0.2 * 255).toInt());
+        endColor = theme.colorScheme.tertiary.withAlpha((0.05 * 255).toInt());
         textColor = theme.colorScheme.tertiary;
         headerText = '待预约';
       }

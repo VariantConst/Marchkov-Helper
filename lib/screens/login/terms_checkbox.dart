@@ -31,7 +31,7 @@ class TermsCheckbox extends StatelessWidget {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.6),
+                          .withAlpha((0.6 * 255).toInt()),
                     ),
               ),
             ],

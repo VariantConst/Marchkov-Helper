@@ -397,7 +397,9 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     if (!mounted) return;
     if (index < 0 ||
         index >= _nearbyBuses.length ||
-        index >= _cardStates.length) return;
+        index >= _cardStates.length) {
+      return;
+    }
 
     setState(() {
       _selectedBusIndex = index;
@@ -825,7 +827,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                                 shape: BoxShape.circle,
                                 color: _selectedBusIndex == index
                                     ? primaryColor
-                                    : secondaryColor.withOpacity(0.3),
+                                    : secondaryColor
+                                        .withAlpha((0.3 * 255).toInt()),
                               ),
                             ),
                           ),

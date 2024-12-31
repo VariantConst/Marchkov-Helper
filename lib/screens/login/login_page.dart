@@ -188,7 +188,10 @@ class AnimatedTermsCheckbox extends StatelessWidget {
             border: Border.all(
               color: value
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withAlpha((0.6 * 255).toInt()),
               width: 2,
             ),
           ),

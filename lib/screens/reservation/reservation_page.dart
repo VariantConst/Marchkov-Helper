@@ -462,7 +462,8 @@ class _ReservationPageState extends State<ReservationPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16.0),
                   side: BorderSide(
-                    color: theme.colorScheme.outline.withOpacity(0.2),
+                    color: theme.colorScheme.outline
+                        .withAlpha((0.2 * 255).toInt()),
                   ),
                 ),
                 color: theme.colorScheme.surface,

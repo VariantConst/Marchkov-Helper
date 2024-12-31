@@ -125,7 +125,8 @@ class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
               return indicators.map((int index) {
                 return TouchedSpotIndicatorData(
                   FlLine(
-                    color: theme.colorScheme.secondary.withOpacity(0.2),
+                    color: theme.colorScheme.secondary
+                        .withAlpha((0.2 * 255).toInt()),
                     strokeWidth: 2,
                     dashArray: [4, 4],
                   ),
@@ -149,14 +150,16 @@ class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
             verticalInterval: 30,
             getDrawingHorizontalLine: (value) {
               return FlLine(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                color: theme.colorScheme.outlineVariant
+                    .withAlpha((0.3 * 255).toInt()),
                 strokeWidth: 1,
                 dashArray: [4, 4],
               );
             },
             getDrawingVerticalLine: (value) {
               return FlLine(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                color: theme.colorScheme.outlineVariant
+                    .withAlpha((0.3 * 255).toInt()),
                 strokeWidth: 1,
                 dashArray: [4, 4],
               );
@@ -212,11 +215,13 @@ class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
             show: true,
             border: Border(
               bottom: BorderSide(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant
+                    .withAlpha((0.5 * 255).toInt()),
                 width: 1,
               ),
               left: BorderSide(
-                color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                color: theme.colorScheme.outlineVariant
+                    .withAlpha((0.5 * 255).toInt()),
                 width: 1,
               ),
             ),
@@ -230,7 +235,8 @@ class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
               dotData: FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: theme.colorScheme.secondary.withOpacity(0.1),
+                color:
+                    theme.colorScheme.secondary.withAlpha((0.1 * 255).toInt()),
               ),
             ),
           ],
@@ -309,7 +315,8 @@ class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.shadow.withOpacity(0.08),
+                        color: theme.colorScheme.shadow
+                            .withAlpha((0.08 * 255).toInt()),
                         blurRadius: 8,
                         offset: Offset(0, 4),
                       ),

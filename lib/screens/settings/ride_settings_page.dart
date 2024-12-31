@@ -332,7 +332,8 @@ class RideSettingsPageState extends State<RideSettingsPage>
           ),
           Card(
             elevation: 0,
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest
+                .withAlpha((0.3 * 255).toInt()),
             child: Column(children: children),
           ),
         ],
@@ -381,7 +382,8 @@ class RideSettingsPageState extends State<RideSettingsPage>
                 activeTrackColor: theme.colorScheme.primary,
                 inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
                 thumbColor: theme.colorScheme.primary,
-                overlayColor: theme.colorScheme.primary.withOpacity(0.12),
+                overlayColor:
+                    theme.colorScheme.primary.withAlpha((0.12 * 255).toInt()),
                 trackHeight: 4.0,
               ),
               child: Slider(

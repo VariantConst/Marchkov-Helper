@@ -52,7 +52,7 @@ class BusSection extends StatelessWidget {
 
     for (var busData in buses) {
       String time = busData['yaxis'] ?? '';
-      DateTime busTime = DateTime.parse(busData['abscissa'] + ' ' + time);
+      DateTime busTime = DateTime.parse('${busData['abscissa']} $time');
 
       Widget button = BusButton(
         busData: busData,

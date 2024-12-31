@@ -65,7 +65,8 @@ class _DepartureTimeBarChartState extends State<DepartureTimeBarChart> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.shadow.withOpacity(0.08),
+                        color: theme.colorScheme.shadow
+                            .withAlpha((0.08 * 255).toInt()),
                         blurRadius: 8,
                         offset: Offset(0, 4),
                       ),

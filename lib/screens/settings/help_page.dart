@@ -138,7 +138,8 @@ class HelpPage extends StatelessWidget {
         Card(
           margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           elevation: 0,
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          color: theme.colorScheme.surfaceContainerHighest
+              .withAlpha((0.3 * 255).toInt()),
           child: Column(
             children: [
               for (var i = 0; i < items.length; i++) ...[

@@ -61,11 +61,16 @@ class BusList extends StatelessWidget {
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                         colors: [
-                          theme.colorScheme.primary.withOpacity(0),
-                          theme.colorScheme.primary.withOpacity(0.5),
-                          theme.colorScheme.primary,
-                          theme.colorScheme.primary.withOpacity(0.5),
-                          theme.colorScheme.primary.withOpacity(0),
+                          theme.colorScheme.primary
+                              .withAlpha((0 * 255).toInt()),
+                          theme.colorScheme.primary
+                              .withAlpha((0.5 * 255).toInt()),
+                          theme.colorScheme.primary
+                              .withAlpha((1 * 255).toInt()),
+                          theme.colorScheme.primary
+                              .withAlpha((0.5 * 255).toInt()),
+                          theme.colorScheme.primary
+                              .withAlpha((0 * 255).toInt()),
                         ],
                         stops: [0.0, 0.25, 0.5, 0.75, 1.0],
                       ),
@@ -75,7 +80,8 @@ class BusList extends StatelessWidget {
                       child: LinearProgressIndicator(
                         backgroundColor: Colors.transparent,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary.withOpacity(0.3),
+                          theme.colorScheme.primary
+                              .withAlpha((0.3 * 255).toInt()),
                         ),
                         minHeight: 2,
                       ),

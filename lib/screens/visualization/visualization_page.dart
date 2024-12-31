@@ -188,8 +188,8 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                     height: 36,
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.primaryContainer.withOpacity(0.8),
+                      color: theme.colorScheme.primaryContainer
+                          .withAlpha((0.8 * 255).toInt()),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -307,7 +307,8 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                 child: Card(
                   margin: EdgeInsets.only(top: 8, right: 8),
                   elevation: 8,
-                  shadowColor: theme.colorScheme.shadow.withOpacity(0.2),
+                  shadowColor:
+                      theme.colorScheme.shadow.withAlpha((0.2 * 255).toInt()),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -324,7 +325,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                               border: Border(
                                 bottom: BorderSide(
                                   color: theme.colorScheme.outlineVariant
-                                      .withOpacity(0.5),
+                                      .withAlpha((0.5 * 255).toInt()),
                                   width: 1,
                                 ),
                               ),
@@ -394,7 +395,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                   color: isSelected
                       ? theme.colorScheme.primaryContainer
                       : theme.colorScheme.surfaceContainerHighest
-                          .withOpacity(0.5),
+                          .withAlpha((0.5 * 255).toInt()),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -460,7 +461,8 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
           child: Card(
             margin: EdgeInsets.symmetric(horizontal: 16),
             elevation: 0,
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest
+                .withAlpha((0.3 * 255).toInt()),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: content,
@@ -496,7 +498,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                     : Theme.of(context)
                         .colorScheme
                         .onSurfaceVariant
-                        .withOpacity(0.4),
+                        .withAlpha((0.4 * 255).toInt()),
               ),
             ),
           );

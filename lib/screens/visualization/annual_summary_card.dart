@@ -12,9 +12,9 @@ class AnnualSummaryCard extends StatefulWidget {
   final List<RideInfo> rides;
 
   const AnnualSummaryCard({
-    Key? key,
+    super.key,
     required this.rides,
-  }) : super(key: key);
+  });
 
   @override
   State<AnnualSummaryCard> createState() => _AnnualSummaryCardState();
@@ -69,9 +69,11 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
         text: '我的${_getSummaryYear()}年班车总结',
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存失败: ${e.toString()}')),
+        );
+      }
     } finally {
       setState(() => _isSaving = false);
     }
@@ -79,12 +81,6 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
 
   // 添加这个辅助方法来预缓存图片
   Future<void> precacheImage(RenderRepaintBoundary boundary) async {
-    final imageSize = boundary.size;
-    final constraints = BoxConstraints(
-      maxWidth: imageSize.width,
-      maxHeight: imageSize.height,
-    );
-
     // 强制完成所有渲染
     await Future.delayed(Duration(milliseconds: 200));
     WidgetsBinding.instance.platformDispatcher.scheduleFrame();

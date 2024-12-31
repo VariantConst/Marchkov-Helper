@@ -52,7 +52,8 @@ class ReservationCalendar extends StatelessWidget {
         cellMargin: EdgeInsets.zero, // 添加这行
         cellPadding: EdgeInsets.zero, // 添加这行
         todayDecoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.5), // 使用主题颜色
+          color: theme.colorScheme.primary
+              .withAlpha((0.5 * 255).toInt()), // 使用主题颜色
           shape: BoxShape.circle,
         ),
         selectedDecoration: BoxDecoration(
@@ -62,7 +63,8 @@ class ReservationCalendar extends StatelessWidget {
         // 添加尺寸约束，使默认圆圈与选中圆圈大小一致
         defaultDecoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5)),
+          border: Border.all(
+              color: theme.colorScheme.primary.withAlpha((0.5 * 255).toInt())),
         ),
         // 设置默认日期文本样式
         defaultTextStyle: TextStyle(
@@ -97,7 +99,8 @@ class ReservationCalendar extends StatelessWidget {
                 ? BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.5),
+                      color: theme.colorScheme.primary
+                          .withAlpha((0.5 * 255).toInt()),
                       width: 1,
                     ),
                   )
@@ -114,7 +117,7 @@ class ReservationCalendar extends StatelessWidget {
             day,
             isDateSelectable(day),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.5),
+              color: theme.colorScheme.primary.withAlpha((0.5 * 255).toInt()),
               shape: BoxShape.circle,
             ),
             textColor: theme.colorScheme.onPrimary,

@@ -25,7 +25,7 @@ class BusRouteDetails extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.shadow.withOpacity(0.05),
+                color: theme.colorScheme.shadow.withAlpha((0.05 * 255).toInt()),
                 blurRadius: 10,
                 offset: Offset(0, 2),
               ),
@@ -42,7 +42,8 @@ class BusRouteDetails extends StatelessWidget {
                   Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary
+                          .withAlpha((0.1 * 255).toInt()),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -118,7 +119,8 @@ class BusRouteDetails extends StatelessWidget {
                     Container(
                       height: 50,
                       width: 1,
-                      color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                      color: theme.colorScheme.outlineVariant
+                          .withAlpha((0.5 * 255).toInt()),
                     ),
                     Expanded(
                       child: _buildMainInfo(
@@ -138,10 +140,11 @@ class BusRouteDetails extends StatelessWidget {
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest
-                      .withOpacity(0.3),
+                      .withAlpha((0.3 * 255).toInt()),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                    color: theme.colorScheme.outlineVariant
+                        .withAlpha((0.5 * 255).toInt()),
                   ),
                 ),
                 child: Column(
@@ -165,8 +168,8 @@ class BusRouteDetails extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(),
             icon: Icon(Icons.close_rounded, size: 18),
             style: IconButton.styleFrom(
-              backgroundColor:
-                  theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              backgroundColor: theme.colorScheme.surfaceContainerHighest
+                  .withAlpha((0.5 * 255).toInt()),
               foregroundColor: theme.colorScheme.onSurfaceVariant,
               padding: EdgeInsets.all(8),
               minimumSize: Size(32, 32),

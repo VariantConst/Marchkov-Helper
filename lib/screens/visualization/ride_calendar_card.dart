@@ -109,11 +109,12 @@ class RideCalendarCardState extends State<RideCalendarCard> {
             ),
             daysOfWeekStyle: DaysOfWeekStyle(
               weekdayStyle: TextStyle(
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                color:
+                    theme.colorScheme.onSurface.withAlpha((0.8 * 255).toInt()),
                 fontWeight: FontWeight.w500,
               ),
               weekendStyle: TextStyle(
-                color: theme.colorScheme.primary.withOpacity(0.8),
+                color: theme.colorScheme.primary.withAlpha((0.8 * 255).toInt()),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -227,13 +228,14 @@ class RideCalendarCardState extends State<RideCalendarCard> {
             Icon(
               Icons.directions_bus_outlined,
               size: 48,
-              color: theme.colorScheme.onSurface.withOpacity(0.2),
+              color: theme.colorScheme.onSurface.withAlpha((0.2 * 255).toInt()),
             ),
             SizedBox(height: 16),
             Text(
               '这一天没有乘车记录',
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color:
+                    theme.colorScheme.onSurface.withAlpha((0.6 * 255).toInt()),
               ),
             ),
           ],
@@ -259,7 +261,8 @@ class RideCalendarCardState extends State<RideCalendarCard> {
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color:
+                theme.colorScheme.surfaceContainerHighest.withValues(alpha: 77),
           ),
           child: Padding(
             padding: EdgeInsets.all(12),

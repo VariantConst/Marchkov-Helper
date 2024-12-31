@@ -47,11 +47,11 @@ class _RideHeatmapState extends State<RideHeatmap> {
     final baseColor = colorScheme.primary;
     switch (count) {
       case 1:
-        return baseColor.withOpacity(0.3);
+        return baseColor.withAlpha((0.3 * 255).round());
       case 2:
-        return baseColor.withOpacity(0.5);
+        return baseColor.withAlpha((0.5 * 255).round());
       case 3:
-        return baseColor.withOpacity(0.7);
+        return baseColor.withAlpha((0.7 * 255).round());
       default:
         return baseColor; // >= 4
     }
@@ -112,7 +112,7 @@ class _RideHeatmapState extends State<RideHeatmap> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.shadow.withOpacity(0.08),
+                        color: theme.colorScheme.shadow.withValues(alpha: 20),
                         blurRadius: 8,
                         offset: Offset(0, 4),
                       ),
@@ -183,7 +183,7 @@ class _RideHeatmapState extends State<RideHeatmap> {
                                         bottom: BorderSide(
                                           color: theme
                                               .colorScheme.outlineVariant
-                                              .withOpacity(0.5),
+                                              .withAlpha(128),
                                           width: 0.5,
                                         ),
                                       ),

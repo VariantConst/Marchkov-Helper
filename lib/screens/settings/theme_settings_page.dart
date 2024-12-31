@@ -81,7 +81,7 @@ class ThemeSettingsPage extends StatelessWidget {
       color: Theme.of(context)
           .colorScheme
           .surfaceContainerHighest
-          .withOpacity(0.3),
+          .withAlpha((0.3 * 255).toInt()),
       child: Padding(
         padding: EdgeInsets.all(16.0),
         child: Row(
@@ -108,7 +108,7 @@ class ThemeSettingsPage extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: color.withOpacity(0.4),
+                              color: color.withAlpha((0.4 * 255).toInt()),
                               blurRadius: 4,
                               offset: Offset(0, 2),
                             ),
@@ -197,7 +197,7 @@ class ThemeSettingsPage extends StatelessWidget {
           color: Theme.of(context)
               .colorScheme
               .surfaceContainerHighest
-              .withOpacity(0.3),
+              .withAlpha((0.3 * 255).toInt()),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {

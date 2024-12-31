@@ -81,7 +81,8 @@ class ThemeProvider with ChangeNotifier {
 
     // 先保存设置
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('selectedColor', color.value);
+    await prefs.setInt('selectedColor',
+        (color.r.toInt() << 16) | (color.g.toInt() << 8) | color.b.toInt());
 
     // 如果提供了 context 并且它仍然有效，则更新系统UI
     if (context != null) {

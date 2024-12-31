@@ -46,20 +46,22 @@ class RideCard extends StatelessWidget {
       backgroundColor = isDarkMode ? Colors.grey[900]! : Colors.grey[100]!;
     } else if (cardState['codeType'] == '临时码') {
       textColor = theme.colorScheme.secondary;
-      borderColor = theme.colorScheme.secondary.withOpacity(0.3);
-      buttonColor = theme.colorScheme.secondary.withOpacity(0.1);
-      backgroundColor = theme.colorScheme.secondary.withOpacity(0.05);
+      borderColor = theme.colorScheme.secondary.withAlpha((0.3 * 255).toInt());
+      buttonColor = theme.colorScheme.secondary.withAlpha((0.1 * 255).toInt());
+      backgroundColor =
+          theme.colorScheme.secondary.withAlpha((0.05 * 255).toInt());
     } else {
       textColor = theme.colorScheme.primary;
-      borderColor = theme.colorScheme.primary.withOpacity(0.3);
-      buttonColor = theme.colorScheme.primary.withOpacity(0.1);
-      backgroundColor = theme.colorScheme.primary.withOpacity(0.05);
+      borderColor = theme.colorScheme.primary.withAlpha((0.3 * 255).toInt());
+      buttonColor = theme.colorScheme.primary.withAlpha((0.1 * 255).toInt());
+      backgroundColor =
+          theme.colorScheme.primary.withAlpha((0.05 * 255).toInt());
     }
 
     return Card(
       elevation: 6,
       margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withAlpha((0.1 * 255).toInt()),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -358,7 +360,7 @@ class SafariStyleQRCodePage extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha((0.1 * 255).toInt()),
                   blurRadius: 8,
                   offset: Offset(0, 2),
                 ),
