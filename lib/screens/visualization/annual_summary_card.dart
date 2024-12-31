@@ -373,7 +373,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
   String _getShareText(Map<String, dynamic> summary) {
     final randomPercentage =
         _randomPercentageKey.currentState?._randomPercentage ?? 0;
-    return '我在${summary['year']}年共预约了${summary['totalRides']}次班车，超越了${randomPercentage}%的马池口🐮🐴，年度关键词是"${summary['keyword']}"！来自 Marchkov Helper';
+    return '我在${summary['year']}年共预约了${summary['totalRides']}次班车，超越了$randomPercentage%的马池口🐮🐴，年度关键词是"${summary['keyword']}"！来自 Marchkov Helper';
   }
 
   @override

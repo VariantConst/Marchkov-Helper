@@ -406,25 +406,21 @@ class _ReservationPageState extends State<ReservationPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedUsername = prefs.getString('username');
-      final savedPassword = prefs.getString('password');
+      if (!mounted) return;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final success = await authProvider.silentlyRefreshCookie();
 
-      if (savedUsername != null && savedPassword != null) {
-        if (!mounted) return;
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        await authProvider.login(savedUsername, savedPassword);
-
-        setState(() {
-          _isLoading = true;
-          _showRetryButton = false;
-          _loadingStep = '正在重新加载数据...';
-        });
-
-        await _loadReservationData();
-      } else {
-        throw Exception('未找到登录凭据，请重新登录');
+      if (!success) {
+        throw Exception('刷新登录状态失败，请重新登录');
       }
+
+      setState(() {
+        _isLoading = true;
+        _showRetryButton = false;
+        _loadingStep = '正在重新加载数据...';
+      });
+
+      await _loadReservationData();
     } catch (e) {
       if (mounted) {
         setState(() {

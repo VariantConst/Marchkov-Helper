@@ -10,6 +10,9 @@ class AuthProvider with ChangeNotifier {
   String _loginResponse = '';
   String _cookies = ''; // 保留这个属性,但我们会异步更新它
 
+  // 添加新的属性来跟踪上次刷新时间
+  static const String _lastRefreshKey = 'lastCookieRefreshDate';
+
   bool get isLoggedIn => _user != null;
   String get username => _user?.username ?? '';
   String get loginResponse => _loginResponse;
@@ -76,5 +79,54 @@ class AuthProvider with ChangeNotifier {
   Future<String> getLatestCookies() async {
     _cookies = await _authRepository.cookies;
     return _cookies;
+  }
+
+  // 新增：检查是否需要刷新 cookie
+  Future<bool> _shouldRefreshCookie() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastRefreshStr = prefs.getString(_lastRefreshKey);
+
+    if (lastRefreshStr == null) return true;
+
+    final lastRefresh = DateTime.parse(lastRefreshStr);
+    final today = DateTime.now();
+
+    // 如果不是同一天，则需要刷新
+    return lastRefresh.year != today.year ||
+        lastRefresh.month != today.month ||
+        lastRefresh.day != today.day;
+  }
+
+  // 新增：记录刷新时间
+  Future<void> _updateLastRefreshTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastRefreshKey, DateTime.now().toIso8601String());
+  }
+
+  // 新增：静默刷新 cookie
+  Future<bool> silentlyRefreshCookie() async {
+    try {
+      // 检查是否需要刷新
+      if (!await _shouldRefreshCookie()) {
+        return true;
+      }
+
+      // 获取保存的凭据
+      final prefs = await SharedPreferences.getInstance();
+      final savedUsername = prefs.getString('username');
+      final savedPassword = prefs.getString('password');
+
+      if (savedUsername == null || savedPassword == null) {
+        return false;
+      }
+
+      // 尝试重新登录
+      await login(savedUsername, savedPassword);
+      await _updateLastRefreshTime();
+      return true;
+    } catch (e) {
+      print('静默刷新 cookie 失败: $e');
+      return false;
+    }
   }
 }
