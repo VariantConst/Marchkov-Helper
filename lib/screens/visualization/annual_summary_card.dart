@@ -369,12 +369,11 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     }
   }
 
-  // 添加一个方法来生成分享文本
+  // 修改分享文本格式
   String _getShareText(Map<String, dynamic> summary) {
-    return '我的${summary['year']}年班车总结\n'
-        '全年共预约 ${summary['totalRides']} 次班车\n'
-        '年度关键词：${summary['keyword']}\n'
-        '来自 Marchkov Helper';
+    final randomPercentage =
+        _randomPercentageKey.currentState?._randomPercentage ?? 0;
+    return '我在${summary['year']}年共预约了${summary['totalRides']}次班车，超越了${randomPercentage}%的马池口🐮🐴，年度关键词是"${summary['keyword']}"！来自 Marchkov Helper';
   }
 
   @override

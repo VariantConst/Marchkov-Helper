@@ -221,60 +221,97 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
             ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(56),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outlineVariant
+                      .withAlpha((0.5 * 255).toInt()),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  for (int i = 0; i < 6; i++)
+                    _buildTabButton(
+                      context: context,
+                      index: i,
+                      isSelected: _currentPage == i,
+                      icon: [
+                        Icons.summarize_outlined,
+                        Icons.calendar_month_outlined,
+                        Icons.grid_4x4_outlined,
+                        Icons.pie_chart_outline,
+                        Icons.bar_chart_outlined,
+                        Icons.schedule_outlined,
+                      ][i],
+                      title: [
+                        '年度总结',
+                        '预约日历',
+                        '预约热力图',
+                        '违约统计',
+                        '各时段出发班次统计',
+                        '签到时间差分布',
+                      ][i],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [
-          Column(
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
             children: [
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPage = index;
-                    });
-                  },
-                  children: [
-                    _buildChartSection(
-                      key: ValueKey(
-                          'summary_${rideHistoryProvider.rides.length}'),
-                      icon: Icons.summarize_outlined,
-                      title: '年度总结',
-                      content:
-                          AnnualSummaryCard(rides: rideHistoryProvider.rides),
-                    ),
-                    _buildChartSection(
-                      key: ValueKey('calendar_${rides.length}'),
-                      icon: Icons.calendar_month_outlined,
-                      title: '预约日历',
-                      content: RideCalendarCard(rides: rides),
-                    ),
-                    _buildChartSection(
-                      key: ValueKey('heatmap_${rides.length}'),
-                      icon: Icons.grid_4x4_outlined,
-                      title: '预约热力图',
-                      content: RideHeatmap(rides: rides),
-                    ),
-                    _buildChartSection(
-                      icon: Icons.pie_chart_outline,
-                      title: '违约统计',
-                      content: CheckedInReservedPieChart(rides: rides),
-                    ),
-                    _buildChartSection(
-                      key: ValueKey('bar_${rides.length}'),
-                      icon: Icons.bar_chart_outlined,
-                      title: '各时段出发班次统计',
-                      content: DepartureTimeBarChart(rides: rides),
-                    ),
-                    _buildChartSection(
-                      icon: Icons.schedule_outlined,
-                      title: '签到时间差（分钟）分布',
-                      content: CheckInTimeHistogram(rides: rides),
-                    ),
-                  ],
-                ),
+              _buildChartSection(
+                key: ValueKey('summary_${rideHistoryProvider.rides.length}'),
+                icon: Icons.summarize_outlined,
+                title: '年度总结',
+                content: AnnualSummaryCard(rides: rideHistoryProvider.rides),
               ),
-              _buildPageIndicator(),
+              _buildChartSection(
+                key: ValueKey('calendar_${rides.length}'),
+                icon: Icons.calendar_month_outlined,
+                title: '预约日历',
+                content: RideCalendarCard(rides: rides),
+              ),
+              _buildChartSection(
+                key: ValueKey('heatmap_${rides.length}'),
+                icon: Icons.grid_4x4_outlined,
+                title: '预约热力图',
+                content: RideHeatmap(rides: rides),
+              ),
+              _buildChartSection(
+                icon: Icons.pie_chart_outline,
+                title: '违约统计',
+                content: CheckedInReservedPieChart(rides: rides),
+              ),
+              _buildChartSection(
+                key: ValueKey('bar_${rides.length}'),
+                icon: Icons.bar_chart_outlined,
+                title: '各时段出发班次统计',
+                content: DepartureTimeBarChart(rides: rides),
+              ),
+              _buildChartSection(
+                icon: Icons.schedule_outlined,
+                title: '签到时间差（分钟）分布',
+                content: CheckInTimeHistogram(rides: rides),
+              ),
             ],
           ),
           if (_isFilterExpanded)
@@ -439,70 +476,74 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
   }) {
     final theme = Theme.of(context);
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-          child: Row(
-            children: [
-              Icon(icon, color: theme.colorScheme.primary, size: 20),
-              SizedBox(width: 8),
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Card(
-            margin: EdgeInsets.symmetric(horizontal: 16),
-            elevation: 0,
-            color: theme.colorScheme.surfaceContainerHighest
-                .withAlpha((0.3 * 255).toInt()),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: content,
-            ),
-          ),
-        ),
-      ],
+    return Card(
+      margin: EdgeInsets.fromLTRB(16, 24, 16, 16),
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerHighest
+          .withAlpha((0.3 * 255).toInt()),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: content,
+      ),
     );
   }
 
-  Widget _buildPageIndicator() {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List<Widget>.generate(6, (index) {
-          return GestureDetector(
-            onTap: () {
-              _pageController.animateToPage(
-                index,
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-            child: Container(
-              width: 8,
-              height: 8,
-              margin: EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _currentPage == index
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant
-                        .withAlpha((0.4 * 255).toInt()),
-              ),
+  Widget _buildTabButton({
+    required BuildContext context,
+    required int index,
+    required bool isSelected,
+    required IconData icon,
+    required String title,
+  }) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _pageController.animateToPage(
+              index,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            height: 40,
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                      .withAlpha((0.8 * 255).toInt())
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
             ),
-          );
-        }),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                if (isSelected) ...[
+                  SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

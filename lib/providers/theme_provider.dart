@@ -47,14 +47,13 @@ class ThemeProvider with ChangeNotifier {
     }
   }
 
-  void _loadSelectedColor() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? colorValue = prefs.getInt('selectedColor');
-    if (colorValue != null) {
-      _selectedColor = Color(colorValue);
+  Future<void> _loadSelectedColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    final colorValue = prefs.getInt('selectedColor');
+    if (colorValue == null) {
+      _selectedColor = Colors.blue;
     } else {
-      final pekingRed = Color.fromRGBO(140, 0, 0, 1.0);
-      _selectedColor = pekingRed;
+      _selectedColor = Color(colorValue | 0xFF000000);
     }
     notifyListeners();
   }
