@@ -137,38 +137,36 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     int violationCount =
         yearRides.where((ride) => ride.statusName == '已预约').length;
 
-    // 按月份统计
-    Map<int, int> hourCount = {};
+    // 修改统计逻辑
+    Map<String, int> timeCount = {}; // 按具体时刻统计
     Map<String, int> morningBusCount = {}; // 统计12点前的班车
     Map<String, int> nightBusCount = {}; // 统计晚间班车
-
-    Map<int, Map<String, int>> hourRouteCount = {};
+    Map<String, Map<String, int>> timeRouteCount = {}; // 每个时刻的路线统计
 
     for (var ride in yearRides) {
       DateTime appointmentTime = DateTime.parse(ride.appointmentTime);
       int month = appointmentTime.month;
-      int hour = appointmentTime.hour;
+      String timeSlot =
+          '${appointmentTime.hour.toString().padLeft(2, '0')}:${appointmentTime.minute.toString().padLeft(2, '0')}';
       String routeName = ride.resourceName;
 
       monthCount[month] = (monthCount[month] ?? 0) + 1;
-      hourCount[hour] = (hourCount[hour] ?? 0) + 1;
+      timeCount[timeSlot] = (timeCount[timeSlot] ?? 0) + 1;
 
       // 统计12点前的班车
-      if (hour < 12) {
-        String busTime = '${hour.toString().padLeft(2, '0')}:00';
-        morningBusCount[busTime] = (morningBusCount[busTime] ?? 0) + 1;
+      if (appointmentTime.hour < 12) {
+        morningBusCount[timeSlot] = (morningBusCount[timeSlot] ?? 0) + 1;
       }
 
       // 统计晚间班车 (17:30-23:00)
-      if (hour >= 17 && hour <= 23) {
-        String busTime = '${hour.toString().padLeft(2, '0')}:00';
-        nightBusCount[busTime] = (nightBusCount[busTime] ?? 0) + 1;
+      if (appointmentTime.hour >= 17 && appointmentTime.hour <= 23) {
+        nightBusCount[timeSlot] = (nightBusCount[timeSlot] ?? 0) + 1;
       }
 
-      // 统计每个小时的路线
-      hourRouteCount.putIfAbsent(hour, () => {});
-      hourRouteCount[hour]![routeName] =
-          (hourRouteCount[hour]![routeName] ?? 0) + 1;
+      // 统计每个时刻的路线
+      timeRouteCount.putIfAbsent(timeSlot, () => {});
+      timeRouteCount[timeSlot]![routeName] =
+          (timeRouteCount[timeSlot]![routeName] ?? 0) + 1;
     }
 
     // 找出最多乘车的月份
@@ -181,15 +179,15 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       }
     });
 
-    // 找出最常预约的时段和路线
-    int? mostFrequentHour;
-    int maxHourCount = 0;
+    // 找出最常预约的时刻和路线
+    String? mostFrequentTime;
+    int maxTimeCount = 0;
     String? mostFrequentRoute;
-    hourCount.forEach((hour, count) {
-      if (count > maxHourCount) {
-        maxHourCount = count;
-        mostFrequentHour = hour;
-        mostFrequentRoute = hourRouteCount[hour]!
+    timeCount.forEach((time, count) {
+      if (count > maxTimeCount) {
+        maxTimeCount = count;
+        mostFrequentTime = time;
+        mostFrequentRoute = timeRouteCount[time]!
             .entries
             .reduce((a, b) => a.value > b.value ? a : b)
             .key;
@@ -261,8 +259,8 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       'violationRate': violationRate,
       'mostFrequentMonth': mostFrequentMonth,
       'mostFrequentMonthCount': maxMonthCount,
-      'mostFrequentHour': mostFrequentHour,
-      'mostFrequentHourCount': maxHourCount,
+      'mostFrequentTime': mostFrequentTime,
+      'mostFrequentTimeCount': maxTimeCount,
       'mostFrequentRoute': mostFrequentRoute,
       'mostFrequentMorningBus': mostFrequentMorningBus,
       'mostFrequentMorningBusCount': maxMorningCount,
@@ -476,12 +474,12 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                       maxCount: maxMonthCount,
                     ),
                   ],
-                  if (summary['mostFrequentHour'] != null &&
+                  if (summary['mostFrequentTime'] != null &&
                       summary['mostFrequentRoute'] != null) ...[
                     Divider(height: 32),
                     _buildStoryText(
                       context,
-                      '你预约最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车，共预约了 **${summary['mostFrequentHourCount']}** 次',
+                      '你预约最多的是 **${summary['mostFrequentTime']}** 的 **${summary['mostFrequentRoute']}** 班车，共预约了 **${summary['mostFrequentTimeCount']}** 次',
                       highlight: true,
                     ),
                   ],

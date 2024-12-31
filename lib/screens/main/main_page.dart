@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart'; // 新增
 import '../visualization/visualization_page.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../services/version_service.dart';
 
 class MainPage extends StatefulWidget {
   @override
@@ -23,6 +25,7 @@ class MainPageState extends State<MainPage> {
     _loadSelectedIndex();
     _checkAndShowAnnualSummaryDialog();
     _silentlyRefreshCookie();
+    _checkForUpdates();
   }
 
   // 加载保存的页面索引
@@ -114,6 +117,67 @@ class MainPageState extends State<MainPage> {
       await authProvider.silentlyRefreshCookie();
     } catch (e) {
       print('静默刷新 cookie 时出错: $e');
+    }
+  }
+
+  // 添加检查更新的方法
+  Future<void> _checkForUpdates() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final skipVersion = prefs.getString('skipVersion') ?? '';
+
+      final versionService = VersionService();
+      final currentVersion = await versionService.getCurrentVersion();
+      final latestVersion = await versionService.getLatestVersion();
+
+      if (latestVersion == null || !mounted) return;
+
+      // 如果用户选择跳过了这个版本，则不再提示
+      if (skipVersion == latestVersion) return;
+
+      // 比较版本号
+      if (latestVersion != currentVersion) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  Icons.system_update_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                SizedBox(width: 8),
+                Text('发现新版本'),
+              ],
+            ),
+            content: Text('新版本 $latestVersion 已发布，是否前往更新？'),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  // 记住用户选择跳过此版本
+                  await prefs.setString('skipVersion', latestVersion);
+                  if (!mounted) return;
+                  Navigator.of(context).pop();
+                },
+                child: Text('不再提示'),
+              ),
+              FilledButton.tonal(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await launchUrl(
+                    Uri.parse('https://shuttle.variantconst.com'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                child: Text('前往更新'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('检查更新时出错: $e');
     }
   }
 
