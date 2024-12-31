@@ -27,6 +27,8 @@ class ThemeSettingsPage extends StatelessWidget {
         ),
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 0,
       ),
       body: SafeArea(
         child: CustomScrollView(

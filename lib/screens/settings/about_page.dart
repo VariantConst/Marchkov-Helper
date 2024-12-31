@@ -189,6 +189,8 @@ class AboutPageState extends State<AboutPage> {
         ),
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         child: Column(

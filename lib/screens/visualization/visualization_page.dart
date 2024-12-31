@@ -235,13 +235,12 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
               ),
             ),
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (int i = 0; i < 6; i++)
-                    _buildTabButton(
+            child: Row(
+              children: [
+                for (int i = 0; i < 6; i++)
+                  Expanded(
+                    flex: _currentPage == i ? 3 : 1,
+                    child: _buildTabButton(
                       context: context,
                       index: i,
                       isSelected: _currentPage == i,
@@ -256,14 +255,14 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
                       title: [
                         '年度总结',
                         '预约日历',
-                        '预约热力图',
+                        '热力图',
                         '违约统计',
-                        '各时段出发班次统计',
-                        '签到时间差分布',
+                        '出发时间',
+                        '签到时间',
                       ][i],
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -293,7 +292,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
               _buildChartSection(
                 key: ValueKey('heatmap_${rides.length}'),
                 icon: Icons.grid_4x4_outlined,
-                title: '预约热力图',
+                title: '热力图',
                 content: RideHeatmap(rides: rides),
               ),
               _buildChartSection(
@@ -304,12 +303,12 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
               _buildChartSection(
                 key: ValueKey('bar_${rides.length}'),
                 icon: Icons.bar_chart_outlined,
-                title: '各时段出发班次统计',
+                title: '出发时间',
                 content: DepartureTimeBarChart(rides: rides),
               ),
               _buildChartSection(
                 icon: Icons.schedule_outlined,
-                title: '签到时间差（分钟）分布',
+                title: '签到时间',
                 content: CheckInTimeHistogram(rides: rides),
               ),
             ],
@@ -498,7 +497,7 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
     final theme = Theme.of(context);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4),
+      padding: EdgeInsets.symmetric(horizontal: 2),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -509,38 +508,69 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
               curve: Curves.easeInOut,
             );
           },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            height: 40,
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.colorScheme.primaryContainer
-                      .withAlpha((0.8 * 255).toInt())
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-                if (isSelected) ...[
-                  SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
+          borderRadius: BorderRadius.circular(24),
+          child: SizedBox(
+            height: 44,
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSelected ? 16 : 8,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? theme.colorScheme.primaryContainer
+                        .withAlpha((0.8 * 255).toInt())
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: AnimatedSwitcher(
+                duration: Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                },
+                child: isSelected
+                    ? Row(
+                        key: ValueKey('selected'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: Duration(milliseconds: 200),
+                            curve: Curves.easeOutCubic,
+                            child: Icon(
+                              icon,
+                              size: 24,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            title,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      )
+                    : Center(
+                        key: ValueKey('unselected'),
+                        child: Icon(
+                          icon,
+                          size: 20,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+              ),
             ),
           ),
         ),

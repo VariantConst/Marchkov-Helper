@@ -227,6 +227,8 @@ class RideSettingsPageState extends State<RideSettingsPage>
         ),
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
       ),
       body: Column(
         children: [

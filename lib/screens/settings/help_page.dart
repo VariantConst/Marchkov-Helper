@@ -16,6 +16,8 @@ class HelpPage extends StatelessWidget {
         ),
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
       ),
       body: ListView(
         children: [
