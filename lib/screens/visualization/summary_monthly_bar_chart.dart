@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class SummaryMonthlyBarChart extends StatelessWidget {
   final Map<int, int> monthlyRides;
@@ -10,98 +9,85 @@ class SummaryMonthlyBarChart extends StatelessWidget {
     required this.maxCount,
   });
 
+  String _getMonthAbbr(int month) {
+    const monthAbbrs = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC'
+    ];
+    return monthAbbrs[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // 对月份-次数进行排序
-    final sortedEntries = monthlyRides.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final primaryColor = theme.colorScheme.primary;
 
     return Container(
       height: 200.0,
       padding: EdgeInsets.fromLTRB(8, 12, 16, 8),
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceBetween,
-          minY: 0,
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              tooltipRoundedRadius: 8,
-              tooltipPadding: EdgeInsets.all(8),
-              tooltipBorder: BorderSide.none,
-              tooltipMargin: 8,
-              fitInsideHorizontally: true,
-              fitInsideVertically: true,
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                return BarTooltipItem(
-                  '${sortedEntries[group.x].value}次',
-                  TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index < 0 || index >= sortedEntries.length) {
-                    return SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 1),
-                    child: Text(
-                      '${sortedEntries[index].key}月',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 10,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          gridData: FlGridData(
-            show: false,
-          ),
-          borderData: FlBorderData(show: false),
-          barGroups: List.generate(
-            sortedEntries.length,
-            (index) {
-              final ridesCount = sortedEntries[index].value.toDouble();
-              return BarChartGroupData(
-                x: index,
-                barRods: [
-                  BarChartRodData(
-                    toY: ridesCount,
-                    color: theme.colorScheme.primary,
-                    width: 16,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(2),
-                      bottom: Radius.circular(2),
-                    ),
-                    // 应用归一化系数
-                    backDrawRodData: BackgroundBarChartRodData(
-                      show: true,
-                      color: theme.colorScheme.primary
-                          .withAlpha((0.1 * 255).toInt()),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+      child: GridView.builder(
+        physics: NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          childAspectRatio: 1.2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
+        itemCount: 12,
+        itemBuilder: (context, index) {
+          final month = index + 1;
+          final count = monthlyRides[month] ?? 0;
+          final opacity = maxCount > 0 ? (count / maxCount) * 0.8 + 0.1 : 0.1;
+
+          return Container(
+            decoration: BoxDecoration(
+              color: primaryColor.withAlpha((opacity * 255).toInt()),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Stack(
+              children: [
+                // 数字和月份缩写居中布局
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        count.toString(),
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          height: 1,
+                        ),
+                      ),
+                      SizedBox(height: 1), // 极小的间距
+                      Text(
+                        _getMonthAbbr(month),
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 8, // 更小的字号
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.5,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/ride_info.dart';
 import 'summary_violation_pie_chart.dart';
 import 'summary_monthly_bar_chart.dart';
+import 'dart:math';
 
 class AnnualSummaryCard extends StatefulWidget {
   final List<RideInfo> rides;
@@ -23,6 +24,8 @@ class AnnualSummaryCard extends StatefulWidget {
 
 class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
   final GlobalKey _boundaryKey = GlobalKey();
+  final GlobalKey<_RandomPercentageWidgetState> _randomPercentageKey =
+      GlobalKey();
   bool _isSaving = false;
   final Map<int, int> monthCount = {};
   late int maxMonthCount = 0;
@@ -42,6 +45,13 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     setState(() => _isSaving = true);
 
     try {
+      // 检查随机数是否已生成，如果没有则自动生成
+      final randomPercentageState = _randomPercentageKey.currentState;
+      if (randomPercentageState != null &&
+          randomPercentageState._randomPercentage == null) {
+        randomPercentageState._generateRandomPercentage();
+      }
+
       // 等待下一帧完成渲染
       await Future.delayed(Duration(milliseconds: 500));
 
@@ -113,6 +123,9 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
     final yearRides = _filterRidesByYear(summaryYear);
     if (yearRides.isEmpty) return {};
 
+    // 重置月度统计
+    monthCount.clear();
+
     // 总预约和违约
     int totalRides = yearRides.length;
     int violationCount =
@@ -162,7 +175,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       }
     });
 
-    // 找出最常乘坐的时段和路线
+    // 找出最常预约的时段和路线
     int? mostFrequentHour;
     int maxHourCount = 0;
     String? mostFrequentRoute;
@@ -177,7 +190,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       }
     });
 
-    // 找出最常乘坐的早班车
+    // 找出最常预约的早班车
     String? mostFrequentMorningBus;
     int maxMorningCount = 0;
     morningBusCount.forEach((time, count) {
@@ -187,7 +200,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
       }
     });
 
-    // 找出最常乘坐的晚班车
+    // 找出最常预约的晚班车
     String? mostFrequentNightBus;
     int maxNightCount = 0;
     nightBusCount.forEach((time, count) {
@@ -231,6 +244,15 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
               .split('**')
               .asMap()
               .map((index, segment) {
+                if (segment == '???%') {
+                  return MapEntry(
+                    index,
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: RandomPercentageWidget(key: _randomPercentageKey),
+                    ),
+                  );
+                }
                 return MapEntry(
                   index,
                   TextSpan(
@@ -359,7 +381,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                   SizedBox(height: 32),
                   _buildStoryText(
                     context,
-                    '在这一年里，你一共乘坐了 **${summary['totalRides']}** 次班车',
+                    '在这一年里，你一共预约了 **${summary['totalRides']}** 次班车，超越了 **???%** 的马池口 🐮🐴！',
                     highlight: true,
                   ),
                   if (summary['violationCount'] > 0) ...[
@@ -381,7 +403,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                     Divider(height: 32),
                     _buildStoryText(
                       context,
-                      '你在 **${summary['mostFrequentMonth']}月** 最为勤奋，乘坐了 **${summary['mostFrequentMonthCount']}** 次班车',
+                      '你在 **${summary['mostFrequentMonth']}月** 最为勤奋，预约了 **${summary['mostFrequentMonthCount']}** 次班车',
                       highlight: true,
                     ),
                     SizedBox(height: 16),
@@ -397,7 +419,7 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
                     Divider(height: 32),
                     _buildStoryText(
                       context,
-                      '你乘坐最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车',
+                      '你预约最多的是 **${summary['mostFrequentHour'].toString().padLeft(2, '0')}:00** 的 **${summary['mostFrequentRoute']}** 班车',
                       highlight: true,
                     ),
                   ],
@@ -559,6 +581,141 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class StripePainter extends CustomPainter {
+  final Color color;
+  final double stripeWidth;
+  final double gapWidth;
+
+  StripePainter({
+    required this.color,
+    required this.stripeWidth,
+    required this.gapWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = stripeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final spacing = stripeWidth + gapWidth;
+    final count = (size.width + size.height) ~/ spacing;
+
+    for (var i = -count; i < count * 2; i++) {
+      final x = i * spacing - size.height;
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(StripePainter oldDelegate) =>
+      color != oldDelegate.color ||
+      stripeWidth != oldDelegate.stripeWidth ||
+      gapWidth != oldDelegate.gapWidth;
+}
+
+class RandomPercentageWidget extends StatefulWidget {
+  const RandomPercentageWidget({super.key});
+
+  @override
+  State<RandomPercentageWidget> createState() => _RandomPercentageWidgetState();
+}
+
+class _RandomPercentageWidgetState extends State<RandomPercentageWidget> {
+  int? _randomPercentage;
+
+  // 添加生成随机数的方法
+  void _generateRandomPercentage() {
+    setState(() {
+      _randomPercentage = 50 + Random().nextInt(51);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          _generateRandomPercentage();
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 2,
+            vertical: 2,
+          ),
+          child: AnimatedSwitcher(
+            duration: Duration(milliseconds: 200),
+            child: _randomPercentage == null
+                ? TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.95, end: 1.05),
+                    duration: Duration(milliseconds: 1000),
+                    curve: Curves.easeInOut,
+                    builder: (context, value, child) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _randomPercentage == null) {
+                          setState(() {});
+                        }
+                      });
+
+                      return Transform.scale(
+                        scale: value,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 40,
+                              alignment: Alignment.center,
+                              child: Text(
+                                'randint\n(50,100)',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: CustomPaint(
+                                size: Size(60, 40),
+                                painter: StripePainter(
+                                  color: theme.colorScheme.primary
+                                      .withAlpha((0.2 * 255).toInt()),
+                                  stripeWidth: 4,
+                                  gapWidth: 4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : Text(
+                    '$_randomPercentage%',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }
