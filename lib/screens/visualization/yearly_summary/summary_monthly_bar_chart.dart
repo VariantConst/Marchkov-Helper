@@ -33,7 +33,7 @@ class SummaryMonthlyBarChart extends StatelessWidget {
     final primaryColor = theme.colorScheme.primary;
 
     return Container(
-      height: 200.0,
+      height: 240.0,
       padding: EdgeInsets.fromLTRB(8, 12, 16, 8),
       child: GridView.builder(
         physics: NeverScrollableScrollPhysics(),

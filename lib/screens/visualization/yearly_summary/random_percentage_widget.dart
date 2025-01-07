@@ -33,17 +33,13 @@ class RandomPercentageWidgetState extends State<RandomPercentageWidget> {
           generateRandomPercentage();
         },
         child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 2,
-            vertical: 4,
-          ),
-          height: 36,
+          height: 60,
           child: AnimatedSwitcher(
             duration: Duration(milliseconds: 200),
             child: randomPercentage == null
                 ? SizedBox(
                     key: ValueKey('initial'),
-                    width: 60,
+                    width: 65,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: Stack(
@@ -75,7 +71,7 @@ class RandomPercentageWidgetState extends State<RandomPercentageWidget> {
                     ),
                   )
                 : SizedBox(
-                    width: 60,
+                    width: 65,
                     child: Text(
                       key: ValueKey('percentage'),
                       '$randomPercentage%',

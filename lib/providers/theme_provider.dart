@@ -53,7 +53,7 @@ class ThemeProvider with ChangeNotifier {
     if (colorValue == null) {
       _selectedColor = Colors.blue;
     } else {
-      _selectedColor = Color(colorValue | 0xFF000000);
+      _selectedColor = Color(colorValue);
     }
     notifyListeners();
   }
@@ -78,10 +78,10 @@ class ThemeProvider with ChangeNotifier {
     _selectedColor = color;
     notifyListeners();
 
-    // 先保存设置
+    // 保存颜色的完整 value
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('selectedColor',
-        (color.r.toInt() << 16) | (color.g.toInt() << 8) | color.b.toInt());
+    // ignore: deprecated_member_use
+    await prefs.setInt('selectedColor', color.value);
 
     // 如果提供了 context 并且它仍然有效，则更新系统UI
     if (context != null) {

@@ -20,7 +20,7 @@ class SummaryViolationPieChart extends StatelessWidget {
         ((checkedInCount) / totalRides * 100).toStringAsFixed(1);
 
     return SizedBox(
-      height: 120,
+      height: 150,
       child: Row(
         children: [
           Expanded(
