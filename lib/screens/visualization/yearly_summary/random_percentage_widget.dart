@@ -32,7 +32,7 @@ class RandomPercentageWidgetState extends State<RandomPercentageWidget> {
         onTap: () {
           generateRandomPercentage();
         },
-        child: Container(
+        child: SizedBox(
           height: 60,
           child: AnimatedSwitcher(
             duration: Duration(milliseconds: 200),

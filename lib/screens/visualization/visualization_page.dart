@@ -123,6 +123,8 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rideHistoryProvider = Provider.of<RideHistoryProvider>(context);
+    final now = DateTime.now();
+    final isAnnualSummaryTime = now.month == 12 || now.month == 1;
 
     if (rideHistoryProvider.isLoading) {
       return Scaffold(
@@ -222,47 +224,63 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(56),
+          preferredSize: Size.fromHeight(64),
           child: Container(
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               border: Border(
                 bottom: BorderSide(
                   color: theme.colorScheme.outlineVariant
-                      .withAlpha((0.5 * 255).toInt()),
+                      .withAlpha((0.3 * 255).toInt()),
                   width: 0.5,
                 ),
               ),
             ),
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                for (int i = 0; i < 6; i++)
-                  Expanded(
-                    flex: _currentPage == i ? 3 : 1,
-                    child: _buildTabButton(
-                      context: context,
-                      index: i,
-                      isSelected: _currentPage == i,
-                      icon: [
-                        Icons.summarize_outlined,
-                        Icons.calendar_month_outlined,
-                        Icons.grid_4x4_outlined,
-                        Icons.pie_chart_outline,
-                        Icons.bar_chart_outlined,
-                        Icons.schedule_outlined,
-                      ][i],
-                      title: [
-                        '年度总结',
-                        '预约日历',
-                        '热力图',
-                        '违约统计',
-                        '出发时间',
-                        '签到时间',
-                      ][i],
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              child: Row(
+                children: [
+                  if (isAnnualSummaryTime)
+                    Expanded(
+                      flex: _currentPage == 0 ? 3 : 1,
+                      child: _buildTabButton(
+                        context: context,
+                        index: 0,
+                        isSelected: _currentPage == 0,
+                        icon: Icons.summarize_outlined,
+                        title: '年度总结',
+                      ),
                     ),
-                  ),
-              ],
+                  for (int i = 0; i < 5; i++)
+                    Expanded(
+                      flex: _currentPage == (isAnnualSummaryTime ? i + 1 : i)
+                          ? 3
+                          : 1,
+                      child: _buildTabButton(
+                        context: context,
+                        index: isAnnualSummaryTime ? i + 1 : i,
+                        isSelected:
+                            _currentPage == (isAnnualSummaryTime ? i + 1 : i),
+                        icon: [
+                          Icons.calendar_month_outlined,
+                          Icons.grid_4x4_outlined,
+                          Icons.pie_chart_outline,
+                          Icons.bar_chart_outlined,
+                          Icons.schedule_outlined,
+                        ][i],
+                        title: [
+                          '预约日历',
+                          '热力图',
+                          '违约统计',
+                          '出发时间',
+                          '签到时间',
+                        ][i],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -277,12 +295,13 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
               });
             },
             children: [
-              _buildChartSection(
-                key: ValueKey('summary_${rideHistoryProvider.rides.length}'),
-                icon: Icons.summarize_outlined,
-                title: '年度总结',
-                content: AnnualSummaryCard(rides: rideHistoryProvider.rides),
-              ),
+              if (isAnnualSummaryTime)
+                _buildChartSection(
+                  key: ValueKey('summary_${rideHistoryProvider.rides.length}'),
+                  icon: Icons.summarize_outlined,
+                  title: '年度总结',
+                  content: AnnualSummaryCard(rides: rideHistoryProvider.rides),
+                ),
               _buildChartSection(
                 key: ValueKey('calendar_${rides.length}'),
                 icon: Icons.calendar_month_outlined,
@@ -497,80 +516,81 @@ class _VisualizationSettingsPageState extends State<VisualizationSettingsPage>
     final theme = Theme.of(context);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 2),
+      padding: EdgeInsets.symmetric(horizontal: 3),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
             _pageController.animateToPage(
               index,
-              duration: Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
+              duration: Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
             );
           },
-          borderRadius: BorderRadius.circular(24),
-          child: SizedBox(
-            height: 44,
-            child: AnimatedContainer(
-              duration: Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 16 : 8,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primaryContainer
-                        .withAlpha((0.8 * 255).toInt())
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: AnimatedSwitcher(
-                duration: Duration(milliseconds: 200),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                child: isSelected
-                    ? Row(
-                        key: ValueKey('selected'),
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedContainer(
-                            duration: Duration(milliseconds: 200),
-                            curve: Curves.easeOutCubic,
-                            child: Icon(
-                              icon,
-                              size: 24,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            title,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      )
-                    : Center(
-                        key: ValueKey('unselected'),
-                        child: Icon(
-                          icon,
-                          size: 20,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+          borderRadius: BorderRadius.circular(28),
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            height: 48,
+            padding: EdgeInsets.symmetric(
+              horizontal: isSelected ? 20 : 12,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                      .withAlpha((0.9 * 255).toInt())
+                  : theme.colorScheme.surfaceContainerHighest
+                      .withAlpha((0.3 * 255).toInt()),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: theme.colorScheme.primary
+                            .withAlpha((0.1 * 255).toInt()),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
                       ),
-              ),
+                    ]
+                  : null,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedOpacity(
+                  duration: Duration(milliseconds: 200),
+                  opacity: isSelected ? 0.0 : 1.0,
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                AnimatedOpacity(
+                  duration: Duration(milliseconds: 200),
+                  opacity: isSelected ? 1.0 : 0.0,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        title,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),

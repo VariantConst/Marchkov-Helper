@@ -229,7 +229,7 @@ class _CheckedInReservedPieChartState extends State<CheckedInReservedPieChart> {
           lineBarsData: [
             LineChartBarData(
               spots: _violationRateSpots!,
-              isCurved: true,
+              isCurved: false,
               color: theme.colorScheme.secondary,
               barWidth: 2,
               dotData: FlDotData(show: false),

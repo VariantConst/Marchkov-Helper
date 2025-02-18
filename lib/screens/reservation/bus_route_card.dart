@@ -68,7 +68,7 @@ class BusRouteDetails extends StatelessWidget {
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
-                            fontSize: 20,
+                            fontSize: routeName.length > 10 ? 18 : 20,
                             height: 1.2,
                           ),
                           maxLines: 2,
@@ -125,10 +125,10 @@ class BusRouteDetails extends StatelessWidget {
                     Expanded(
                       child: _buildMainInfo(
                         context,
-                        icon: Icons.event_seat_rounded,
-                        label: '剩余座位',
-                        value: margin.toString(),
-                        subValue: '座位数',
+                        icon: Icons.people_rounded,
+                        label: '已约人数',
+                        value: (900 - margin).toString(),
+                        subValue: '当前预约',
                       ),
                     ),
                   ],

@@ -95,17 +95,28 @@ class BusList extends StatelessWidget {
   }
 
   List<dynamic> _getBusesByDirection(String direction) {
+    // 定义去昌平方向的路线（即：燕园校区在前，新燕园校区在后）
+    final routesToChangping = <String>{
+      "燕园校区→新燕园校区",
+      "燕园校区→新燕园校区→200号校区",
+      "燕园校区→肖家河→西二旗→新燕园校区→200号校区",
+    };
+
+    // 定义去燕园方向的路线（即：新燕园校区在前，燕园校区在后）
+    final routesToYanyuan = <String>{
+      "新燕园校区→燕园校区",
+      "200号校区→新燕园校区→燕园校区",
+      "200号校区→新燕园校区→西二旗→肖家河→燕园校区",
+    };
+
     return filteredBusList.where((bus) {
-      final name = bus['route_name'] ?? '';
+      final routeName = bus['route_name'] ?? '';
       if (direction == '去昌平') {
-        return name.contains('燕') &&
-            name.contains('新') &&
-            name.indexOf('燕') < name.indexOf('新');
-      } else {
-        return name.contains('燕') &&
-            name.contains('新') &&
-            name.indexOf('新') < name.indexOf('燕');
+        return routesToChangping.contains(routeName);
+      } else if (direction == '去燕园') {
+        return routesToYanyuan.contains(routeName);
       }
+      return false;
     }).toList();
   }
 }
