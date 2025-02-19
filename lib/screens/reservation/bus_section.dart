@@ -28,24 +28,40 @@ class BusSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, 12),
-          child: Text(
-            title,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: title.length > 4 ? 16 : 20,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: _buildBusButtons(),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: _buildBusButtons(context),
         ),
       ],
     );
   }
 
-  Widget _buildBusButtons() {
+  Widget _buildBusButtons(BuildContext context) {
+    final theme = Theme.of(context);
     List<Widget> morningButtons = [];
     List<Widget> afternoonButtons = [];
     List<Widget> eveningButtons = [];
@@ -71,23 +87,70 @@ class BusSection extends StatelessWidget {
       }
     }
 
+    if (morningButtons.isEmpty &&
+        afternoonButtons.isEmpty &&
+        eveningButtons.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 20,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '当日该班次已无车可坐',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Column(
       children: [
-        if (morningButtons.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: morningButtons,
-          ),
-        if (afternoonButtons.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: afternoonButtons,
-          ),
+        if (morningButtons.isNotEmpty) ...[
+          _buildTimeSection(context, '上午', morningButtons),
+          const SizedBox(height: 16),
+        ],
+        if (afternoonButtons.isNotEmpty) ...[
+          _buildTimeSection(context, '下午', afternoonButtons),
+          const SizedBox(height: 16),
+        ],
         if (eveningButtons.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: eveningButtons,
+          _buildTimeSection(context, '晚上', eveningButtons),
+      ],
+    );
+  }
+
+  Widget _buildTimeSection(
+      BuildContext context, String timeLabel, List<Widget> buttons) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 8),
+          child: Text(
+            timeLabel,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: buttons,
+        ),
       ],
     );
   }

@@ -515,6 +515,7 @@ class _ReservationPageState extends State<ReservationPage> {
                 ),
               ),
             ),
+          SizedBox(height: 8),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshBusData,

@@ -66,60 +66,69 @@ class BusButtonState extends State<BusButton>
         ? (widget.buttonCooldowns[key] == 'reserving' ? '预约中' : '取消中')
         : (isReserved ? '取消预约' : '预约');
 
-    // 边框颜色与原来的进度指示器保持一致
-    Color borderColor =
-        isReserved ? theme.colorScheme.onPrimary : theme.colorScheme.primary;
+    Color borderColor = isReserved
+        ? theme.colorScheme.primary
+        : theme.colorScheme.surfaceVariant;
+
+    Color backgroundColor = isReserved
+        ? theme.colorScheme.primary.withValues(alpha: 0.15)
+        : theme.colorScheme.surfaceVariant.withValues(alpha: 0.5);
 
     Widget buttonChild = Center(
-      child: Text(
-        isCooling ? actionText : time,
+      child: AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 200),
         style: isCooling
             ? theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isReserved
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurfaceVariant,
-              )
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  color: isReserved
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ) ??
+                const TextStyle()
             : theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isReserved
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  color: isReserved
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ) ??
+                const TextStyle(),
+        child: Text(isCooling ? actionText : time),
       ),
     );
 
-    Widget filledButton = FilledButton(
-      onPressed: isCooling ? null : () => widget.onBusCardTap(busData),
-      onLongPress: () {
-        HapticFeedback.heavyImpact();
-        widget.showBusDetails(busData);
-      },
-      style: FilledButton.styleFrom(
-        backgroundColor: isReserved
-            ? theme.colorScheme.primary
-            : theme.colorScheme.surfaceContainerHighest,
-        foregroundColor: isReserved
-            ? theme.colorScheme.onPrimary
-            : theme.colorScheme.onSurfaceVariant,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    Widget button = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isCooling ? null : () => widget.onBusCardTap(busData),
+        onLongPress: () {
+          HapticFeedback.heavyImpact();
+          widget.showBusDetails(busData);
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 44,
+          padding: EdgeInsets.zero,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: borderColor.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          child: Center(child: buttonChild),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        elevation: isReserved ? 2 : 0,
-      ),
-      child: SizedBox(
-        height: 36,
-        child: buttonChild,
       ),
     );
 
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Stack(
           children: [
-            filledButton,
+            button,
             if (isCooling)
               Positioned.fill(
                 child: AnimatedBuilder(
@@ -129,7 +138,7 @@ class BusButtonState extends State<BusButton>
                       painter: GlowingBorderPainter(
                         progress: _controller.value,
                         glowColor: borderColor,
-                        borderRadius: 12,
+                        borderRadius: 8,
                       ),
                     );
                   },
@@ -166,11 +175,11 @@ class GlowingBorderPainter extends CustomPainter {
       ..shader = SweepGradient(
         colors: [
           glowColor.withValues(alpha: 0),
+          glowColor.withValues(alpha: 0.05),
           glowColor.withValues(alpha: 0.1),
-          glowColor.withValues(alpha: 0.3),
-          glowColor.withValues(alpha: 0.5),
-          glowColor.withValues(alpha: 0.3),
+          glowColor.withValues(alpha: 0.2),
           glowColor.withValues(alpha: 0.1),
+          glowColor.withValues(alpha: 0.05),
           glowColor.withValues(alpha: 0),
         ],
         stops: const [0.0, 0.2, 0.3, 0.5, 0.7, 0.8, 1.0],
@@ -181,14 +190,14 @@ class GlowingBorderPainter extends CustomPainter {
 
     // 绘制主边框
     final borderPaint = Paint()
-      ..color = glowColor.withValues(alpha: 0.15)
+      ..color = glowColor.withValues(alpha: 0.1)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+      ..strokeWidth = 1.0;
 
-    // 先绘制底部边框
+    // 绘制底部边框
     canvas.drawRRect(rrect, borderPaint);
 
-    // 再绘制动态渐变
+    // 绘制动态渐变
     canvas.drawRRect(rrect, gradientPaint);
   }
 

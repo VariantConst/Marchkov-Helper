@@ -26,7 +26,7 @@ class BusList extends StatelessWidget {
     return Stack(
       children: [
         ListView(
-          padding: EdgeInsets.only(top: 24),
+          padding: EdgeInsets.only(top: 0),
           children: [
             BusSection(
               title: '去燕园',
@@ -36,9 +36,28 @@ class BusList extends StatelessWidget {
               reservedBuses: reservedBuses,
               buttonCooldowns: buttonCooldowns,
             ),
+            SizedBox(height: 24),
             BusSection(
               title: '去昌平',
               buses: _getBusesByDirection('去昌平'),
+              onBusCardTap: onBusCardTap,
+              showBusDetails: showBusDetails,
+              reservedBuses: reservedBuses,
+              buttonCooldowns: buttonCooldowns,
+            ),
+            SizedBox(height: 24),
+            BusSection(
+              title: '新燕园校区→200号校区',
+              buses: _getBusesByDirection('新燕园校区→200号校区'),
+              onBusCardTap: onBusCardTap,
+              showBusDetails: showBusDetails,
+              reservedBuses: reservedBuses,
+              buttonCooldowns: buttonCooldowns,
+            ),
+            SizedBox(height: 24),
+            BusSection(
+              title: '200号校区→新燕园校区',
+              buses: _getBusesByDirection('200号校区→新燕园校区'),
               onBusCardTap: onBusCardTap,
               showBusDetails: showBusDetails,
               reservedBuses: reservedBuses,
@@ -109,12 +128,26 @@ class BusList extends StatelessWidget {
       "200号校区→新燕园校区→西二旗→肖家河→燕园校区",
     };
 
+    // 新燕园校区→200号校区
+    final routesTo200 = <String>{
+      "新燕园校区→200号校区",
+    };
+
+    // 200号校区→新燕园校区
+    final routesLeave200 = <String>{
+      "200号校区→新燕园校区",
+    };
+
     return filteredBusList.where((bus) {
       final routeName = bus['route_name'] ?? '';
       if (direction == '去昌平') {
         return routesToChangping.contains(routeName);
       } else if (direction == '去燕园') {
         return routesToYanyuan.contains(routeName);
+      } else if (direction == '新燕园校区→200号校区') {
+        return routesTo200.contains(routeName);
+      } else if (direction == '200号校区→新燕园校区') {
+        return routesLeave200.contains(routeName);
       }
       return false;
     }).toList();
