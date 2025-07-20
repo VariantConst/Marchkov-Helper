@@ -5,6 +5,15 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+bool isSameColor(Color selected, dynamic color) {
+  if (color is MaterialColor) {
+    return selected == color ||
+        selected == color.shade500 ||
+        selected == color.shade700;
+  }
+  return selected == color;
+}
+
 class ThemeSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -89,7 +98,7 @@ class ThemeSettingsPage extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: colors.map((color) {
-            final isSelected = themeProvider.selectedColor == color;
+            final isSelected = isSameColor(themeProvider.selectedColor, color);
             return Stack(
               children: [
                 Material(
