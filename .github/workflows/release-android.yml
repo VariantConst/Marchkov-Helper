@@ -1,0 +1,238 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag matching pubspec.yaml, for example v2.3.6
+        required: true
+        default: v2.3.6
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, verify, and publish APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: release
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate release version
+        id: release
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          tag="$GITHUB_REF_NAME"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "::error::Manual releases must run from the main branch."
+              exit 1
+            fi
+            tag="$REQUESTED_TAG"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must look like v2.3.6."
+            exit 1
+          fi
+
+          pubspec_version="$(awk '$1 == "version:" { print $2; exit }' pubspec.yaml)"
+          if [[ "$pubspec_version" != *"+"* ]]; then
+            echo "::error::pubspec.yaml must contain both versionName and versionCode."
+            exit 1
+          fi
+
+          version_name="${pubspec_version%%+*}"
+          version_code="${pubspec_version##*+}"
+          if [[ "${tag#v}" != "$version_name" ]]; then
+            echo "::error::Tag $tag does not match pubspec version $version_name."
+            exit 1
+          fi
+          if [[ ! "$version_code" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Android versionCode must be a positive integer."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.27.4
+          cache: true
+
+      - name: Require release signing secrets
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.MARCHKOV_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.MARCHKOV_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MARCHKOV_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MARCHKOV_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for variable in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "::error::$variable is not configured in the release environment."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Restore and verify release keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.MARCHKOV_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.MARCHKOV_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MARCHKOV_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          keystore_path="$RUNNER_TEMP/marchkov-release.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+
+          expected="7CE270503976BA420800C44C3E7DC8A8D7B305FBA8C515074ED0EBC9D79F4AA6"
+          keytool_output="$(
+            LC_ALL=C keytool -list -v \
+              -keystore "$keystore_path" \
+              -storepass "$KEYSTORE_PASSWORD" \
+              -alias "$KEY_ALIAS"
+          )"
+          actual="$(
+            printf '%s\n' "$keytool_output" |
+              sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' |
+              head -n 1 |
+              tr -d ':[:space:]' |
+              tr '[:lower:]' '[:upper:]'
+          )"
+
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Keystore certificate $actual does not match the official certificate $expected."
+            exit 1
+          fi
+          echo "Verified official release certificate: $actual"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Run static analysis
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build signed release APK
+        env:
+          MARCHKOV_KEYSTORE_PATH: ${{ runner.temp }}/marchkov-release.keystore
+          MARCHKOV_KEYSTORE_PASSWORD: ${{ secrets.MARCHKOV_KEYSTORE_PASSWORD }}
+          MARCHKOV_KEY_ALIAS: ${{ secrets.MARCHKOV_KEY_ALIAS }}
+          MARCHKOV_KEY_PASSWORD: ${{ secrets.MARCHKOV_KEY_PASSWORD }}
+        run: flutter build apk --release
+
+      - name: Verify APK signature and prepare assets
+        id: artifact
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          source_apk="build/app/outputs/flutter-apk/app-release.apk"
+          sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          apksigner="$(
+            find "$sdk_root/build-tools" -type f -name apksigner -print |
+              sort -V |
+              tail -n 1
+          )"
+          if [[ -z "$apksigner" ]]; then
+            echo "::error::Android apksigner was not found."
+            exit 1
+          fi
+
+          verify_output="$("$apksigner" verify --verbose --print-certs "$source_apk")"
+          printf '%s\n' "$verify_output"
+          expected="7CE270503976BA420800C44C3E7DC8A8D7B305FBA8C515074ED0EBC9D79F4AA6"
+          actual="$(
+            printf '%s\n' "$verify_output" |
+              sed -n 's/^Signer #1 certificate SHA-256 digest:[[:space:]]*//p' |
+              head -n 1 |
+              tr -d ':[:space:]' |
+              tr '[:lower:]' '[:upper:]'
+          )"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Built APK certificate $actual does not match $expected."
+            exit 1
+          fi
+
+          mkdir -p dist
+          asset_name="marchkov-helper-$RELEASE_TAG.apk"
+          cp "$source_apk" "dist/$asset_name"
+          (
+            cd dist
+            sha256sum "$asset_name" > "$asset_name.sha256"
+          )
+          echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: marchkov-helper-${{ steps.release.outputs.tag }}-verified
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $RELEASE_TAG already exists."
+            exit 1
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$RELEASE_TAG" \
+            --generate-notes \
+            --draft
+          gh release edit "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --latest
+
+      - name: Remove temporary keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/marchkov-release.keystore"

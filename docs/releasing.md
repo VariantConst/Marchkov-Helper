@@ -11,6 +11,9 @@ Release 的签名证书，否则 Android 会拒绝覆盖升级。
 7CE270503976BA420800C44C3E7DC8A8D7B305FBA8C515074ED0EBC9D79F4AA6
 ```
 
+该指纹是公钥证书的摘要，只能验证签名，不能生成签名。构建正式 APK 仍需要
+包含对应私钥的 keystore。证书、APK 或上面的指纹都无法还原私钥。
+
 私钥和密码不得提交到 Git。构建前通过本机环境变量提供：
 
 ```text
@@ -21,6 +24,30 @@ MARCHKOV_KEY_PASSWORD
 ```
 
 如果缺少任一变量，Gradle 会拒绝生成 Release，避免误用 Debug 证书发布。
+
+## GitHub Actions
+
+`Android CI` 会在 PR 和 `main` 更新时运行测试、静态分析并生成短期 Debug APK，
+不接触正式签名材料。
+
+`Android Release` 只在推送 `vX.Y.Z` 标签或手动触发时运行。正式签名材料应配置
+在名为 `release` 的 GitHub Environment 中，并建议由仓库所有者设置 required
+reviewer。需要以下四个加密 Secret：
+
+```text
+MARCHKOV_KEYSTORE_BASE64
+MARCHKOV_KEYSTORE_PASSWORD
+MARCHKOV_KEY_ALIAS
+MARCHKOV_KEY_PASSWORD
+```
+
+其中 `MARCHKOV_KEYSTORE_BASE64` 是原 keystore 文件的 Base64 内容，不是证书
+指纹。工作流会将其临时解码到 Runner，先检查 keystore 证书，再构建 APK，并对
+最终 APK 再检查一次相同指纹。任何 Secret 缺失或指纹不匹配都会阻止 Release。
+
+工作流发布成功后，还需确认 `https://shuttle.variantconst.com/api/version` 和
+`https://shuttle.variantconst.com/api/android_url` 已指向新版本；该站点的当前
+源码与部署配置不在本仓库的 `main` 分支中。
 
 ## 发布检查
 
