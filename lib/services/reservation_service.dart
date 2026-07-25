@@ -3,12 +3,12 @@ import '../models/bus_route.dart';
 import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
 import 'package:intl/intl.dart';
-import '../services/auth_service.dart';
+import '../utils/iaaa_response_parser.dart';
 
 class ReservationService {
-  final AuthService _authService;
+  final AuthProvider _authProvider;
 
-  ReservationService(AuthProvider authProvider) : _authService = AuthService();
+  ReservationService(this._authProvider);
 
   // 修改现有的 http 请求方法，添加登录状态验证
   Future<T> _authenticatedRequest<T>(
@@ -36,7 +36,7 @@ class ReservationService {
       final response = await http.get(
         uri,
         headers: {
-          'Cookie': await _authService.cookies,
+          'Cookie': await _authProvider.getLatestCookies(),
         },
       );
 
@@ -44,7 +44,7 @@ class ReservationService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['e'] == 0) {
+        if (isSuccessfulWprocResponse(data)) {
           List<dynamic> list = data['d']['list'];
           print('成功获取 ${list.length} 条班车路线');
           return list
@@ -62,7 +62,7 @@ class ReservationService {
   Future<String> fetchReservationData(String date) async {
     return _authenticatedRequest(() async {
       print('开始获取预约数据，日期: $date');
-      final cookies = await _authService.cookies;
+      final cookies = await _authProvider.getLatestCookies();
       final url = Uri.parse(
           'https://wproc.pku.edu.cn/site/reservation/list-page?hall_id=1&time=$date&p=1&page_size=0');
 
@@ -102,7 +102,7 @@ class ReservationService {
     for (var response in responses) {
       final data = json.decode(response);
 
-      if (data['e'] == 0) {
+      if (isSuccessfulWprocResponse(data)) {
         List<dynamic> list = data['d']['list'];
 
         for (var bus in list) {
@@ -164,7 +164,7 @@ class ReservationService {
       final response = await http.post(
         uri,
         headers: {
-          'Cookie': await _authService.cookies,
+          'Cookie': await _authProvider.getLatestCookies(),
         },
         body: {
           'resource_id': resourceId,
@@ -199,13 +199,13 @@ class ReservationService {
     final response = await http.get(
       uri,
       headers: {
-        'Cookie': await _authService.cookies,
+        'Cookie': await _authProvider.getLatestCookies(),
       },
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      if (data['e'] == 0) {
+      if (isSuccessfulWprocResponse(data)) {
         return data['d']['data'];
       } else {
         throw Exception(data['m']);
@@ -219,20 +219,21 @@ class ReservationService {
   Future<String> getReservationQRCode(
       String id, String hallAppointmentDataId) async {
     final uri = Uri.parse(
-      'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode?id=$id',
+      'https://wproc.pku.edu.cn/site/reservation/get-sign-qrcode'
+      '?type=0&id=$id&hall_appointment_data_id=$hallAppointmentDataId',
     );
 
     try {
       final response = await http.get(
         uri,
         headers: {
-          'Cookie': await _authService.cookies,
+          'Cookie': await _authProvider.getLatestCookies(),
         },
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['e'] == 0) {
+        if (isSuccessfulWprocResponse(data)) {
           return data['d']['code'];
         } else {
           throw Exception(data['m']);
@@ -254,13 +255,13 @@ class ReservationService {
     final response = await http.get(
       uri,
       headers: {
-        'Cookie': await _authService.cookies,
+        'Cookie': await _authProvider.getLatestCookies(),
       },
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      if (data['e'] == 0) {
+      if (isSuccessfulWprocResponse(data)) {
         return data['d']['code'];
       } else {
         throw Exception(data['m']);
@@ -277,7 +278,7 @@ class ReservationService {
     final response = await http.post(
       uri,
       headers: {
-        'Cookie': await _authService.cookies,
+        'Cookie': await _authProvider.getLatestCookies(),
       },
       body: {
         'appointment_id': appointmentId,
@@ -309,13 +310,13 @@ class ReservationService {
     final response = await http.get(
       uri,
       headers: {
-        'Cookie': await _authService.cookies,
+        'Cookie': await _authProvider.getLatestCookies(),
       },
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      if (data['e'] == 0) {
+      if (isSuccessfulWprocResponse(data)) {
         return data['d']['data'];
       } else {
         throw Exception(data['m']);

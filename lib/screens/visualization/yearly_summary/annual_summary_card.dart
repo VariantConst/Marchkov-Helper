@@ -158,40 +158,6 @@ class _AnnualSummaryCardState extends State<AnnualSummaryCard> {
           (timeRouteCount[timeSlot]![routeName] ?? 0) + 1;
     }
 
-    print('\n=== 时间频次统计 ===');
-    final sortedTimes = timeCount.entries.toList()
-      ..sort((a, b) {
-        int freqCompare = b.value.compareTo(a.value);
-        if (freqCompare != 0) return freqCompare;
-        return a.key.compareTo(b.key);
-      });
-
-    for (var entry in sortedTimes) {
-      print(
-          '${entry.key} - ${entry.value}次 (路线: ${timeRouteCount[entry.key]?.entries.map((e) => "${e.key}: ${e.value}次").join(", ")})');
-    }
-
-    print('\n=== 早班车统计 ===');
-    final sortedMorning = morningBusCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    for (var entry in sortedMorning) {
-      print('${entry.key} - ${entry.value}次');
-    }
-
-    print('\n=== 晚班车统计 ===');
-    final sortedNight = nightBusCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    for (var entry in sortedNight) {
-      print('${entry.key} - ${entry.value}次');
-    }
-
-    print('\n=== 月度统计 ===');
-    final sortedMonths = monthCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    for (var entry in sortedMonths) {
-      print('${entry.key}月 - ${entry.value}次');
-    }
-
     int? mostFrequentMonth;
     int maxMonthCount = 0;
     monthCount.forEach((month, count) {

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/auth_challenge.dart';
 import './username_field.dart';
 import './password_field.dart';
+import './auth_verification_dialog.dart';
 import '../main/main_page.dart';
 import '../../widgets/error_dialog.dart';
 
@@ -16,16 +18,7 @@ class LoginPageState extends State<LoginPage> {
   String _username = '';
   String _password = '';
   bool _agreeToTerms = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _requestPermissions();
-  }
-
-  Future<void> _requestPermissions() async {
-    // 权限请求逻辑
-  }
+  bool _isLoggingIn = false;
 
   void _showTermsDialog() {
     showDialog(
@@ -35,7 +28,7 @@ class LoginPageState extends State<LoginPage> {
           title: Text('用户须知'),
           content: SingleChildScrollView(
             child: Text(
-              '我们将采集以SHA256加密后的用户名、版本号及设备类型，用于统计每日活跃用户数。您的用户名和密码将始终安全保存在您的设备上，不会上传至服务器。',
+              '我们将采集随机生成的安装标识、版本号及设备类型，用于统计每日活跃用户数。您的用户名和密码只会保存在您的设备上，不会上传至统计服务器。',
             ),
           ),
           actions: <Widget>[
@@ -109,16 +102,18 @@ class LoginPageState extends State<LoginPage> {
                     SizedBox(
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            if (!_agreeToTerms) {
-                              showErrorDialog(context, '请同意用户须知');
-                            } else {
-                              _formKey.currentState!.save();
-                              _login();
-                            }
-                          }
-                        },
+                        onPressed: _isLoggingIn
+                            ? null
+                            : () {
+                                if (_formKey.currentState!.validate()) {
+                                  if (!_agreeToTerms) {
+                                    showErrorDialog(context, '请同意用户须知');
+                                  } else {
+                                    _formKey.currentState!.save();
+                                    _login();
+                                  }
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -126,14 +121,25 @@ class LoginPageState extends State<LoginPage> {
                           backgroundColor:
                               Theme.of(context).colorScheme.primary,
                         ),
-                        child: Text(
-                          '登录',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoggingIn
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color:
+                                      Theme.of(context).colorScheme.onPrimary,
+                                ),
+                              )
+                            : Text(
+                                '登录',
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onPrimary,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -146,9 +152,37 @@ class LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _login() async {
+  Future<void> _login() async {
+    if (_isLoggingIn) {
+      return;
+    }
+    setState(() => _isLoggingIn = true);
+
+    final authProvider = context.read<AuthProvider>();
     try {
-      await context.read<AuthProvider>().login(_username, _password);
+      final challenge = await authProvider.prepareLogin(_username);
+      if (!mounted) {
+        return;
+      }
+
+      AuthVerification? verification;
+      if (challenge.requiresVerification) {
+        verification = await showAuthVerificationDialog(
+          context: context,
+          challenge: challenge,
+          sendVerificationCode: () =>
+              authProvider.sendVerificationCode(_username),
+        );
+        if (verification == null || !mounted) {
+          return;
+        }
+      }
+
+      await authProvider.login(
+        _username,
+        _password,
+        verification: verification,
+      );
       if (mounted) {
         Navigator.of(context)
             .pushReplacement(MaterialPageRoute(builder: (_) => MainPage()));
@@ -156,6 +190,10 @@ class LoginPageState extends State<LoginPage> {
     } catch (error) {
       if (mounted) {
         showErrorDialog(context, error.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoggingIn = false);
       }
     }
   }

@@ -3,12 +3,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 
 enum BrightnessControlMode {
-  auto('自动调节'),
-  manual('手动调节'),
-  none('不调节');
+  auto('按时段自动调节'),
+  manual('手动覆盖'),
+  none('跟随系统');
 
   final String label;
   const BrightnessControlMode(this.label);
+
+  static BrightnessControlMode fromStoredIndex(int? index) {
+    if (index == null || index < 0 || index >= values.length) {
+      return BrightnessControlMode.none;
+    }
+    return values[index];
+  }
 }
 
 class RideSettingsPage extends StatefulWidget {
@@ -58,8 +65,9 @@ class RideSettingsPageState extends State<RideSettingsPage>
       _isAutoReservationEnabled =
           prefs.getBool('autoReservationEnabled') ?? false;
       _isSafariStyleEnabled = prefs.getBool('safariStyleEnabled') ?? false;
-      _brightnessMode = BrightnessControlMode.values[
-          prefs.getInt('brightnessMode') ?? BrightnessControlMode.auto.index];
+      _brightnessMode = BrightnessControlMode.fromStoredIndex(
+        prefs.getInt('brightnessMode'),
+      );
       _dayBrightness = prefs.getDouble('dayBrightness') ?? 75.0;
       _nightBrightness = prefs.getDouble('nightBrightness') ?? 50.0;
     });
@@ -141,7 +149,7 @@ class RideSettingsPageState extends State<RideSettingsPage>
     // 恢复所有设置为默认值
     await prefs.setBool('autoReservationEnabled', false);
     await prefs.setBool('safariStyleEnabled', false);
-    await prefs.setInt('brightnessMode', BrightnessControlMode.auto.index);
+    await prefs.setInt('brightnessMode', BrightnessControlMode.none.index);
     await prefs.setDouble('dayBrightness', 75.0);
     await prefs.setDouble('nightBrightness', 50.0);
 
@@ -149,14 +157,14 @@ class RideSettingsPageState extends State<RideSettingsPage>
     setState(() {
       _isAutoReservationEnabled = false;
       _isSafariStyleEnabled = false;
-      _brightnessMode = BrightnessControlMode.auto;
+      _brightnessMode = BrightnessControlMode.none;
       _dayBrightness = 75.0;
       _nightBrightness = 50.0;
     });
 
-    // 由于默认是 auto 模式，需要展开亮度调节部分
+    // 默认跟随系统亮度，不显示覆盖亮度设置
     if (_animationController != null) {
-      _animationController!.forward();
+      _animationController!.reverse();
     }
   }
 
@@ -561,11 +569,11 @@ class RideSettingsPageState extends State<RideSettingsPage>
   String _getBrightnessModeDescription(BrightnessControlMode mode) {
     switch (mode) {
       case BrightnessControlMode.auto:
-        return '根据时间自动调节二维码亮度';
+        return '按白天/夜间设置覆盖应用亮度';
       case BrightnessControlMode.manual:
-        return '在乘车页面显示亮度调节开关';
+        return '在乘车页面显示亮度覆盖开关';
       case BrightnessControlMode.none:
-        return '使用系统默认亮度';
+        return '解除应用覆盖，实时跟随系统亮度';
     }
   }
 }
