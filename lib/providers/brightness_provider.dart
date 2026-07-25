@@ -2,18 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
+abstract interface class AppBrightnessController {
+  Future<void> setBrightness(double brightness);
+
+  Future<void> reset();
+}
+
+class PlatformBrightnessController implements AppBrightnessController {
+  final ScreenBrightness _screenBrightness;
+
+  PlatformBrightnessController({ScreenBrightness? screenBrightness})
+      : _screenBrightness = screenBrightness ?? ScreenBrightness();
+
+  @override
+  Future<void> reset() => _screenBrightness.resetScreenBrightness();
+
+  @override
+  Future<void> setBrightness(double brightness) {
+    return _screenBrightness.setScreenBrightness(brightness);
+  }
+}
+
 class BrightnessProvider with ChangeNotifier {
   bool _isFlashlightOn = false;
-  double _originalBrightness = 0.0;
-  final _screenBrightness = ScreenBrightness();
+  final AppBrightnessController _brightnessController;
   bool _isAutoMode = false;
+
+  BrightnessProvider({AppBrightnessController? brightnessController})
+      : _brightnessController =
+            brightnessController ?? PlatformBrightnessController();
 
   bool get isFlashlightOn => _isFlashlightOn;
   bool get isAutoMode => _isAutoMode;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    _isFlashlightOn = prefs.getBool('isFlashlightOn') ?? false;
+    _isFlashlightOn = false;
+    await prefs.remove('isFlashlightOn');
 
     try {
       await syncWithSystemBrightness();
@@ -24,12 +49,10 @@ class BrightnessProvider with ChangeNotifier {
 
   Future<void> syncWithSystemBrightness() async {
     try {
-      // 获取系统当前亮度
-      _originalBrightness = await _screenBrightness.current;
-
-      // 如果当前没有特殊模式启用，就使用系统亮度
-      if (!_isFlashlightOn && !_isAutoMode) {
-        await _screenBrightness.setScreenBrightness(_originalBrightness);
+      if (_isFlashlightOn || _isAutoMode) {
+        await _applyConfiguredBrightness();
+      } else {
+        await _brightnessController.reset();
       }
     } catch (e) {
       debugPrint('Error syncing brightness: $e');
@@ -37,26 +60,9 @@ class BrightnessProvider with ChangeNotifier {
   }
 
   Future<void> enableAutoMode() async {
-    if (_isAutoMode) return;
-
     try {
-      final prefs = await SharedPreferences.getInstance();
-      // 保存当前亮度
-      _originalBrightness = await _screenBrightness.current;
-
-      // 获取设置的亮度值
-      final dayBrightness = prefs.getDouble('dayBrightness') ?? 75.0;
-      final nightBrightness = prefs.getDouble('nightBrightness') ?? 50.0;
-
-      // 判断当前是白天还是夜晚
-      final hour = DateTime.now().hour;
-      final isDaytime = hour >= 6 && hour < 18;
-
-      // 设置对应的亮度
-      final targetBrightness =
-          (isDaytime ? dayBrightness : nightBrightness) / 100;
-      await _screenBrightness.setScreenBrightness(targetBrightness);
-
+      await _applyConfiguredBrightness();
+      _isFlashlightOn = false;
       _isAutoMode = true;
       notifyListeners();
     } catch (e) {
@@ -68,8 +74,10 @@ class BrightnessProvider with ChangeNotifier {
     if (!_isAutoMode) return;
 
     try {
-      await _screenBrightness.setScreenBrightness(_originalBrightness);
       _isAutoMode = false;
+      if (!_isFlashlightOn) {
+        await _brightnessController.reset();
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Error disabling auto mode: $e');
@@ -77,35 +85,18 @@ class BrightnessProvider with ChangeNotifier {
   }
 
   Future<void> toggleFlashlight({bool? force}) async {
-    final prefs = await SharedPreferences.getInstance();
     final newState = force ?? !_isFlashlightOn;
 
     if (newState == _isFlashlightOn) return;
 
     try {
       if (newState) {
-        // 保存当前亮度
-        _originalBrightness = await _screenBrightness.current;
-
-        // 获取设置的亮度值
-        final dayBrightness = prefs.getDouble('dayBrightness') ?? 75.0;
-        final nightBrightness = prefs.getDouble('nightBrightness') ?? 50.0;
-
-        // 判断当前是白天还是夜晚
-        final hour = DateTime.now().hour;
-        final isDaytime = hour >= 6 && hour < 18;
-
-        // 设置对应的亮度
-        final targetBrightness =
-            (isDaytime ? dayBrightness : nightBrightness) / 100;
-        await _screenBrightness.setScreenBrightness(targetBrightness);
-      } else {
-        // 恢复原始亮度
-        await _screenBrightness.setScreenBrightness(_originalBrightness);
+        await _applyConfiguredBrightness();
+      } else if (!_isAutoMode) {
+        await _brightnessController.reset();
       }
 
       _isFlashlightOn = newState;
-      await prefs.setBool('isFlashlightOn', newState);
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling brightness: $e');
@@ -114,10 +105,26 @@ class BrightnessProvider with ChangeNotifier {
 
   // 在应用退出或暂停时调用
   Future<void> cleanup() async {
-    if (_isFlashlightOn) {
-      await toggleFlashlight(force: false);
-    } else if (_isAutoMode) {
-      await disableAutoMode();
-    }
+    final prefs = await SharedPreferences.getInstance();
+    _isFlashlightOn = false;
+    _isAutoMode = false;
+    await prefs.remove('isFlashlightOn');
+    await _brightnessController.reset();
+    notifyListeners();
+  }
+
+  Future<void> suspendOverride() async {
+    await _brightnessController.reset();
+  }
+
+  Future<void> _applyConfiguredBrightness() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dayBrightness = prefs.getDouble('dayBrightness') ?? 75.0;
+    final nightBrightness = prefs.getDouble('nightBrightness') ?? 50.0;
+    final hour = DateTime.now().hour;
+    final isDaytime = hour >= 6 && hour < 18;
+    final targetBrightness =
+        (isDaytime ? dayBrightness : nightBrightness) / 100;
+    await _brightnessController.setBrightness(targetBrightness);
   }
 }

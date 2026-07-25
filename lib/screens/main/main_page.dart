@@ -18,10 +18,17 @@ class MainPage extends StatefulWidget {
 
 class MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
+  final _ridePageKey = GlobalKey<RidePageState>();
+  late final List<Widget> _widgetOptions;
 
   @override
   void initState() {
     super.initState();
+    _widgetOptions = <Widget>[
+      RidePage(key: _ridePageKey),
+      ReservationPage(),
+      SettingsPage(),
+    ];
     _loadSelectedIndex();
     _checkAndShowAnnualSummaryDialog();
     _silentlyRefreshCookie();
@@ -182,18 +189,15 @@ class MainPageState extends State<MainPage> {
     }
   }
 
-  static List<Widget> _widgetOptions = <Widget>[
-    RidePage(),
-    ReservationPage(),
-    SettingsPage(),
-  ];
-
   void _onItemTapped(int index) {
     HapticFeedback.selectionClick(); // 修改为更轻柔的震动反馈
     setState(() {
       _selectedIndex = index;
     });
     _saveSelectedIndex(index); // 保存选中的索引
+    if (index == 0) {
+      _ridePageKey.currentState?.refreshSettings();
+    }
   }
 
   @override

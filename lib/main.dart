@@ -11,6 +11,7 @@ import 'screens/main/main_page.dart';
 import 'package:flutter/services.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
@@ -135,8 +136,8 @@ class LifecycleWrapperState extends State<LifecycleWrapper>
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-        // 进入后台或关闭时，清理亮度设置
-        brightnessProvider.cleanup();
+        // 进入后台时暂时解除应用亮度覆盖，恢复系统控制
+        brightnessProvider.suspendOverride();
         break;
       default:
         break;

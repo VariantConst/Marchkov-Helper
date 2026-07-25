@@ -1,16 +1,16 @@
 import 'dart:io';
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
+import 'dart:math';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/auth_provider.dart';
+
 import 'version_service.dart';
 
 class DauService {
-  final AuthProvider _authProvider;
   final VersionService _versionService;
+  static const _installationIdKey = 'dauInstallationId';
 
-  DauService(this._authProvider, this._versionService);
+  DauService(this._versionService);
 
   Future<void> sendDailyActive() async {
     final prefs = await SharedPreferences.getInstance();
@@ -24,8 +24,15 @@ class DauService {
       return;
     }
 
-    final studentId = _authProvider.username; // 假设 username 是 studentId
-    final hash = sha256.convert(utf8.encode(studentId)).toString();
+    var installationId = prefs.getString(_installationIdKey);
+    if (installationId == null) {
+      final random = Random.secure();
+      installationId = List.generate(
+        32,
+        (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+      ).join();
+      await prefs.setString(_installationIdKey, installationId);
+    }
 
     final version = await _versionService.getCurrentVersion();
 
@@ -33,19 +40,14 @@ class DauService {
     final isApple = Platform.isIOS || Platform.isMacOS;
 
     final url =
-        'https://cf-marchkov-stats.variantconst.com/?hash=$hash&version=$version&isApple=${isApple ? 1 : 0}';
+        'https://cf-marchkov-stats.variantconst.com/?hash=$installationId&version=$version&isApple=${isApple ? 1 : 0}';
 
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         // 发送成功，记录今天的日期
         await prefs.setString('lastDauSentDate', todayString);
-        print('发送 DAU 请求成功，发送内容为: $url');
-      } else {
-        print('发送 DAU 请求失败，状态码: ${response.statusCode}');
       }
-    } catch (e) {
-      print('发送 DAU 请求出错: $e');
-    }
+    } catch (_) {}
   }
 }

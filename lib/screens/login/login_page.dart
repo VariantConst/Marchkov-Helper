@@ -20,16 +20,6 @@ class LoginPageState extends State<LoginPage> {
   bool _agreeToTerms = false;
   bool _isLoggingIn = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _requestPermissions();
-  }
-
-  Future<void> _requestPermissions() async {
-    // 权限请求逻辑
-  }
-
   void _showTermsDialog() {
     showDialog(
       context: context,
@@ -38,7 +28,7 @@ class LoginPageState extends State<LoginPage> {
           title: Text('用户须知'),
           content: SingleChildScrollView(
             child: Text(
-              '我们将采集以SHA256加密后的用户名、版本号及设备类型，用于统计每日活跃用户数。您的用户名和密码将始终安全保存在您的设备上，不会上传至服务器。',
+              '我们将采集随机生成的安装标识、版本号及设备类型，用于统计每日活跃用户数。您的用户名和密码只会保存在您的设备上，不会上传至统计服务器。',
             ),
           ),
           actions: <Widget>[

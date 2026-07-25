@@ -48,8 +48,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
   bool _autoReservationEnabled = false;
   bool _hasAttemptedAutoReservation = false;
 
-  bool _safariStyleEnabled = false; // 新增状态变量
-
   // 添加新的状态变量
   BrightnessControlMode? _brightnessMode;
 
@@ -80,13 +78,8 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     super.initState();
     _initialize();
     _loadAutoReservationSetting();
-    _loadSafariStyleSetting();
-    _loadBrightnessMode().then((_) {
-      if (_brightnessMode == BrightnessControlMode.auto && mounted) {
-        _brightnessProvider =
-            Provider.of<BrightnessProvider>(context, listen: false);
-        _brightnessProvider.enableAutoMode();
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      refreshSettings();
     });
 
     _pageController = PageController(
@@ -382,12 +375,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
       return busUsageCount[keyB]!.compareTo(busUsageCount[keyA]!);
     });
 
-    // 打印每个班车的乘坐次数
-    for (var bus in _nearbyBuses) {
-      String busKey = '${bus['route_name']}_${bus['yaxis']}';
-      print('班车: $busKey, 乘坐次数: ${busUsageCount[busKey]}');
-    }
-
     if (mounted) {
       setState(() {});
     }
@@ -679,21 +666,35 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     }
   }
 
-  // 新增加载 Safari 样式设置的方法
-  Future<void> _loadSafariStyleSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _safariStyleEnabled = prefs.getBool('safariStyleEnabled') ?? false;
-    });
-  }
-
   Future<void> _loadBrightnessMode() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _brightnessMode = BrightnessControlMode.values[
-            prefs.getInt('brightnessMode') ?? BrightnessControlMode.auto.index];
+        _brightnessMode = BrightnessControlMode.fromStoredIndex(
+          prefs.getInt('brightnessMode'),
+        );
       });
+    }
+  }
+
+  Future<void> refreshSettings() async {
+    await _loadBrightnessMode();
+    if (!mounted) {
+      return;
+    }
+
+    switch (_brightnessMode) {
+      case BrightnessControlMode.auto:
+        await _brightnessProvider.enableAutoMode();
+        break;
+      case BrightnessControlMode.manual:
+        await _brightnessProvider.disableAutoMode();
+        break;
+      case BrightnessControlMode.none:
+        await _brightnessProvider.cleanup();
+        break;
+      case null:
+        break;
     }
   }
 
@@ -806,7 +807,6 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
                                     onCancelReservation: () =>
                                         _cancelReservation(index),
                                     isToggleLoading: _isToggleLoading,
-                                    isSafariStyleEnabled: _safariStyleEnabled,
                                   );
                                 },
                               ),
@@ -948,31 +948,23 @@ class RidePageState extends State<RidePage> with AutomaticKeepAliveClientMixin {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedUsername = prefs.getString('username');
-      final savedPassword = prefs.getString('password');
+      if (!mounted) return;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.reloginWithSavedCredentials();
 
-      if (savedUsername != null && savedPassword != null) {
-        if (!mounted) return;
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        await authProvider.login(savedUsername, savedPassword);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = true;
+        _hasAttemptedAutoReservation = false;
+        _showRetryButton = false;
+        _nearbyBuses = [];
+        _cardStates = [];
+        _loadingStep = '正在重新加载数据...';
+      });
 
-        if (!mounted) return;
-        setState(() {
-          _isLoading = true;
-          _hasAttemptedAutoReservation = false;
-          _showRetryButton = false;
-          _nearbyBuses = [];
-          _cardStates = [];
-          _loadingStep = '正在重新加载数据...';
-        });
-
-        // 重置取消标志
-        _shouldCancelInitialization = false;
-        await _initialize();
-      } else {
-        throw Exception('未找到登录凭据，请重新登录');
-      }
+      // 重置取消标志
+      _shouldCancelInitialization = false;
+      await _initialize();
     } catch (e) {
       if (mounted) {
         setState(() {

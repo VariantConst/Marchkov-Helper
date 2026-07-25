@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ride_card_header.dart';
 import 'ride_button.dart';
 
@@ -10,7 +11,6 @@ class RideCard extends StatelessWidget {
   final VoidCallback onMakeReservation;
   final VoidCallback onCancelReservation;
   final bool isToggleLoading;
-  final bool isSafariStyleEnabled;
 
   const RideCard({
     super.key,
@@ -19,7 +19,6 @@ class RideCard extends StatelessWidget {
     required this.onMakeReservation,
     required this.onCancelReservation,
     required this.isToggleLoading,
-    required this.isSafariStyleEnabled,
   });
 
   @override
@@ -174,9 +173,25 @@ class RideCard extends StatelessWidget {
         SizedBox(height: 20),
         if (cardState['codeType'] == '乘车码' || cardState['codeType'] == '临时码')
           GestureDetector(
-            onTap: () {
-              if (cardState['qrCode'] != null && isSafariStyleEnabled) {
+            onTap: () async {
+              if (cardState['qrCode'] == null) {
+                return;
+              }
+              final preferences = await SharedPreferences.getInstance();
+              final enabled =
+                  preferences.getBool('safariStyleEnabled') ?? false;
+              if (!context.mounted) {
+                return;
+              }
+              if (enabled) {
                 _showFullScreenQRCode(context, cardState['qrCode']);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('请先在“设置 → 乘车设置”中开启仿官方页面'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               }
             },
             child: Container(

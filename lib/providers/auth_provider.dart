@@ -42,8 +42,6 @@ class AuthProvider with ChangeNotifier {
     _loginResponse = _authRepository.loginResponse;
     _cookies = await _authRepository.cookies; // 异步获取cookies并更新
     await _saveLoginState(true);
-    await _saveUsername(username);
-    await _savePassword(password);
     await _updateLastRefreshTime();
     notifyListeners();
   }
@@ -86,16 +84,6 @@ class AuthProvider with ChangeNotifier {
     await prefs.setBool('isLoggedIn', isLoggedIn);
   }
 
-  Future<void> _saveUsername(String username) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', username);
-  }
-
-  Future<void> _savePassword(String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('password', password);
-  }
-
   // 添加一个方法来异步获取最新的cookies
   Future<String> getLatestCookies() async {
     _cookies = await _authRepository.cookies;
@@ -132,22 +120,20 @@ class AuthProvider with ChangeNotifier {
         return true;
       }
 
-      // 获取保存的凭据
-      final prefs = await SharedPreferences.getInstance();
-      final savedUsername = prefs.getString('username');
-      final savedPassword = prefs.getString('password');
-
-      if (savedUsername == null || savedPassword == null) {
-        return false;
-      }
-
-      // 尝试重新登录
-      await login(savedUsername, savedPassword);
-      await _updateLastRefreshTime();
+      await reloginWithSavedCredentials();
       return true;
-    } catch (e) {
-      print('静默刷新 cookie 失败: $e');
+    } catch (_) {
       return false;
     }
+  }
+
+  Future<void> reloginWithSavedCredentials() async {
+    await _authRepository.loadCredentials();
+    final savedUsername = _authRepository.username;
+    final savedPassword = _authRepository.password;
+    if (savedUsername.isEmpty || savedPassword.isEmpty) {
+      throw Exception('未找到登录凭据，请重新登录');
+    }
+    await login(savedUsername, savedPassword);
   }
 }

@@ -36,9 +36,8 @@ dependencies:
   http: ^1.2.2
   encrypt: ^5.0.3
   pointycastle: ^3.9.1
-  permission_handler: ^11.3.1
-  geolocator: ^13.0.1
   shared_preferences: ^2.2.0
+  flutter_secure_storage: ^10.3.1
   cookie_jar: ^4.0.8
   path_provider: ^2.1.2
   intl: ^0.19.0 # 添加这一行
@@ -53,7 +52,6 @@ dependencies:
   url_launcher: ^6.1.5 # 新增
   package_info_plus: ^8.0.2 # 用于获取应用程序信息
   emoji_picker_flutter: ^3.1.0
-  crypto: ^3.0.3
   screen_brightness: ^0.2.2
   screenshot: ^2.1.0+1
   share_plus: ^7.2.1

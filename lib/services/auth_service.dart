@@ -7,12 +7,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/asymmetric/api.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/auth_challenge.dart';
 import '../models/auth_exception.dart';
 import '../models/user.dart';
 import '../utils/iaaa_response_parser.dart';
+import 'credential_storage.dart';
 
 class AuthService extends ChangeNotifier {
   static const _userAgent =
@@ -25,6 +25,10 @@ class AuthService extends ChangeNotifier {
   static final _iaaaOrigin = Uri.parse('https://iaaa.pku.edu.cn');
   static final _wprocCookieUri =
       Uri.parse('https://wproc.pku.edu.cn/site/reservation/');
+  static const _allowedAuthHosts = {
+    'iaaa.pku.edu.cn',
+    'wproc.pku.edu.cn',
+  };
   static final _oauthPageUri = Uri.https(
     'iaaa.pku.edu.cn',
     '/iaaa/oauth.jsp',
@@ -37,6 +41,7 @@ class AuthService extends ChangeNotifier {
 
   final http.Client _client;
   final HttpClient Function() _httpClientFactory;
+  final CredentialStorage _credentialStorage;
   late final Future<PersistCookieJar> _cookieJarFuture;
 
   User? _user;
@@ -50,8 +55,10 @@ class AuthService extends ChangeNotifier {
     http.Client? client,
     HttpClient Function()? httpClientFactory,
     Future<PersistCookieJar> Function()? cookieJarFactory,
+    CredentialStorage? credentialStorage,
   })  : _client = client ?? http.Client(),
-        _httpClientFactory = httpClientFactory ?? HttpClient.new {
+        _httpClientFactory = httpClientFactory ?? HttpClient.new,
+        _credentialStorage = credentialStorage ?? CredentialStorage() {
     _cookieJarFuture = cookieJarFactory?.call() ?? _createCookieJar();
   }
 
@@ -211,7 +218,7 @@ class AuthService extends ChangeNotifier {
       await _fetchWprocCookies(httpClient, token);
       await _validateWprocSession(httpClient);
 
-      _user = User(username: normalizedUsername, token: token);
+      _user = User(username: normalizedUsername, token: '');
       _password = password;
       _loginResponse = '登录成功';
       await _saveCredentials(normalizedUsername, password);
@@ -321,6 +328,10 @@ class AuthService extends ChangeNotifier {
     Uri uri, {
     Map<String, String>? form,
   }) async {
+    if (uri.scheme != 'https' || !_allowedAuthHosts.contains(uri.host)) {
+      throw const AuthException('登录服务器返回了不安全的跳转地址');
+    }
+
     final request = await httpClient.openUrl(method, uri);
     request.followRedirects = false;
     request.headers.set(HttpHeaders.userAgentHeader, _userAgent);
@@ -395,20 +406,15 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _saveCredentials(String username, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', username);
-    await prefs.setString('password', password);
+    await _credentialStorage.save(username, password);
   }
 
   Future<void> _clearCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('username');
-    await prefs.remove('password');
+    await _credentialStorage.clear();
   }
 
   Future<void> loadUsername() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedUsername = prefs.getString('username');
+    final savedUsername = await _credentialStorage.readUsername();
     if (savedUsername != null) {
       _user = User(username: savedUsername, token: '');
       notifyListeners();
@@ -416,12 +422,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> loadCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedUsername = prefs.getString('username');
-    final savedPassword = prefs.getString('password');
-    if (savedUsername != null && savedPassword != null) {
-      _user = User(username: savedUsername, token: '');
-      _password = savedPassword;
+    final credentials = await _credentialStorage.readCredentials();
+    if (credentials != null) {
+      _user = User(username: credentials.username, token: '');
+      _password = credentials.password;
       notifyListeners();
     }
   }

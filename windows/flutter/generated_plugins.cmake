@@ -4,8 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   emoji_picker_flutter
-  geolocator_windows
-  permission_handler_windows
+  flutter_secure_storage_windows
   screen_brightness_windows
   share_plus
   url_launcher_windows
