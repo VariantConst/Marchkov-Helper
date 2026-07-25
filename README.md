@@ -4,6 +4,8 @@
 
 > Web, Android 和 iOS 的独立版本已停止维护，从 v2.0.0 开始采用 Flutter 统一跨平台体验。你依然可以通过 legacy 分支查看旧版代码。
 
+开发与排障请参阅 [IAAA 与 WProc 认证流程](docs/authentication.md)。
+
 ## 画廊
 
 ### 昼间

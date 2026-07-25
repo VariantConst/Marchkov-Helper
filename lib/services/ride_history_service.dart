@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ride_info.dart';
 import '../providers/auth_provider.dart';
+import '../utils/iaaa_response_parser.dart';
 
 class RideHistoryService {
   final AuthProvider _authProvider;
@@ -56,13 +57,13 @@ class RideHistoryService {
     final response = await http.get(
       Uri.parse(url),
       headers: {
-        'Cookie': _authProvider.cookies,
+        'Cookie': await _authProvider.getLatestCookies(),
       },
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      if (data['e'] == 0) {
+      if (isSuccessfulWprocResponse(data)) {
         List<dynamic> rideData = data['d']['data'];
         return rideData.map((ride) {
           return RideInfo.fromJson(ride);

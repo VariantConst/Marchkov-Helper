@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
+import '../utils/iaaa_response_parser.dart';
 
 class UserService {
   final AuthProvider authProvider;
@@ -34,7 +35,7 @@ class UserService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      if (data['e'] == 0) {
+      if (isSuccessfulWprocResponse(data)) {
         final userInfo = data['d']['name'].split('\r\n');
         // 显式指定 result 的类型
         final Map<String, String> result = {

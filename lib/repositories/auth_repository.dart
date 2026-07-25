@@ -1,11 +1,28 @@
 // lib/repositories/auth_repository.dart
 import '../services/auth_service.dart';
+import '../models/auth_challenge.dart';
 
 class AuthRepository {
   final AuthService _authService = AuthService();
 
-  Future<void> login(String username, String password) {
-    return _authService.login(username, password);
+  Future<AuthChallenge> prepareLogin(String username) {
+    return _authService.prepareLogin(username);
+  }
+
+  Future<String> sendVerificationCode(String username) {
+    return _authService.sendVerificationCode(username);
+  }
+
+  Future<void> login(
+    String username,
+    String password, {
+    AuthVerification? verification,
+  }) {
+    return _authService.login(
+      username,
+      password,
+      verification: verification,
+    );
   }
 
   Future<void> logout() {

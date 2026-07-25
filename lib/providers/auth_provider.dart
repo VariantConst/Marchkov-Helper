@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../repositories/auth_repository.dart';
 import '../models/user.dart';
+import '../models/auth_challenge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -19,16 +20,31 @@ class AuthProvider with ChangeNotifier {
   String get cookies => _cookies; // 同步获取cookies
   String get password => _authRepository.password;
 
-  Future<void> login(String username, String password) async {
-    await _authRepository.login(username, password);
+  Future<AuthChallenge> prepareLogin(String username) {
+    return _authRepository.prepareLogin(username);
+  }
+
+  Future<String> sendVerificationCode(String username) {
+    return _authRepository.sendVerificationCode(username);
+  }
+
+  Future<void> login(
+    String username,
+    String password, {
+    AuthVerification? verification,
+  }) async {
+    await _authRepository.login(
+      username,
+      password,
+      verification: verification,
+    );
     _user = User(username: username, token: '');
     _loginResponse = _authRepository.loginResponse;
     _cookies = await _authRepository.cookies; // 异步获取cookies并更新
-    // 确保打印完整的 cookie 字符串
-    print('Full cookies: $_cookies');
     await _saveLoginState(true);
     await _saveUsername(username);
     await _savePassword(password);
+    await _updateLastRefreshTime();
     notifyListeners();
   }
 
@@ -56,6 +72,11 @@ class AuthProvider with ChangeNotifier {
     if (isLoggedIn) {
       await loadUsername();
       _cookies = await _authRepository.cookies; // 异步获取cookies并更新
+      if (_cookies.isEmpty) {
+        _user = null;
+        await _saveLoginState(false);
+        return false;
+      }
     }
     return isLoggedIn;
   }
