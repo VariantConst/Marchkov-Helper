@@ -35,7 +35,7 @@ jobs:
           test "$(read_plist CFBundleIdentifier)" = variantconst.marchkov-ios.sideload
           test "$(read_plist DTPlatformName)" = iphoneos
           test ! -e "$app/embedded.mobileprovision"
-          xcrun lipo -verify_arch arm64 "$app/$(read_plist CFBundleExecutable)"
+          xcrun lipo "$app/$(read_plist CFBundleExecutable)" -verify_arch arm64
 
           mkdir -p dist/Payload
           ditto "$app" dist/Payload/Runner.app
