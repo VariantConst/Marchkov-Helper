@@ -1,0 +1,53 @@
+name: Build iOS 3.1.7 sideload IPA
+
+on:
+  push:
+    branches: [build/ios-v3.1.7]
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.27.4
+
+      - name: Test and build unsigned iOS app
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter test
+          flutter build ios --release --no-codesign
+
+      - name: Verify and package IPA
+        run: |
+          app=build/ios/iphoneos/Runner.app
+          plist="$app/Info.plist"
+          read_plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$plist"; }
+          test "$(read_plist CFBundleShortVersionString)" = 3.1.7
+          test "$(read_plist CFBundleVersion)" = 4
+          test "$(read_plist CFBundleIdentifier)" = variantconst.marchkov-ios.sideload
+          test "$(read_plist DTPlatformName)" = iphoneos
+          test ! -e "$app/embedded.mobileprovision"
+          xcrun lipo -verify_arch arm64 "$app/$(read_plist CFBundleExecutable)"
+
+          mkdir -p dist/Payload
+          ditto "$app" dist/Payload/Runner.app
+          cd dist
+          ipa=marchkov-helper-v3.1.7-ios-unsigned.ipa
+          zip -qr "$ipa" Payload
+          unzip -tq "$ipa"
+          shasum -a 256 "$ipa" > "$ipa.sha256"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: marchkov-ios-v3.1.7
+          path: dist/*.ipa*
+          if-no-files-found: error
+          retention-days: 7
